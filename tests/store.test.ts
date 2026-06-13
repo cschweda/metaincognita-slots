@@ -322,3 +322,16 @@ describe('spin orchestration', () => {
     expect(b.perMachine['diamond-doubler']!.cycles).toBe(1)
   })
 })
+
+describe('peekSavedSession', () => {
+  it('detects valid saves without mutating the store', () => {
+    const a = freshStore()
+    expect(a.peekSavedSession()).toBe(false)
+    a.startSession(5000)
+    const b = freshStore()
+    expect(b.peekSavedSession()).toBe(true)
+    expect(b.phase).toBe('floor') // not loaded, only peeked
+    localStorage.setItem(STORAGE_KEY, 'garbage')
+    expect(b.peekSavedSession()).toBe(false)
+  })
+})

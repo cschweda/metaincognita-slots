@@ -515,6 +515,18 @@ export const useSlotsStore = defineStore('slots', {
       this.saveToLocalStorage()
     },
 
+    /** True when valid-looking session data exists, WITHOUT loading it. */
+    peekSavedSession(): boolean {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+        if (raw === null) return false
+        const data = JSON.parse(raw) as { v?: unknown }
+        return data !== null && typeof data === 'object' && data.v === STORAGE_VERSION
+      } catch {
+        return false
+      }
+    },
+
     exportHistory(): string {
       const lines = this.history.map(r =>
         `#${r.id}\t${new Date(r.t).toISOString()}\t${r.machineId}\t${r.gameKind}\tbet ${r.coinsInCents}c\twin ${r.payoutCents}c\t${r.entryIds.join(',') || '-'}`)
