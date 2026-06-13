@@ -6,6 +6,15 @@ const store = useSlotsStore()
 const route = useRoute()
 const parOpen = ref(false)
 
+function onKeydown(e: KeyboardEvent) {
+  if (e.code !== 'Space' || e.repeat) return
+  const target = e.target as HTMLElement | null
+  if (target !== null && ['INPUT', 'BUTTON', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
+  if (store.currentDef?.family === 'pachislo') return // pachislo spins via its own controls
+  e.preventDefault()
+  store.spinOnce()
+}
+
 onMounted(() => {
   if (store.phase === 'floor' && store.peekSavedSession()) store.resume()
   const wanted = typeof route.query.m === 'string' ? route.query.m : null
@@ -18,10 +27,12 @@ onMounted(() => {
     }
   }
   if (store.phase !== 'playing' || store.currentMachineId === null) navigateTo('/')
+  window.addEventListener('keydown', onKeydown)
 })
 
 onUnmounted(() => {
   store.revealDone() // never leave the session locked
+  window.removeEventListener('keydown', onKeydown)
 })
 
 /** Placeholder until Tasks 8-10 land the family surfaces. */

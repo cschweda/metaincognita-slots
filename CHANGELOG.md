@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] - 2026-06-12
+
+### Added
+- Playable UI: casino floor with family-grouped machine cards and X-ray intel,
+  per-family game surfaces (video lines/ways/hold-and-spin board, stepper
+  payline glass, Bally dual alternating progressive meters, pachislo with
+  HUMAN stop presses and visible slip), PAR-sheet modal with the exact-math
+  derivation, X-ray side panel (labeled RNG trace, near-miss callouts,
+  session-vs-exact convergence sparkline, machine internals), history page
+  with text export.
+- Session store: single-wallet cents model, atomic spins, versioned
+  localStorage persistence with sanitize-on-load, EXACT mid-feature restore,
+  per-machine progressive meters that persist across sessions, pachislo
+  operator key (six computed odds levels).
+- Engine seams: optional player presses on spinPachislo, nextSpinCost,
+  pure nearMisses module (provably non-payout-affecting).
+
+### Changed
+- verify-floor: pachislo sub-runs 10 → 20; hit frequency now banded too.
+- CI enforces engine purity (no UI imports under app/engine).
+
 ## [0.2.0] - 2026-06-12
 
 ### Added

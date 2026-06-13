@@ -6,9 +6,31 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: engine milestone.** The headless engine, eight calibrated machines,
-and the statistical verification harness are complete. The playable UI,
-X-ray mode, Sim Lab, and learn pages land in subsequent milestones.
+**Status: playable UI milestone.** The floor is open: eight machines, full game
+surfaces, X-ray mode, PAR sheets, and session history. The Sim Lab and
+learn pages land in a subsequent milestone.
+
+## Playing it
+
+```bash
+pnpm install
+pnpm dev        # open http://localhost:3000
+```
+
+1. **Floor** — set a bankroll, then pick a machine from the family-grouped
+   card grid. Each card shows the exact RTP and a one-line description.
+2. **Machine** — spin, adjust your bet, watch the reels. Hit **X-ray** to
+   open the side panel: labeled RNG trace, near-miss callouts, a live
+   session-vs-exact RTP convergence sparkline, and machine internals.
+3. **PAR sheet** — click the spreadsheet icon for the full pay-table with
+   the exact-math derivation: enumerated cycle counts, hit frequency, and
+   variance.
+4. **Pachislo keys** — on Stock Rush press **1/2/3** to stop reels manually;
+   the slip (≤ 4 stops) is visible in X-ray.
+5. Everything persists in **localStorage** — reload mid-feature and your
+   free spins are still waiting exactly where you left them.
+
+This is an educational simulator. No real money is involved.
 
 ## The floor
 
@@ -68,6 +90,10 @@ pnpm verify        # headless floor verification report (5M cycles/machine)
 distinguishing progressive meter hits (Bally, Thunder Vault Grand) from
 pachislo bonus flags. Convergence tests include video cycle-SE cases and
 pachislo block-SE at levels 1/4/6.
+
+CI also enforces engine purity: a grep over `app/engine/` confirms no UI
+framework imports (`vue`, `nuxt`, `pinia`) have leaked into the headless
+engine layer.
 
 Full-run table (5M cycles/machine, seed 20260612):
 

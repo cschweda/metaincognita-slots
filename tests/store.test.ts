@@ -335,3 +335,35 @@ describe('peekSavedSession', () => {
     expect(b.peekSavedSession()).toBe(false)
   })
 })
+
+describe('mid-feature reload (spec: must restore exactly)', () => {
+  it('canal-royale free spins survive a reload and play out', () => {
+    setLiveRand(mulberry32(31337))
+    const a = freshStore()
+    a.startSession(10_000_000)
+    a.selectMachine('canal-royale')
+    let guard = 0
+    while (a.machineStates['canal-royale']!.videoFeature === null) {
+      a.spinOnce()
+      a.revealDone()
+      guard++
+      expect(guard).toBeLessThan(3_000) // P(no trigger in 3k spins) ~ (1-1/141)^3000 ~ 6e-10
+    }
+    const before = JSON.parse(JSON.stringify(a.machineStates['canal-royale']!.videoFeature))
+    // "reload": fresh pinia + resume from storage
+    const b = freshStore()
+    expect(b.resume()).toBe(true)
+    expect(b.machineStates['canal-royale']!.videoFeature).toEqual(before)
+    // the restored feature plays to completion at cost 0
+    b.selectMachine('canal-royale')
+    let freeGames = 0
+    while (b.machineStates['canal-royale']!.videoFeature !== null) {
+      b.spinOnce()
+      b.revealDone()
+      expect(b.history.at(-1)!.coinsInCents).toBe(0)
+      freeGames++
+      expect(freeGames).toBeLessThan(200)
+    }
+    expect(freeGames).toBeGreaterThan(0)
+  })
+})
