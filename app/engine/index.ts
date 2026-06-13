@@ -12,6 +12,8 @@ export { mulberry32, cryptoSeed } from './rng'
 export type { RandomFn } from './rng'
 export { exactRtp } from './exactRtp'
 export type { ExactRtpReport, ExactRtpOptions, ExactRtpBreakdownEntry } from './exactRtp'
+export { nearMisses } from './nearMiss'
+export type { NearMissCallout, NearMissKind } from './nearMiss'
 export { validateMachineDef } from './validate'
 export { initProgressiveState, addCoinToProgressive } from './progressive'
 
