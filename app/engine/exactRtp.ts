@@ -19,7 +19,7 @@ export interface ExactRtpOptions {
 export interface ExactRtpBreakdownEntry {
   entryId: string
   probability: number
-  /** average credits per coin paid when it hits (after wild multipliers etc.) */
+  /** average credits per coin paid when it hits (after wild multipliers etc.) (pachislo: the flag's full renewal value per token, out/IN) */
   avgPayPerCoin: number
   /** probability x avgPayPerCoin — summed = rtpPerCoin */
   contribution: number
@@ -27,7 +27,9 @@ export interface ExactRtpBreakdownEntry {
 
 export interface ExactRtpReport {
   rtpPerCoin: number
+  /** (pachislo: total flag probability per lottery draw) */
   hitFrequency: number
+  /** per-cycle variance; for pachislo this is ATTRIBUTION variance (descriptive volatility, not an i.i.d. SE — convergence uses block SE) */
   variancePerCoin: number
   breakdown: ExactRtpBreakdownEntry[]
 }

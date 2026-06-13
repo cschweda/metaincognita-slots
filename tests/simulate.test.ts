@@ -3,6 +3,10 @@ import { addCoinToProgressive, initMachineState, simulateMachine, spin } from '.
 import { FLOOR } from '../app/machines'
 import { DIAMOND_DOUBLER } from '../app/machines/diamond-doubler'
 import { SERIES_E_3LINE } from '../app/machines/series-e-3line'
+import { CANAL_ROYALE } from '../app/machines/canal-royale'
+import { DRAGONS_HOARD } from '../app/machines/dragons-hoard'
+import { THUNDER_VAULT } from '../app/machines/thunder-vault'
+import { STOCK_RUSH } from '../app/machines/stock-rush'
 import { mulberry32 } from '../app/engine/rng'
 
 describe('FLOOR', () => {
@@ -85,5 +89,76 @@ describe('FO-5140 counter persistence across a jackpot hit', () => {
     expect(prog.lower).toBe(def.progressive.lower.reset)
     expect(prog.upperCoins).toBe(4)
     expect(prog.live).toBe('lower')
+  })
+})
+
+describe('simulateMachine v2 — feature-aware cycles', () => {
+  it('video: totalIn is exactly spins x coins (free spins cost 0; features drain)', () => {
+    const sim = simulateMachine(CANAL_ROYALE, {
+      spins: 50_000, coins: 25, seed: 11, progressiveMode: 'static'
+    })
+    expect(sim.totalIn).toBe(50_000 * 25)
+    expect(sim.spins).toBe(50_000)
+    expect(sim.rtp).toBeGreaterThan(0.80)
+    expect(sim.rtp).toBeLessThan(1.05)
+    expect(sim.byEntry['sc3'] ?? 0).toBeGreaterThan(0)
+    expect(sim.maxDrawdown).toBeGreaterThan(0)
+  })
+
+  it('thunder-vault static: every Grand pays exactly the reset value', () => {
+    const sim = simulateMachine(THUNDER_VAULT, {
+      spins: 60_000, coins: 25, seed: 12, progressiveMode: 'static'
+    })
+    expect(sim.totalIn).toBe(60_000 * 25)
+    // P(fill) = 1/5138 per base spin -> ~11.7 expected Grand hits; 3.5 sigma ~ 12
+    expect(sim.jackpotHits).toBeGreaterThan(1)
+    expect(sim.jackpotHits).toBeLessThan(25)
+    expect(sim.byEntry['grand'] ?? 0).toBe(sim.jackpotHits)
+  })
+
+  it('pachislo: replays make totalIn less than 3 x games; oddsLevel moves RTP', () => {
+    const l1 = simulateMachine(STOCK_RUSH, {
+      spins: 50_000, coins: 3, seed: 13, progressiveMode: 'static', oddsLevel: 1
+    })
+    const l6 = simulateMachine(STOCK_RUSH, {
+      spins: 50_000, coins: 3, seed: 13, progressiveMode: 'static', oddsLevel: 6
+    })
+    expect(l1.spins).toBe(50_000)
+    // replay rate 2245/16384 -> totalIn ~ 3 x 50k x (1 - 0.137) plus ~1/game bonus tokens
+    expect(l1.totalIn).toBeLessThan(3 * 50_000)
+    expect(l1.totalIn).toBeGreaterThan(2.3 * 50_000)
+    expect(l6.rtp).toBeGreaterThan(l1.rtp + 0.3) // 120.0% vs 66.0% exact gap, huge margin
+  })
+
+  it('pachislo bonus accounting: jac wins = 8 x REG + 24 x BIG, exactly (drain closes bonuses)', () => {
+    const sim = simulateMachine(STOCK_RUSH, {
+      spins: 200_000, coins: 3, seed: 14, progressiveMode: 'static', oddsLevel: 6
+    })
+    const reg = sim.byEntry['reg'] ?? 0
+    const big = sim.byEntry['big'] ?? 0
+    expect(reg).toBeGreaterThan(0)
+    expect(big).toBeGreaterThan(0)
+    expect(sim.byEntry['jac'] ?? 0).toBe(8 * reg + 24 * big)
+    // interludes: at most 10 bells per BIG (2 x cap 5)
+    expect(sim.byEntry['interlude-bell'] ?? 0).toBeLessThanOrEqual(10 * big)
+  })
+
+  it('dragon\'s hoard: retriggered free spins drain and totalIn stays exact', () => {
+    const sim = simulateMachine(DRAGONS_HOARD, {
+      spins: 30_000, coins: 25, seed: 15, progressiveMode: 'static'
+    })
+    expect(sim.totalIn).toBe(30_000 * 25)
+    expect(sim.rtp).toBeGreaterThan(0.80)
+    expect(sim.rtp).toBeLessThan(1.10)
+    expect(sim.maxDrawdown).toBeGreaterThan(0)
+  })
+
+  it('pachislo: oddsLevel guard rejects out-of-range values', () => {
+    expect(() => simulateMachine(STOCK_RUSH, {
+      spins: 10, coins: 3, seed: 1, progressiveMode: 'static', oddsLevel: 7
+    })).toThrow(/out of range/)
+    expect(() => simulateMachine(STOCK_RUSH, {
+      spins: 10, coins: 3, seed: 1, progressiveMode: 'static', oddsLevel: 0
+    })).toThrow(/out of range/)
   })
 })

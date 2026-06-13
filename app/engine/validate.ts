@@ -209,9 +209,9 @@ export function validateMachineDef(def: MachineDef): void {
         }
       }
       if (def.slip !== 4) errors.push('slip must be exactly 4 (the control implements the 4-stop window)')
-      if (def.maxCoins !== 3) errors.push('pachislo takes 1-3 tokens (maxCoins must be 3)')
+      if (def.maxCoins !== 3) errors.push('maxCoins must be 3 (normal games require the full bet in v0.2)')
       if (def.oddsLevels.length !== 6) errors.push(`need 6 odds levels, got ${def.oddsLevels.length}`)
-      if (def.defaultOddsLevel < 1 || def.defaultOddsLevel > def.oddsLevels.length) {
+      if (!Number.isInteger(def.defaultOddsLevel) || def.defaultOddsLevel < 1 || def.defaultOddsLevel > def.oddsLevels.length) {
         errors.push('defaultOddsLevel out of range')
       }
       def.oddsLevels.forEach((lv, i) => {

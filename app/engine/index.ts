@@ -54,6 +54,11 @@ export function spin(
 }
 
 export interface SimOptions {
+  /**
+   * Number of CYCLES: base games (video) / normal games (pachislo) / spins
+   * (stepper, bally-em). Free spins, respins, JAC and interlude games are
+   * simulated and accounted but do not count toward `spins`.
+   */
   spins: number
   coins: number
   seed: number
@@ -64,6 +69,8 @@ export interface SimOptions {
    *           their grown values.
    */
   progressiveMode: 'static' | 'live'
+  /** pachislo operator level 1..6 (default: def.defaultOddsLevel) */
+  oddsLevel?: number
 }
 
 export interface SimResult {
@@ -85,29 +92,65 @@ export interface SimResult {
 export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
   const rand = mulberry32(opts.seed)
   const state = initMachineState(def)
+  if (def.family === 'pachislo' && opts.oddsLevel !== undefined && state.pachislo !== null) {
+    if (!Number.isInteger(opts.oddsLevel) || opts.oddsLevel < 1 || opts.oddsLevel > def.oddsLevels.length) {
+      throw new Error(`${def.id}: oddsLevel ${opts.oddsLevel} out of range 1..${def.oddsLevels.length}`)
+    }
+    state.pachislo.oddsLevel = opts.oddsLevel
+  }
+  let totalIn = 0
   let totalOut = 0
   let hits = 0
   let jackpotHits = 0
+  let cycles = 0
   let net = 0
   let peak = 0
   let maxDrawdown = 0
   const byEntry: Record<string, number> = {}
 
-  for (let i = 0; i < opts.spins; i++) {
-    if (opts.progressiveMode === 'live' && def.progressive !== null && state.progressive !== null) {
+  const playOne = (): void => {
+    // FO-5140 semantics: stepper/bally meters feed per intended coin BEFORE
+    // the spin (Plan 1 behavior, preserved bit-for-bit). Video's Grand feeds
+    // AFTER the spin by actual coinsIn — feature spins cost 0 and feed nothing.
+    if (
+      opts.progressiveMode === 'live' && def.progressive !== null && state.progressive !== null
+      && (def.family === 'stepper' || def.family === 'bally-em')
+    ) {
       for (let c = 0; c < opts.coins; c++) addCoinToProgressive(state.progressive, def.progressive)
     }
     const out = spin(def, state, opts.coins, rand)
+    if (
+      opts.progressiveMode === 'live' && def.family === 'video'
+      && def.progressive !== null && state.progressive !== null
+    ) {
+      for (let c = 0; c < out.coinsIn; c++) addCoinToProgressive(state.progressive, def.progressive)
+    }
+    totalIn += out.coinsIn
     totalOut += out.totalPayout
-    if (out.wins.length > 0) hits++
     jackpotHits += out.progressiveEvents.length
     for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-    net += out.totalPayout - opts.coins
+    net += out.totalPayout - out.coinsIn
     if (net > peak) peak = net
     if (peak - net > maxDrawdown) maxDrawdown = peak - net
+    if (out.gameKind === 'base' || out.gameKind === 'normal') {
+      cycles++
+      const eventHit = out.featureEvents.some(e =>
+        e.type === 'flag-realized' || e.type === 'free-spins-triggered' || e.type === 'orbs-locked')
+      if (out.totalPayout > 0 || eventHit) hits++
+    }
   }
 
-  const totalIn = opts.spins * opts.coins
+  while (cycles < opts.spins) playOne()
+  // Drain in-flight features so every counted cycle's payout is collected.
+  // (Queued pachislo small flags stay pending — a few tokens of tail value,
+  // statistically invisible at convergence scales.)
+  while (
+    state.videoFeature !== null
+    || (state.pachislo !== null && state.pachislo.bonus !== null)
+  ) {
+    playOne()
+  }
+
   return {
     machineId: def.id,
     spins: opts.spins,
