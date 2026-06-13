@@ -104,3 +104,56 @@ describe('spinVideo base game', () => {
     expect(() => spinVideo(fixed, initMachineState(fixed), 1, scripted([]))).toThrow(/fixed bet/)
   })
 })
+
+describe('free spins', () => {
+  const trigger = (def: VideoMachineDef, coins: number) => {
+    const state = initMachineState(def)
+    spinVideo(def, state, coins, scripted([at(1, 6), at(1, 6), at(0, 6), at(1, 6), at(0, 6)]))
+    expect(state.videoFeature?.kind).toBe('freeSpins')
+    return state
+  }
+
+  it('replays the triggering bet at cost 0 with the multiplier applied', () => {
+    const state = trigger(LINES_DEF, 3)
+    // center dr5 again, now during free spins
+    const out = spinVideo(LINES_DEF, state, 99 /* ignored during features */,
+      scripted([at(0, 6), at(0, 6), at(0, 6), at(0, 6), at(0, 6)]))
+    expect(out.gameKind).toBe('free-spin')
+    expect(out.coinsIn).toBe(0)
+    expect(out.coins).toBe(3)
+    expect(out.wins[0]!.payCredits).toBe(250 * 2)
+    expect(out.featureEvents).toContainEqual({ type: 'free-spin-consumed', remaining: 9 })
+  })
+
+  it('counts down and clears the feature after the last spin', () => {
+    const state = trigger(LINES_DEF, 1)
+    for (let i = 9; i >= 0; i--) {
+      const out = spinVideo(LINES_DEF, state, 1,
+        scripted([at(4, 6), at(4, 6), at(4, 6), at(4, 6), at(4, 6)]))
+      expect(out.featureEvents).toContainEqual({ type: 'free-spin-consumed', remaining: i })
+    }
+    expect(state.videoFeature).toBeNull()
+  })
+
+  it('does not retrigger when retrigger is false, but pays the scatters', () => {
+    const state = trigger(LINES_DEF, 1)
+    const out = spinVideo(LINES_DEF, state, 1,
+      scripted([at(1, 6), at(1, 6), at(0, 6), at(1, 6), at(0, 6)]))
+    expect(out.wins.find(w => w.line === 'scatter')!.payCredits).toBe(2 * 1 * 2)
+    expect(out.featureEvents.some(e => e.type === 'free-spins-retriggered')).toBe(false)
+    expect((state.videoFeature as { remaining: number }).remaining).toBe(9)
+  })
+
+  it('retriggers add count when enabled', () => {
+    const retrig = {
+      ...LINES_DEF,
+      freeSpins: { count: 8, multiplier: 1, retrigger: true }
+    } as VideoMachineDef
+    const state = trigger(retrig, 1)
+    const out = spinVideo(retrig, state, 1,
+      scripted([at(1, 6), at(1, 6), at(0, 6), at(1, 6), at(0, 6)]))
+    // retrigger fires BEFORE the consume decrement: 8 + 8 - 1 = 15
+    expect(out.featureEvents).toContainEqual({ type: 'free-spins-retriggered', added: 8, remaining: 16 })
+    expect(out.featureEvents).toContainEqual({ type: 'free-spin-consumed', remaining: 15 })
+  })
+})

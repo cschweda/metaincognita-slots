@@ -1,6 +1,6 @@
 import type {
   FeatureEvent, LineWin, MachineSessionState, RngDraw,
-  SpinOutcome, SymbolId, VideoMachineDef
+  SpinOutcome, SymbolId, VideoFeatureState, VideoMachineDef
 } from './types'
 import type { RandomFn } from './rng'
 import { cellAt, evalLine, evalWays, orbCells, scatterVisibleCount } from './videoAwards'
@@ -147,6 +147,45 @@ function videoBaseSpin(
   }
 }
 
+function freeSpinSpin(
+  def: VideoMachineDef,
+  state: MachineSessionState,
+  feature: VideoFeatureState & { kind: 'freeSpins' },
+  rand: RandomFn
+): SpinOutcome {
+  const ev = evaluateVideoSpin(def, feature.coins, feature.multiplier, rand)
+  const featureEvents: FeatureEvent[] = []
+
+  if (
+    def.scatter !== null && def.scatter.triggerCount !== null && def.freeSpins !== null
+    && def.freeSpins.retrigger && ev.scatterCount >= def.scatter.triggerCount
+  ) {
+    feature.remaining += def.freeSpins.count
+    featureEvents.push({
+      type: 'free-spins-retriggered', added: def.freeSpins.count, remaining: feature.remaining
+    })
+  }
+
+  feature.remaining -= 1
+  featureEvents.push({ type: 'free-spin-consumed', remaining: feature.remaining })
+  if (feature.remaining === 0) state.videoFeature = null
+
+  return {
+    machineId: def.id,
+    family: 'video',
+    coins: feature.coins,
+    gameKind: 'free-spin',
+    coinsIn: 0,
+    stops: ev.stops,
+    grid: ev.grid,
+    wins: ev.wins,
+    totalPayout: ev.wins.reduce((s, w) => s + w.payCredits, 0),
+    progressiveEvents: [],
+    featureEvents,
+    trace: { draws: ev.draws }
+  }
+}
+
 /**
  * Video family dispatch. Feature state on MachineSessionState routes
  * free-spin and respin calls; base spins validate the bet.
@@ -159,7 +198,8 @@ export function spinVideo(
 ): SpinOutcome {
   const feature = state.videoFeature
   if (feature !== null) {
-    throw new Error('feature spins land in Tasks 6-7')
+    if (feature.kind === 'freeSpins') return freeSpinSpin(def, state, feature, rand)
+    throw new Error('hold-and-spin respins land in Task 7')
   }
   if (def.fixedBet && coins !== def.maxCoins) {
     throw new Error(`${def.id}: fixed bet machine requires ${def.maxCoins} coins`)
