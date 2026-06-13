@@ -111,7 +111,7 @@ function setLevel(level: number) {
     >
       <template #body>
         <div class="space-y-2">
-          <p class="text-xs text-neutral-500">
+          <p class="text-xs text-neutral-400">
             Six settings straight from the service manual. Every RTP below is computed from the def — never asserted.
           </p>
           <button
