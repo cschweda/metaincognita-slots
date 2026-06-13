@@ -163,6 +163,56 @@ describe('BIG bonus', () => {
   })
 })
 
+describe('player presses (skill-stop buttons)', () => {
+  it('uses the given press positions and draws no press RNG', () => {
+    const state = freshState()
+    const out = spinPachislo(STOCK_RUSH, state, 3, composite([LOT.none], 21), [4, 9, 13])
+    expect(out.trace.draws).toHaveLength(1) // lottery only — no reel press draws
+    expect(out.trace.draws[0]!.label).toBe('lottery')
+    expect(out.trace.presses!.map(p => p.press)).toEqual([4, 9, 13])
+    for (const p of out.trace.presses!) {
+      expect(p.slipUsed).toBeGreaterThanOrEqual(0)
+      expect(p.slipUsed).toBeLessThanOrEqual(4)
+      expect(p.stop).toBe((p.press + p.slipUsed) % 21)
+    }
+  })
+
+  it('honors presses during bonus games too', () => {
+    const state = freshState()
+    state.pachislo!.bonus = { type: 'reg', round: 1, jacLeft: 8, interlude: null }
+    const out = spinPachislo(STOCK_RUSH, state, 3, composite([], 22), [0, 0, 0])
+    expect(out.gameKind).toBe('jac')
+    expect(out.trace.presses!.map(p => p.press)).toEqual([0, 0, 0])
+    expect(out.trace.draws).toHaveLength(0) // no lottery in JAC, no press draws
+  })
+
+  it('honors presses during interlude games too', () => {
+    const state = freshState()
+    state.pachislo!.bonus = { type: 'big', round: 1, jacLeft: 0, interlude: { index: 1, bells: 0 } }
+    const out = spinPachislo(STOCK_RUSH, state, 3, composite([rawFor(14, 16)], 27), [2, 5, 8])
+    expect(out.gameKind).toBe('interlude')
+    expect(out.trace.draws).toHaveLength(1) // interlude-lottery only — no press draws
+    expect(out.trace.draws[0]!.label).toBe('interlude-lottery')
+    expect(out.trace.presses!.map(p => p.press)).toEqual([2, 5, 8])
+  })
+
+  it('rejects invalid press positions', () => {
+    expect(() => spinPachislo(STOCK_RUSH, freshState(), 3, composite([LOT.none], 23), [21, 0, 0]))
+      .toThrow(/press/)
+    expect(() => spinPachislo(STOCK_RUSH, freshState(), 3, composite([LOT.none], 24), [-1, 0, 0]))
+      .toThrow(/press/)
+    expect(() => spinPachislo(STOCK_RUSH, freshState(), 3, composite([LOT.none], 25), [1.5, 0, 0]))
+      .toThrow(/press/)
+  })
+
+  it('the lottery is drawn regardless of presses — timing cannot affect the flag', () => {
+    const state = freshState()
+    const out = spinPachislo(STOCK_RUSH, state, 3, composite([LOT.bell], 26), [0, 7, 14])
+    const drawn = out.featureEvents.find(e => e.type === 'flag-drawn')
+    expect(drawn).toEqual({ type: 'flag-drawn', flag: 'bell' })
+  })
+})
+
 describe('stock conservation (seeded long run)', () => {
   it('every drawn flag is realized exactly once or still queued at the end', () => {
     const state = freshState()

@@ -56,30 +56,35 @@ FLOOR.forEach((def, i) => {
   let hf: number
   let jackpots: number
   let se: number
+  let hfSe: number
+  let hfDelta: number
   if (def.family === 'pachislo') {
-    // attribution variance is not an i.i.d. SE — use 10 independent sub-runs
-    const blocks = 10
+    // attribution variance is not an i.i.d. SE — use 20 independent sub-runs
+    const blocks = 20
     const per = Math.max(1, Math.floor(spins / blocks))
     const rtps: number[] = []
+    const hfs: number[] = []
     let inSum = 0
     let outSum = 0
-    let hfSum = 0
     jackpots = 0
     for (let b = 0; b < blocks; b++) {
       const sim = simulateMachine(def, {
         spins: per, coins, seed: seed + i * 1000 + b, progressiveMode: 'static'
       })
       rtps.push(sim.rtp)
+      hfs.push(sim.hitFrequency)
       inSum += sim.totalIn
       outSum += sim.totalOut
-      hfSum += sim.hitFrequency
       jackpots += sim.jackpotHits
     }
     rtp = outSum / inSum
-    hf = hfSum / blocks
+    hf = hfs.reduce((a, x) => a + x, 0) / blocks
     const mean = rtps.reduce((a, x) => a + x, 0) / blocks
     const sd = Math.sqrt(rtps.reduce((a, x) => a + (x - mean) ** 2, 0) / (blocks - 1))
     se = sd / Math.sqrt(blocks)
+    const hfSd = Math.sqrt(hfs.reduce((a, x) => a + (x - hf) ** 2, 0) / (blocks - 1))
+    hfSe = hfSd / Math.sqrt(blocks)
+    hfDelta = Math.abs(hf - exact.hitFrequency)
   } else {
     const sim = simulateMachine(def, { spins, coins, seed: seed + i, progressiveMode: 'static' })
     rtp = sim.rtp
@@ -88,9 +93,11 @@ FLOOR.forEach((def, i) => {
     // SE divisor is cycles: within-spin coins are perfectly correlated on
     // coins-linear machines, and video variancePerCoin is full-cycle variance
     se = Math.sqrt(exact.variancePerCoin / spins)
+    hfSe = Math.sqrt(exact.hitFrequency * (1 - exact.hitFrequency) / spins)
+    hfDelta = Math.abs(sim.hitFrequency - exact.hitFrequency)
   }
   const delta = Math.abs(rtp - exact.rtpPerCoin)
-  const pass = delta < 3.5 * se
+  const pass = delta < 3.5 * se && hfDelta < 3.5 * hfSe
   allPass &&= pass
   console.log(
     `${def.id.padEnd(22)}${String(coins).padStart(3)}   ${pct(exact.rtpPerCoin)}  ${pct(rtp)}  ${pct(delta)}  ${pct(exact.hitFrequency)}  ${pct(hf)}  ${String(jackpots).padStart(8)}  ${pass ? 'PASS' : 'FAIL'}`
@@ -99,7 +106,7 @@ FLOOR.forEach((def, i) => {
 
 console.log('\njackpots = progressive METER hits only (Bally dual/single, Thunder Vault Grand).')
 console.log('Pachislo REG/BIG are bonus flags, not progressives; stock-rush reports at its default')
-console.log(`odds level (4) with a block-empirical sigma. Spins are CYCLES: base/normal games.`)
+console.log(`odds level (4) with a block-empirical sigma. Spins are CYCLES: base/normal games. PASS requires RTP and HF inside 3.5-sigma.`)
 console.log(allPass
   ? '\nPASS: every machine is inside its 3.5-sigma statistical band.'
   : '\nFAIL: at least one machine fell outside its band — engine bug or band misconfiguration.')

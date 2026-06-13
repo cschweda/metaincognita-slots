@@ -31,6 +31,34 @@ export function initMachineState(def: MachineDef): MachineSessionState {
   }
 }
 
+/**
+ * Cost in coins of the NEXT spin() call given the current session state —
+ * what the store must charge before committing. Mirrors the evaluators'
+ * routing: video feature spins are free; pachislo bonus games cost their
+ * configured token; a granted replay is free.
+ */
+export function nextSpinCost(def: MachineDef, state: MachineSessionState, coins: number): number {
+  switch (def.family) {
+    case 'stepper':
+    case 'bally-em':
+      return coins
+    case 'video':
+      return state.videoFeature !== null ? 0 : coins
+    case 'pachislo': {
+      const ps = state.pachislo
+      if (ps === null) return coins
+      if (ps.bonus !== null) {
+        return ps.bonus.interlude !== null ? def.interlude.cost : def.jac.cost
+      }
+      return ps.replayNext ? 0 : coins
+    }
+    default: {
+      const exhaustive: never = def
+      throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
+    }
+  }
+}
+
 export function spin(
   def: MachineDef,
   state: MachineSessionState,

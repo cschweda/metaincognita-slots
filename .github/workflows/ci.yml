@@ -31,6 +31,13 @@ jobs:
       - name: Test
         run: pnpm run test
 
+      - name: Engine purity — app/engine must not import UI frameworks
+        run: |
+          if grep -rnE "from '(vue|pinia|#app|#imports|@nuxt|nuxt)" app/engine; then
+            echo "app/engine imports a UI framework — the engine must stay pure" >&2
+            exit 1
+          fi
+
       - name: Verify floor (1M-spin smoke)
         run: pnpm run verify -- --spins 1000000
 

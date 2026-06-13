@@ -192,14 +192,25 @@ function spinReels(
   tokens: number,
   target: ControlTarget,
   rand: RandomFn,
-  draws: RngDraw[]
+  draws: RngDraw[],
+  given?: readonly [number, number, number]
 ): { result: ControlResult, presses: NonNullable<SpinOutcome['trace']['presses']> } {
-  const presses: number[] = []
-  for (let r = 0; r < 3; r++) {
-    const raw = rand()
-    const press = Math.floor(raw * N)
-    draws.push({ label: `reel${r + 1}-press`, raw, value: press, range: N })
-    presses.push(press)
+  let presses: number[]
+  if (given !== undefined) {
+    for (const q of given) {
+      if (!Number.isInteger(q) || q < 0 || q >= N) {
+        throw new Error(`${def.id}: press position ${q} out of range 0..${N - 1}`)
+      }
+    }
+    presses = [...given]
+  } else {
+    presses = []
+    for (let r = 0; r < 3; r++) {
+      const raw = rand()
+      const press = Math.floor(raw * N)
+      draws.push({ label: `reel${r + 1}-press`, raw, value: press, range: N })
+      presses.push(press)
+    }
   }
   const result = controlStops(def, presses, tokens, target)
   const label = target === null ? null : target.kind === 'cherry' ? `cherry-row${target.row}` : target.flag
@@ -246,13 +257,14 @@ function realizedWin(
 function jacGame(
   def: PachisloMachineDef,
   state: PachisloSessionState,
-  rand: RandomFn
+  rand: RandomFn,
+  given?: readonly [number, number, number]
 ): SpinOutcome {
   const bonus = state.bonus!
   const draws: RngDraw[] = []
   const featureEvents: FeatureEvent[] = []
   // reels are presentation during JAC: try to line bells, else stop clean
-  const { result, presses } = spinReels(def, 1, { kind: 'combo', flag: 'bell' }, rand, draws)
+  const { result, presses } = spinReels(def, 1, { kind: 'combo', flag: 'bell' }, rand, draws, given)
   bonus.jacLeft -= 1
   const wins: LineWin[] = [{
     line: 'center', entryId: 'jac', symbols: new Array<SymbolId>(3).fill(def.roles.bell),
@@ -279,7 +291,8 @@ function jacGame(
 function interludeGame(
   def: PachisloMachineDef,
   state: PachisloSessionState,
-  rand: RandomFn
+  rand: RandomFn,
+  given?: readonly [number, number, number]
 ): SpinOutcome {
   const bonus = state.bonus!
   const inter = bonus.interlude!
@@ -293,7 +306,7 @@ function interludeGame(
   const isEnd = !isBell && idx < cfg.bellWeight + cfg.endWeight
   const wins: LineWin[] = []
   const { result, presses } = spinReels(
-    def, 1, isBell ? { kind: 'combo', flag: 'bell' } : null, rand, draws)
+    def, 1, isBell ? { kind: 'combo', flag: 'bell' } : null, rand, draws, given)
   if (isBell) {
     inter.bells += 1
     wins.push({
@@ -325,12 +338,15 @@ export function spinPachislo(
   def: PachisloMachineDef,
   state: MachineSessionState,
   tokens: number,
-  rand: RandomFn
+  rand: RandomFn,
+  presses?: readonly [number, number, number]
 ): SpinOutcome {
   const ps = state.pachislo
   if (ps === null) throw new Error(`${def.id}: missing pachislo session state`)
   if (ps.bonus !== null) {
-    return ps.bonus.interlude !== null ? interludeGame(def, ps, rand) : jacGame(def, ps, rand)
+    return ps.bonus.interlude !== null
+      ? interludeGame(def, ps, rand, presses)
+      : jacGame(def, ps, rand, presses)
   }
   if (tokens !== def.maxCoins) {
     throw new Error(
@@ -351,7 +367,7 @@ export function spinPachislo(
   }
 
   const target = targetFor(ps)
-  const { result, presses } = spinReels(def, tokens, target, rand, draws)
+  const { result, presses: pressTrace } = spinReels(def, tokens, target, rand, draws, presses)
   const wins: LineWin[] = []
 
   if (result.realized && target !== null) {
@@ -384,6 +400,6 @@ export function spinPachislo(
     stops: result.stops, grid: gridFor(def, result.stops), wins,
     totalPayout: wins.reduce((s, w) => s + w.payCredits, 0),
     progressiveEvents: [], featureEvents,
-    trace: { draws, presses }
+    trace: { draws, presses: pressTrace }
   }
 }
