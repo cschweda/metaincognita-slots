@@ -63,6 +63,8 @@ export function spinBallyEm(
     } else if (entry.progressive === 'maxCoins' && coins === def.maxCoins
       && state.progressive?.kind === 'single') {
       const prog = state.progressive
+      // floored: single/percent meters accumulate fractional credits from
+      // rate feeds; dual meters are integer-fed and pay raw values
       payCredits = Math.floor(prog.value)
       if (def.progressive?.kind === 'single') prog.value = def.progressive.meter.reset
       progressiveEvents.push({ type: 'hit', meter: 'single', amountCredits: payCredits })

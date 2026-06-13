@@ -9,19 +9,19 @@ export type SymbolId = string
 // ---------- paytables ----------
 
 /** Stepper award. Resolution: every entry is tested, HIGHEST pay wins. */
-export type StepperAward =
-  | { id: string, kind: 'allWild', pay: number }
-  | { id: string, kind: 'allSame', symbol: SymbolId, pay: number, progressiveAtMaxCoins?: boolean }
-  | { id: string, kind: 'anyOf', symbols: SymbolId[], pay: number }
-  | { id: string, kind: 'count', symbol: SymbolId, n: number, pay: number }
+export type StepperAward
+  = | { id: string, kind: 'allWild', pay: number }
+    | { id: string, kind: 'allSame', symbol: SymbolId, pay: number, progressiveAtMaxCoins?: boolean }
+    | { id: string, kind: 'anyOf', symbols: SymbolId[], pay: number }
+    | { id: string, kind: 'count', symbol: SymbolId, n: number, pay: number }
 
 /**
  * Bally-EM award. Resolution: first matching entry wins; `run` matches on
  * EXACT left-run length (list every length separately).
  */
-export type BallyAward =
-  | { id: string, kind: 'run', symbol: SymbolId, length: number, pay: number, progressive?: 'live' | 'maxCoins' }
-  | { id: string, kind: 'allOf', symbol: SymbolId, pay: number }
+export type BallyAward
+  = | { id: string, kind: 'run', symbol: SymbolId, length: number, pay: number, progressive?: 'live' | 'maxCoins' }
+    | { id: string, kind: 'allOf', symbol: SymbolId, pay: number }
 // progressive: 'live'      → pays the live meter of the dual controller (any coin level)
 // progressive: 'maxCoins'  → pays the single meter at max coins, else pay × coins
 

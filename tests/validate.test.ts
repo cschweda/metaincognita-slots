@@ -103,13 +103,13 @@ describe('validateMachineDef', () => {
     expect(() => validateMachineDef(def)).toThrow(/lines/i)
   })
 
-  it("rejects progressive 'live' awards without a dual progressive config", () => {
+  it('rejects progressive \'live\' awards without a dual progressive config', () => {
     const def = tinyBally()
     def.paytable = [{ id: 'jp', kind: 'run', symbol: 'A', length: 3, pay: 1, progressive: 'live' }]
     expect(() => validateMachineDef(def)).toThrow(/dual/i)
   })
 
-  it("rejects progressive 'maxCoins' awards without a single progressive config", () => {
+  it('rejects progressive \'maxCoins\' awards without a single progressive config', () => {
     const def = tinyBally()
     def.paytable = [{ id: 'jp', kind: 'run', symbol: 'A', length: 3, pay: 1000, progressive: 'maxCoins' }]
     expect(() => validateMachineDef(def)).toThrow(/single/i)

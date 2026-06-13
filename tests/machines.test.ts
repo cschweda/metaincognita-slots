@@ -12,7 +12,9 @@ describe('series-e-3line — frozen calibration', () => {
   it('strip counts match the calibrated composition', () => {
     const counts = SERIES_E_3LINE.strips.map((strip) => {
       const c: Record<string, number> = {}
-      strip.forEach((s) => { c[s] = (c[s] ?? 0) + 1 })
+      strip.forEach((s) => {
+        c[s] = (c[s] ?? 0) + 1
+      })
       return c
     })
     expect(counts[0]).toEqual({ S7: 1, BAR: 1, BE: 4, PL: 4, OR: 5, CH: 2, BL: 5 })

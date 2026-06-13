@@ -12,7 +12,12 @@ const machines: { id: string, name: string }[] = []
       Headless engine under construction. Run <code>pnpm verify</code> for the floor report.
     </p>
     <ul>
-      <li v-for="m in machines" :key="m.id">{{ m.name }}</li>
+      <li
+        v-for="m in machines"
+        :key="m.id"
+      >
+        {{ m.name }}
+      </li>
     </ul>
   </div>
 </template>
