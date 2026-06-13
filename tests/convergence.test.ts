@@ -4,6 +4,10 @@ import { DIAMOND_DOUBLER } from '../app/machines/diamond-doubler'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
 import { SERIES_E_3LINE } from '../app/machines/series-e-3line'
 import { SERIES_E_MULTIPLIER } from '../app/machines/series-e-multiplier'
+import { CANAL_ROYALE } from '../app/machines/canal-royale'
+import { DRAGONS_HOARD } from '../app/machines/dragons-hoard'
+import { THUNDER_VAULT } from '../app/machines/thunder-vault'
+import { STOCK_RUSH } from '../app/machines/stock-rush'
 import type { MachineDef } from '../app/engine'
 
 interface Case {
@@ -21,7 +25,10 @@ const CASES: Case[] = [
   { def: DIAMOND_DOUBLER, coins: 1, spins: 4_000_000, seed: 1001 },
   { def: SEVENS_ABLAZE, coins: 2, spins: 4_000_000, seed: 1002 },
   { def: SERIES_E_3LINE, coins: 1, spins: 2_000_000, seed: 1003 },
-  { def: SERIES_E_MULTIPLIER, coins: 3, spins: 2_000_000, seed: 1004 }
+  { def: SERIES_E_MULTIPLIER, coins: 3, spins: 2_000_000, seed: 1004 },
+  { def: CANAL_ROYALE, coins: 25, spins: 2_000_000, seed: 1006 },
+  { def: DRAGONS_HOARD, coins: 25, spins: 2_000_000, seed: 1007 },
+  { def: THUNDER_VAULT, coins: 25, spins: 2_000_000, seed: 1008 }
 ]
 
 describe('convergence: simulation reproduces exact math', () => {
@@ -61,4 +68,36 @@ describe('convergence: simulation reproduces exact math', () => {
     expect(sim.jackpotHits).toBeGreaterThan(55)
     expect(sim.jackpotHits).toBeLessThan(110)
   })
+})
+
+describe('pachislo convergence — block-empirical SE (attribution variance is not an i.i.d. SE)', () => {
+  for (const level of [1, 4, 6]) {
+    it(`stock-rush L${level}: 100 blocks x 10k games inside 3.5 sigma`, () => {
+      const exact = exactRtp(STOCK_RUSH, { oddsLevel: level })
+      const blocks = 100
+      const per = 10_000
+      const rtps: number[] = []
+      const hfs: number[] = []
+      let inSum = 0
+      let outSum = 0
+      for (let b = 0; b < blocks; b++) {
+        const sim = simulateMachine(STOCK_RUSH, {
+          spins: per, coins: 3, seed: 50_000 + level * 1000 + b,
+          progressiveMode: 'static', oddsLevel: level
+        })
+        rtps.push(sim.rtp)
+        hfs.push(sim.hitFrequency)
+        inSum += sim.totalIn
+        outSum += sim.totalOut
+      }
+      const overall = outSum / inSum
+      const mean = rtps.reduce((a, x) => a + x, 0) / blocks
+      const sd = Math.sqrt(rtps.reduce((a, x) => a + (x - mean) ** 2, 0) / (blocks - 1))
+      const se = sd / Math.sqrt(blocks)
+      expect(Math.abs(overall - exact.rtpPerCoin)).toBeLessThan(3.5 * se)
+      const meanHf = hfs.reduce((a, x) => a + x, 0) / blocks
+      const hfSe = Math.sqrt(exact.hitFrequency * (1 - exact.hitFrequency) / (blocks * per))
+      expect(Math.abs(meanHf - exact.hitFrequency)).toBeLessThan(3.5 * hfSe)
+    })
+  }
 })
