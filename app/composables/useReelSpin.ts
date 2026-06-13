@@ -11,8 +11,8 @@ const BUFFER = 16 // filler cells above the landing window
 export interface ReelSpinOptions {
   reelCount: number
   visibleRows: number
-  grid: () => string[][]      // resolved visible grid [reel][row]
-  filler: () => string[]      // candidate ids shown while spinning
+  grid: () => string[][] // resolved visible grid [reel][row]
+  filler: () => string[] // candidate ids shown while spinning
 }
 
 export function useReelSpin(opts: ReelSpinOptions) {
@@ -30,7 +30,10 @@ export function useReelSpin(opts: ReelSpinOptions) {
     const f = opts.filler()
     return f.length ? f[Math.floor(Math.random() * f.length)]! : ''
   }
-  function clearTimers() { timers.forEach(clearTimeout); timers = [] }
+  function clearTimers() {
+    timers.forEach(clearTimeout)
+    timers = []
+  }
 
   function settle() {
     strips.value = Array.from({ length: opts.reelCount }, (_, r) => opts.grid()[r] ?? [])
@@ -44,7 +47,11 @@ export function useReelSpin(opts: ReelSpinOptions) {
     clearTimers()
     if (!spinning) return
     const g = opts.grid()
-    if (reduced.value) { settle(); store.revealDone(); return }
+    if (reduced.value) {
+      settle()
+      store.revealDone()
+      return
+    }
 
     revealed.value = 0
     durationMs.value = Array.from({ length: opts.reelCount }, (_, r) => 1100 + r * 220)
@@ -62,7 +69,9 @@ export function useReelSpin(opts: ReelSpinOptions) {
     }, 16))
     for (let r = 0; r < opts.reelCount; r++) {
       const dur = durationMs.value[r]!
-      timers.push(setTimeout(() => { blur.value = blur.value.map((v, i) => i === r ? 0 : v) }, dur * 0.55))
+      timers.push(setTimeout(() => {
+        blur.value = blur.value.map((v, i) => i === r ? 0 : v)
+      }, dur * 0.55))
       timers.push(setTimeout(() => {
         revealed.value = r + 1
         if (r === opts.reelCount - 1) store.revealDone()

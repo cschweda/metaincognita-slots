@@ -22,11 +22,16 @@ function apiOf(w: ReturnType<typeof mount>) {
 }
 
 describe('useReelSpin', () => {
-  beforeEach(() => { setActivePinia(createPinia()); localStorage.clear() })
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+  })
   afterEach(() => vi.useRealTimers())
 
   it('reveals all reels and calls revealDone after the staggered timers', async () => {
-    const store = useSlotsStore(); store.startSession(100000); store.selectMachine('canal-royale')
+    const store = useSlotsStore()
+    store.startSession(100000)
+    store.selectMachine('canal-royale')
     const w = mount(harness())
     const done = vi.spyOn(store, 'revealDone')
     store.spinning = true
@@ -37,7 +42,9 @@ describe('useReelSpin', () => {
   })
 
   it('revealed climbs monotonically to the reel count', async () => {
-    const store = useSlotsStore(); store.startSession(100000); store.selectMachine('canal-royale')
+    const store = useSlotsStore()
+    store.startSession(100000)
+    store.selectMachine('canal-royale')
     const w = mount(harness())
     store.spinning = true
     await w.vm.$nextTick()
