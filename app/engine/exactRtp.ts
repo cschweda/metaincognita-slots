@@ -1,6 +1,7 @@
 import type { BallyEmMachineDef, MachineDef, StepperMachineDef, SymbolId } from './types'
 import { ballyAwardForLine, bestStepperAward } from './awards'
 import { videoExactRtp } from './videoRtp'
+import { pachisloExactRtp } from './pachisloRtp'
 
 export interface ExactRtpOptions {
   /** coin level for multiplier/progressive-at-max machines (default: maxCoins) */
@@ -11,6 +12,8 @@ export interface ExactRtpOptions {
     /** value used for progressive:'live' entries (default: average of dual resets) */
     liveAverage?: number
   }
+  /** pachislo operator level 1..6 (default: def.defaultOddsLevel) */
+  oddsLevel?: number
 }
 
 export interface ExactRtpBreakdownEntry {
@@ -60,7 +63,7 @@ function ballyWeights(def: BallyEmMachineDef): Map<SymbolId, number>[] {
  */
 export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpReport {
   if (def.family === 'video') return videoExactRtp(def, opts)
-  if (def.family === 'pachislo') throw new Error('pachislo exactRtp lands in Task 12')
+  if (def.family === 'pachislo') return pachisloExactRtp(def, opts)
   const coins = opts.coins ?? def.maxCoins
   if (coins < 1 || coins > def.maxCoins) {
     throw new Error(`${def.id}: coins ${coins} out of range 1..${def.maxCoins}`)

@@ -184,8 +184,52 @@ export function validateMachineDef(def: MachineDef): void {
       }
       break
     }
-    case 'pachislo':
-      throw new Error(`${def.family} family lands later in Plan 2`)
+    case 'pachislo': {
+      if (def.strips.length !== 3) errors.push(`pachislo needs 3 strips, got ${def.strips.length}`)
+      def.strips.forEach((strip, r) => {
+        if (strip.length !== 21) errors.push(`strips[${r}] length ${strip.length} != 21 stops`)
+        strip.forEach(s => checkSymbol(s, `strips[${r}]`))
+      })
+      for (const [role, sym] of Object.entries(def.roles)) {
+        checkSymbol(sym, `roles.${role}`)
+      }
+      if (def.strips[1]?.includes(def.roles.cherry) || def.strips[2]?.includes(def.roles.cherry)) {
+        errors.push('cherry must only appear on reel 1 (control treats it as a left-reel win)')
+      }
+      const need: [number, SymbolId, string][] = [
+        [0, def.roles.bell, 'bell'], [1, def.roles.bell, 'bell'], [2, def.roles.bell, 'bell'],
+        [0, def.roles.watermelon, 'watermelon'], [1, def.roles.watermelon, 'watermelon'], [2, def.roles.watermelon, 'watermelon'],
+        [0, def.roles.replay, 'replay'], [1, def.roles.replay, 'replay'], [2, def.roles.replay, 'replay'],
+        [0, def.roles.seven, 'seven'], [1, def.roles.seven, 'seven'], [2, def.roles.seven, 'seven'],
+        [2, def.roles.bar, 'bar']
+      ]
+      for (const [r, sym, name] of need) {
+        if (!def.strips[r]?.includes(sym)) {
+          errors.push(`combo symbol ${name} missing from reel ${r + 1} — its flag could never land`)
+        }
+      }
+      if (def.slip !== 4) errors.push('slip must be exactly 4 (the control implements the 4-stop window)')
+      if (def.maxCoins !== 3) errors.push('pachislo takes 1-3 tokens (maxCoins must be 3)')
+      if (def.oddsLevels.length !== 6) errors.push(`need 6 odds levels, got ${def.oddsLevels.length}`)
+      if (def.defaultOddsLevel < 1 || def.defaultOddsLevel > def.oddsLevels.length) {
+        errors.push('defaultOddsLevel out of range')
+      }
+      def.oddsLevels.forEach((lv, i) => {
+        const total = 3 * def.baseRates.cherryPerRow + def.baseRates.watermelon
+          + def.baseRates.replay + lv.bell + lv.reg + lv.big
+        if (lv.bell < 0 || lv.reg < 0 || lv.big < 0) errors.push(`oddsLevels[${i}]: negative rate`)
+        if (total > 16384) errors.push(`oddsLevels[${i}]: rates sum ${total} exceeds the 16384 lottery`)
+      })
+      if (def.jac.perRound < 1 || def.jac.pay < 1 || def.jac.cost < 0) errors.push('jac config must be positive')
+      if (def.bigRounds !== 3) errors.push('bigRounds must be 3 in v0.2 (interlude indices are typed 1|2)')
+      const il = def.interlude
+      if (il.weightDenom < 1 || il.bellWeight < 0 || il.endWeight < 1
+        || il.bellWeight + il.endWeight > il.weightDenom) {
+        errors.push('interlude weights must satisfy 0 <= bell, 1 <= end, bell+end <= denom')
+      }
+      if (il.maxBells < 1) errors.push('interlude.maxBells must be >= 1')
+      break
+    }
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

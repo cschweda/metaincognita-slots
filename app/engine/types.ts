@@ -282,7 +282,11 @@ export interface PachisloSessionState {
   smallQueue: PachisloFlag[]
   /** stocked bonus flags, FIFO */
   bonusQueue: ('reg' | 'big')[]
-  /** a realized replay makes the next normal game free */
+  /**
+   * A realized replay makes the next normal game free. The free game replays
+   * at whatever tokens the caller passes — callers must keep the bet constant
+   * for the closed-form RTP to hold (the simulator does).
+   */
   replayNext: boolean
   bonus: PachisloBonusState | null
 }

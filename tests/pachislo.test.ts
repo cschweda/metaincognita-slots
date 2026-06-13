@@ -90,18 +90,21 @@ describe('normal games', () => {
     expect(state.pachislo!.replayNext).toBe(false)
   })
 
-  it('cherry pays by lines through the flagged row: 4 at 3 tokens (corner), 0 at 1 token', () => {
+  it('cherry pay depends on the flagged row: corners 4, middle 2 (row luck at full bet)', () => {
     const corner = freshState()
-    const out3 = spinUntilRealized(corner, LOT.cherryTop, 'cherry-top', 3)
-    expect(out3.totalPayout).toBe(4)
-    const wasted = freshState()
-    const out1 = spinUntilRealized(wasted, LOT.cherryTop, 'cherry-top', 1)
-    expect(out1.totalPayout).toBe(0) // flagged top-row cherry is WASTED at 1 token
+    const outTop = spinUntilRealized(corner, LOT.cherryTop, 'cherry-top', 3)
+    expect(outTop.totalPayout).toBe(4)
+    const middle = freshState()
+    // cherry-mid raw: rows are 167-wide bands: cherry-mid begins at 167
+    const outMid = spinUntilRealized(middle, rawFor(200, D), 'cherry-mid', 3)
+    expect(outMid.totalPayout).toBe(2)
   })
 
-  it('rejects out-of-range tokens', () => {
-    expect(() => spinPachislo(STOCK_RUSH, freshState(), 0, composite([], 1))).toThrow(/out of range/)
-    expect(() => spinPachislo(STOCK_RUSH, freshState(), 4, composite([], 1))).toThrow(/out of range/)
+  it('rejects anything but the full 3-token bet', () => {
+    expect(() => spinPachislo(STOCK_RUSH, freshState(), 0, composite([], 1))).toThrow(/exactly 3 tokens/)
+    expect(() => spinPachislo(STOCK_RUSH, freshState(), 1, composite([], 1))).toThrow(/exactly 3 tokens/)
+    expect(() => spinPachislo(STOCK_RUSH, freshState(), 2, composite([], 1))).toThrow(/exactly 3 tokens/)
+    expect(() => spinPachislo(STOCK_RUSH, freshState(), 4, composite([], 1))).toThrow(/exactly 3 tokens/)
   })
 })
 

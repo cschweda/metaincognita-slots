@@ -4,6 +4,7 @@ import type { StepperMachineDef, BallyEmMachineDef } from '../app/engine/types'
 import { CANAL_ROYALE } from '../app/machines/canal-royale'
 import { DRAGONS_HOARD } from '../app/machines/dragons-hoard'
 import { THUNDER_VAULT } from '../app/machines/thunder-vault'
+import { STOCK_RUSH } from '../app/machines/stock-rush'
 
 function tinyStepper(): StepperMachineDef {
   return {
@@ -164,5 +165,29 @@ describe('video validation', () => {
     const def = base()
     ;(def.scatter as NonNullable<typeof def.scatter>).symbol = 'WD'
     expect(() => validateMachineDef(def)).toThrow(/different symbols/i)
+  })
+})
+
+describe('pachislo validation', () => {
+  const base = () => JSON.parse(JSON.stringify(STOCK_RUSH)) as typeof STOCK_RUSH
+  it('rejects cherries off reel 1', () => {
+    const def = base()
+    def.strips[1]![0] = 'CH'
+    expect(() => validateMachineDef(def)).toThrow(/cherry .* reel 1/i)
+  })
+  it('rejects lottery rates that overflow 16384', () => {
+    const def = base()
+    def.oddsLevels[5]!.bell = 16000
+    expect(() => validateMachineDef(def)).toThrow(/16384/)
+  })
+  it('rejects a missing combo symbol on a reel', () => {
+    const def = base()
+    def.strips[2] = def.strips[2]!.map(s => (s === 'BB' ? 'BL' : s))
+    expect(() => validateMachineDef(def)).toThrow(/bar .* reel 3/i)
+  })
+  it('rejects wrong strip geometry', () => {
+    const def = base()
+    def.strips[0] = def.strips[0]!.slice(0, 20)
+    expect(() => validateMachineDef(def)).toThrow(/21/)
   })
 })

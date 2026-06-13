@@ -332,8 +332,10 @@ export function spinPachislo(
   if (ps.bonus !== null) {
     return ps.bonus.interlude !== null ? interludeGame(def, ps, rand) : jacGame(def, ps, rand)
   }
-  if (tokens < 1 || tokens > def.maxCoins) {
-    throw new Error(`${def.id}: tokens ${tokens} out of range 1..${def.maxCoins}`)
+  if (tokens !== def.maxCoins) {
+    throw new Error(
+      `${def.id}: normal games take exactly ${def.maxCoins} tokens — real stock-era machines gate `
+      + 'bonus flags by full bet; variable-token line play is deferred beyond v0.2')
   }
 
   const draws: RngDraw[] = []

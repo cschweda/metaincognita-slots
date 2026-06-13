@@ -6,9 +6,9 @@ import { SERIES_E_3LINE } from '../app/machines/series-e-3line'
 import { mulberry32 } from '../app/engine/rng'
 
 describe('FLOOR', () => {
-  it('contains the seven Plan-1+2 machines, all valid', () => {
+  it('contains the eight Plan-1+2 machines, all valid', () => {
     expect(FLOOR.map(m => m.id).sort()).toEqual([
-      'canal-royale', 'diamond-doubler', 'dragons-hoard', 'series-e-3line', 'series-e-multiplier', 'sevens-ablaze', 'thunder-vault'
+      'canal-royale', 'diamond-doubler', 'dragons-hoard', 'series-e-3line', 'series-e-multiplier', 'sevens-ablaze', 'stock-rush', 'thunder-vault'
     ])
   })
 })

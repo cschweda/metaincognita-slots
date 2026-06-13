@@ -63,5 +63,7 @@ export const STOCK_RUSH: PachisloMachineDef = {
     + 'but a lottery decided the game before they spun. Flagged wins slip onto the line when your '
     + 'timing allows; missed flags stock and come back; unflagged reels provably cannot pay. The '
     + 'operator key switches six odds levels straight from the service manual: 66% robbery up to a '
-    + '120% loss-leader. Your fingers control WHEN — never HOW MUCH.'
+    + '120% loss-leader. Your fingers control WHEN — never HOW MUCH. Like all stock-era machines, '
+    + 'the full 3-token bet is required: bonus flags are gated by max bet, which is why parlor '
+    + 'practice never plays short.'
 }
