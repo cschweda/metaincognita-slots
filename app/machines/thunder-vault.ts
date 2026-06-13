@@ -18,15 +18,15 @@ export const THUNDER_VAULT: VideoMachineDef = {
   denominationCents: 1,
   maxCoins: 25,
   symbols: {
-    VA: { label: 'Vault' },
-    LT: { label: 'Lightning' },
-    GB: { label: 'Gold Bar' },
-    AA: { label: 'Ace' },
-    KK: { label: 'King' },
-    QQ: { label: 'Queen' },
-    JJ: { label: 'Jack' },
-    OR: { label: 'Storm Orb' },
-    EM: { label: 'Empty' }
+    VA: { label: 'Vault', icon: 'vault' },
+    LT: { label: 'Lightning', icon: 'lightning' },
+    GB: { label: 'Gold Bar', icon: 'goldbar' },
+    AA: { label: 'Ace', icon: 'ace' },
+    KK: { label: 'King', icon: 'king' },
+    QQ: { label: 'Queen', icon: 'queen' },
+    JJ: { label: 'Jack', icon: 'jack' },
+    OR: { label: 'Storm Orb', icon: 'orb' },
+    EM: { label: 'Empty', icon: 'blank' }
   },
   strips: [
     ['OR', 'OR', 'AA', 'JJ', 'KK', 'QQ', 'GB', 'JJ', 'AA', 'QQ', 'KK', 'LT', 'VA', 'AA', 'JJ', 'KK', 'QQ', 'GB', 'AA', 'KK', 'JJ', 'LT', 'QQ', 'VA'],

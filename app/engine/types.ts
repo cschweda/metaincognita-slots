@@ -148,8 +148,8 @@ export interface MachineDefBase {
   /** denomination of one coin/credit, in cents */
   denominationCents: number
   maxCoins: number
-  /** symbol id → display label (glyphs/art arrive in Plan 3) */
-  symbols: Record<SymbolId, { label: string }>
+  /** symbol id → display label + optional icon id (see components/game/symbols/registry) */
+  symbols: Record<SymbolId, { label: string, icon?: string }>
   /** prose history connecting the machine to its real-world archetype */
   history: string
 }

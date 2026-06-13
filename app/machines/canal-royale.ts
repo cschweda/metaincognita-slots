@@ -18,16 +18,16 @@ export const CANAL_ROYALE: VideoMachineDef = {
   denominationCents: 1,
   maxCoins: 25,
   symbols: {
-    LI: { label: 'Winged Lion' },
-    MA: { label: 'Carnival Mask' },
-    FA: { label: 'Golden Fan' },
-    AA: { label: 'Ace' },
-    KK: { label: 'King' },
-    QQ: { label: 'Queen' },
-    JJ: { label: 'Jack' },
-    TT: { label: 'Ten' },
-    WD: { label: 'Wild Doge' },
-    SC: { label: 'Gondola Scatter' }
+    LI: { label: 'Winged Lion', icon: 'lion' },
+    MA: { label: 'Carnival Mask', icon: 'mask' },
+    FA: { label: 'Golden Fan', icon: 'fan' },
+    AA: { label: 'Ace', icon: 'ace' },
+    KK: { label: 'King', icon: 'king' },
+    QQ: { label: 'Queen', icon: 'queen' },
+    JJ: { label: 'Jack', icon: 'jack' },
+    TT: { label: 'Ten', icon: 'ten' },
+    WD: { label: 'Wild Doge', icon: 'doge' },
+    SC: { label: 'Gondola Scatter', icon: 'gondola' }
   },
   strips: [
     ['JJ', 'TT', 'AA', 'KK', 'SC', 'QQ', 'FA', 'JJ', 'TT', 'LI', 'AA', 'KK', 'QQ', 'JJ', 'TT', 'MA', 'FA', 'AA', 'JJ', 'TT', 'KK', 'QQ', 'LI', 'MA'],

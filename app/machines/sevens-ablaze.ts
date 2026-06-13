@@ -16,13 +16,13 @@ export const SEVENS_ABLAZE: StepperMachineDef = {
   denominationCents: 100,
   maxCoins: 2,
   symbols: {
-    F7: { label: 'Flaming Seven' },
-    S7: { label: 'Red Seven' },
-    B3: { label: 'Triple Bar' },
-    B2: { label: 'Double Bar' },
-    B1: { label: 'Single Bar' },
-    CH: { label: 'Cherry' },
-    BL: { label: 'Blank' }
+    F7: { label: 'Flaming Seven', icon: 'seven-flame' },
+    S7: { label: 'Red Seven', icon: 'seven-red' },
+    B3: { label: 'Triple Bar', icon: 'bar3' },
+    B2: { label: 'Double Bar', icon: 'bar2' },
+    B1: { label: 'Single Bar', icon: 'bar1' },
+    CH: { label: 'Cherry', icon: 'cherry' },
+    BL: { label: 'Blank', icon: 'blank' }
   },
   physicalStrips: [
     ['CH', 'B2', 'S7', 'BL', 'B2', 'B2', 'BL', 'B3', 'S7', 'BL', 'B3', 'F7', 'BL', 'B3', 'B1', 'BL', 'B1', 'B1', 'BL', 'B1', 'CH', 'BL'],

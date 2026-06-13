@@ -18,13 +18,13 @@ export const SERIES_E_3LINE: BallyEmMachineDef = {
   denominationCents: 100,
   maxCoins: 3,
   symbols: {
-    S7: { label: 'Seven' },
-    BAR: { label: 'Bar' },
-    BE: { label: 'Bell' },
-    PL: { label: 'Plum' },
-    OR: { label: 'Orange' },
-    CH: { label: 'Cherry' },
-    BL: { label: 'Blank' }
+    S7: { label: 'Seven', icon: 'seven' },
+    BAR: { label: 'Bar', icon: 'bar1' },
+    BE: { label: 'Bell', icon: 'bell' },
+    PL: { label: 'Plum', icon: 'plum' },
+    OR: { label: 'Orange', icon: 'orange' },
+    CH: { label: 'Cherry', icon: 'cherry' },
+    BL: { label: 'Blank', icon: 'blank' }
   },
   stops: 22,
   strips: [

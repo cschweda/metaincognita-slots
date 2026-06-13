@@ -21,13 +21,13 @@ export const STOCK_RUSH: PachisloMachineDef = {
   denominationCents: 25,
   maxCoins: 3,
   symbols: {
-    R7: { label: 'Red Seven' },
-    BB: { label: 'Bonus Bar' },
-    BE: { label: 'Bell' },
-    RP: { label: 'Replay' },
-    WM: { label: 'Watermelon' },
-    CH: { label: 'Cherry' },
-    BL: { label: 'Blank' }
+    R7: { label: 'Red Seven', icon: 'seven-red' },
+    BB: { label: 'Bonus Bar', icon: 'bar-bonus' },
+    BE: { label: 'Bell', icon: 'bell' },
+    RP: { label: 'Replay', icon: 'replay' },
+    WM: { label: 'Watermelon', icon: 'watermelon' },
+    CH: { label: 'Cherry', icon: 'cherry' },
+    BL: { label: 'Blank', icon: 'blank' }
   },
   strips: [
     ['CH', 'WM', 'RP', 'BE', 'WM', 'BL', 'BL', 'CH', 'RP', 'R7', 'BE', 'WM', 'BE', 'RP', 'CH', 'BL', 'RP', 'BE', 'BE', 'R7', 'RP'],

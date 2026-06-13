@@ -16,16 +16,16 @@ export const DRAGONS_HOARD: VideoMachineDef = {
   denominationCents: 1,
   maxCoins: 25,
   symbols: {
-    DR: { label: 'Dragon' },
-    PH: { label: 'Phoenix' },
-    KO: { label: 'Koi' },
-    AA: { label: 'Ace' },
-    KK: { label: 'King' },
-    QQ: { label: 'Queen' },
-    JJ: { label: 'Jack' },
-    TT: { label: 'Ten' },
-    WD: { label: 'Pearl Wild' },
-    SC: { label: 'Gold Ingot Scatter' }
+    DR: { label: 'Dragon', icon: 'dragon' },
+    PH: { label: 'Phoenix', icon: 'phoenix' },
+    KO: { label: 'Koi', icon: 'koi' },
+    AA: { label: 'Ace', icon: 'ace' },
+    KK: { label: 'King', icon: 'king' },
+    QQ: { label: 'Queen', icon: 'queen' },
+    JJ: { label: 'Jack', icon: 'jack' },
+    TT: { label: 'Ten', icon: 'ten' },
+    WD: { label: 'Pearl Wild', icon: 'pearl' },
+    SC: { label: 'Gold Ingot Scatter', icon: 'ingot' }
   },
   strips: [
     ['JJ', 'TT', 'AA', 'KK', 'SC', 'QQ', 'DR', 'JJ', 'TT', 'KO', 'AA', 'KK', 'QQ', 'JJ', 'TT', 'PH', 'DR', 'AA', 'JJ', 'TT', 'KK', 'QQ', 'KO', 'PH'],
