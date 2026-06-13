@@ -19,7 +19,7 @@ X-ray mode, Sim Lab, and learn pages land in subsequent milestones.
 | Series E 3-Line | Vintage Bally (E-1202 replica) | 5 reels x 22 uniform stops, 3 lines, dual toggling progressive | 89.0351% per line |
 | Series E Multiplier | Vintage Bally (E-1203 replica) | 4 reels x 25 uniform stops, 1-3 coin multiplier | 89.1264% @ 3 coins / 85.0304% @ 1 |
 | Canal Royale | Video (lines) | 5 reels x 24 stops, 25-line, free spins | 92.4559% |
-| Dragon's Hoard | Video (ways) | 5 reels x 24 stops, 243-ways, hold-and-spin | 93.9950% |
+| Dragon's Hoard | Video (ways) | 5 reels x 24 stops, 243-ways, free spins w/ retriggers | 93.9950% |
 | Thunder Vault | Video (lines) | 5 reels x 24 stops, 25-line, Grand progressive | 90.2948% @ Grand reset |
 | Stock Rush | Pachislo (skill-stop) | 3 reels x 21 stops, flag lottery, stock queue | 66.0012%–120.0028% by operator level (L4 default 91.5013%) |
 
