@@ -3,7 +3,9 @@ import {
   initProgressiveState, addCoinToProgressive
 } from '../app/engine/progressive'
 import { SERIES_E_MULTIPLIER } from '../app/machines/series-e-multiplier'
-import type { DualProgressiveConfig, DualProgressiveState, SingleProgressiveState } from '../app/engine/types'
+import type { DualProgressiveConfig, DualProgressiveState, PercentProgressiveState, SingleProgressiveState } from '../app/engine/types'
+import { exactRtp } from '../app/engine/exactRtp'
+import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
 
 const DUAL: DualProgressiveConfig = {
   kind: 'dual',
@@ -68,5 +70,51 @@ describe('single progressive', () => {
     expect(st.value).toBe(8000)
     addCoinToProgressive(st, cfg)
     expect(st.value).toBe(8001)
+  })
+})
+
+describe('percent progressive', () => {
+  it('feeds exactly feedRate per coin', () => {
+    const cfg = SEVENS_ABLAZE.progressive!
+    const st = initProgressiveState(cfg) as PercentProgressiveState
+    for (let i = 0; i < 100; i++) addCoinToProgressive(st, cfg)
+    expect(st.value).toBeCloseTo(cfg.reset + 100 * cfg.feedRate, 9)
+  })
+
+  it('clips at max', () => {
+    const cfg = SEVENS_ABLAZE.progressive!
+    const st = initProgressiveState(cfg) as PercentProgressiveState
+    st.value = cfg.max - 0.005
+    addCoinToProgressive(st, cfg)
+    addCoinToProgressive(st, cfg)
+    expect(st.value).toBe(cfg.max)
+  })
+})
+
+describe('single progressive — clip at max', () => {
+  it('freezes increments but keeps cycling its counter', () => {
+    const cfg = SERIES_E_MULTIPLIER.progressive!
+    if (cfg.kind !== 'single') throw new Error('expected single')
+    const st = initProgressiveState(cfg) as SingleProgressiveState
+    st.value = cfg.meter.max
+    // at max >= rate1Limit, rate2 applies (8 coins per increment); 40 coins = 5 full cycles
+    for (let i = 0; i < 40; i++) addCoinToProgressive(st, cfg)
+    expect(st.value).toBe(cfg.meter.max)
+    expect(st.coins).toBe(0)
+  })
+})
+
+describe('break-even meter identity (self-validating, no hand constants)', () => {
+  it('sevens-ablaze: RTP at the computed break-even meter is exactly 100%', () => {
+    const def = SEVENS_ABLAZE
+    const pJackpot = exactRtp(def, { progressiveValues: { meter: 0 } })
+    // rtp(M) = rtpEx + P(jp) * M / coins  =>  M_be = coins * (1 - rtpEx) / P(jp)
+    const jpEntry = exactRtp(def).breakdown.find(b => b.entryId === '3f7')!
+    const rtpEx = pJackpot.rtpPerCoin
+    const beMeter = def.maxCoins * (1 - rtpEx) / jpEntry.probability
+    expect(beMeter).toBeGreaterThan(3500)
+    expect(beMeter).toBeLessThan(3550)
+    const atBe = exactRtp(def, { progressiveValues: { meter: beMeter } })
+    expect(atBe.rtpPerCoin).toBeCloseTo(1.0, 10)
   })
 })
