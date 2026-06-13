@@ -12,7 +12,7 @@ describe('SymbolIcon', () => {
 
   it('renders royals and sevens as styled text', () => {
     const k = mount(SymbolIcon, { props: { icon: 'king', label: 'King' } })
-    expect(k.text()).toContain('K')
+    expect(k.text()).toBe('K')
     const s = mount(SymbolIcon, { props: { icon: 'seven', label: 'Seven' } })
     expect(s.text()).toContain('7')
   })
