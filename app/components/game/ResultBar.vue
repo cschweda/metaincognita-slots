@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { formatCredits, formatCents } from '~/utils/format'
+import { formatCredits, formatCents, formatSignedCredits } from '~/utils/format'
 import { summariseWins } from '~/utils/winLines'
 import { bankrollSeries } from '~/utils/bankrollSeries'
 
@@ -12,6 +12,12 @@ const show = computed(() => !store.spinning && store.lastOutcome !== null
   && store.lastOutcome.machineId === store.currentMachineId)
 const out = computed(() => store.lastOutcome)
 const won = computed(() => (out.value?.totalPayout ?? 0) > 0)
+// The honest result: payout minus what the spin actually cost. A win whose
+// payout is under the bet (a "loss disguised as a win") lands here negative,
+// matching the bankroll sparkline below it.
+const net = computed(() => (out.value?.totalPayout ?? 0) - (out.value?.coinsIn ?? 0))
+const netClass = computed(() =>
+  net.value > 0 ? 'text-emerald-400' : net.value < 0 ? 'text-rose-400' : 'text-neutral-400')
 const chips = computed(() => store.currentDef && out.value ? summariseWins(store.currentDef, out.value) : [])
 
 const spark = computed(() => {
@@ -45,6 +51,15 @@ const spark = computed(() => {
           class="font-mono text-2xl font-black"
           :class="won ? 'text-amber-300' : 'text-neutral-500'"
         >{{ won ? `WIN +${formatCredits(out.totalPayout)}` : 'No win' }}</span>
+        <span
+          aria-hidden="true"
+          class="mx-1.5 text-neutral-600"
+        >·</span>
+        <span
+          data-test="net"
+          class="font-mono text-sm font-bold"
+          :class="netClass"
+        >net {{ formatSignedCredits(net) }}</span>
         <div class="mt-0.5 text-xs font-semibold text-neutral-300">
           Bankroll now <span class="font-bold text-emerald-400">{{ formatCredits(store.creditBalance) }}</span>
           credits · {{ formatCents(store.bankrollCents) }}

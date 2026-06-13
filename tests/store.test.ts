@@ -407,3 +407,37 @@ describe('mid-feature reload (spec: must restore exactly)', () => {
     expect(freeGames).toBeGreaterThan(0)
   })
 })
+
+describe('describeOutcome — spoken net parity', () => {
+  it('a sub-bet win (LDW) is announced as a net loss', () => {
+    const store = freshStore()
+    store.startSession(100_000)
+    const out = { totalPayout: 14, coinsIn: 25, featureEvents: [], progressiveEvents: [] }
+    const text = store.describeOutcome(CANAL_ROYALE, out as never)
+    expect(text).toContain('Won 14 credits.')
+    expect(text).toContain('Net down 11.')
+  })
+
+  it('a win that beats the bet is announced as a net gain', () => {
+    const store = freshStore()
+    store.startSession(100_000)
+    const out = { totalPayout: 1030, coinsIn: 25, featureEvents: [], progressiveEvents: [] }
+    expect(store.describeOutcome(CANAL_ROYALE, out as never)).toContain('Net up 1,005.')
+  })
+
+  it('a no-win announces the forfeited bet as a net loss', () => {
+    const store = freshStore()
+    store.startSession(100_000)
+    const out = { totalPayout: 0, coinsIn: 25, featureEvents: [], progressiveEvents: [] }
+    const text = store.describeOutcome(CANAL_ROYALE, out as never)
+    expect(text).toContain('No win.')
+    expect(text).toContain('Net down 25.')
+  })
+
+  it('a free spin that pays (coins-in 0) is announced as a net gain, not an LDW', () => {
+    const store = freshStore()
+    store.startSession(100_000)
+    const out = { totalPayout: 14, coinsIn: 0, featureEvents: [], progressiveEvents: [] }
+    expect(store.describeOutcome(CANAL_ROYALE, out as never)).toContain('Net up 14.')
+  })
+})

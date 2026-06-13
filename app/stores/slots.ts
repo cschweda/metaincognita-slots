@@ -494,6 +494,11 @@ export const useSlotsStore = defineStore('slots', {
       } else {
         parts.push('No win.')
       }
+      // Speak the honest result too: a win under the bet is a net loss (LDW).
+      const net = out.totalPayout - out.coinsIn
+      if (net > 0) parts.push(`Net up ${net.toLocaleString('en-US')}.`)
+      else if (net < 0) parts.push(`Net down ${(-net).toLocaleString('en-US')}.`)
+      else parts.push('Net even.')
       for (const e of out.featureEvents) {
         if (e.type === 'free-spins-triggered') parts.push(`${e.count} free spins at ${e.multiplier}x.`)
         if (e.type === 'free-spin-consumed') parts.push(`Free spins: ${e.remaining} remaining.`)

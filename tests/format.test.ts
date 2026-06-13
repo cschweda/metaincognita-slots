@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatCents, formatCredits, formatOdds, formatPercent, formatSignedCents } from '../app/utils/format'
+import { formatCents, formatCredits, formatOdds, formatPercent, formatSignedCents, formatSignedCredits } from '../app/utils/format'
 
 describe('format helpers', () => {
   it('formatCents: whole dollars short, cents when needed, thousands grouped', () => {
@@ -27,5 +27,10 @@ describe('format helpers', () => {
   it('formatCredits groups thousands', () => {
     expect(formatCredits(0)).toBe('0')
     expect(formatCredits(12500)).toBe('12,500')
+  })
+  it('formatSignedCredits prefixes gains with + and groups thousands', () => {
+    expect(formatSignedCredits(1005)).toBe('+1,005')
+    expect(formatSignedCredits(-11)).toBe('-11')
+    expect(formatSignedCredits(0)).toBe('+0')
   })
 })

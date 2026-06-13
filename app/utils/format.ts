@@ -28,3 +28,7 @@ export function formatOdds(probability: number): string {
 export function formatCredits(credits: number): string {
   return credits.toLocaleString('en-US')
 }
+
+export function formatSignedCredits(credits: number): string {
+  return credits < 0 ? formatCredits(credits) : `+${formatCredits(credits)}`
+}
