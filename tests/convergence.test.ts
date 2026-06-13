@@ -13,9 +13,10 @@ interface Case {
   seed: number
 }
 
-// E-1202 static mode pays 5000/1000 alternating (mean 3000 = the exact
-// liveAverage); its realized jackpot variance differs from the flat-3000
-// enumeration, but P(hit) = 1/5.15M makes the effect ~0 at this N.
+// E-1202 static mode never advances the FO-5140 toggle (meters are fed only
+// in 'live' mode), so a static jackpot always pays the upper reset (5000) vs
+// the enumeration's 3000 live-average -- a +0.039% modeled gap that cannot
+// breach a 3.5-sigma band below ~3.5e9 spins. P(hit) = 1/5.15M makes it ~0 here.
 const CASES: Case[] = [
   { def: DIAMOND_DOUBLER, coins: 1, spins: 4_000_000, seed: 1001 },
   { def: SEVENS_ABLAZE, coins: 2, spins: 4_000_000, seed: 1002 },
