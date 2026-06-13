@@ -83,7 +83,15 @@ export function summariseWins(def: MachineDef, outcome: SpinOutcome | null): Win
       paySym = entry?.symbol ?? symbolId
       winReels = Array.from({ length: reels }, (_, r) => r)
     }
-    const singleName = symbolName(def, paySym)
+    let singleName = symbolName(def, paySym)
+    // 'anyOf' awards (e.g. any-3-bars) aren't a single symbol; name them by the
+    // shared trailing word of the set's labels ("Single/Double/Triple Bar" -> "Bar")
+    // so the chip reads "3 Bars" rather than naming whichever bar landed first.
+    const anyOf = entry?.kind === 'anyOf' ? (entry as { symbols?: string[] }).symbols : undefined
+    if (Array.isArray(anyOf) && anyOf.length > 0) {
+      const words = anyOf.map(s => symbolName(def, s).split(' ').pop() ?? '')
+      if (words.every(w => w === words[0] && w !== '')) singleName = words[0]!
+    }
     return {
       lineNumber: null,
       count: winReels.length,

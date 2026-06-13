@@ -113,6 +113,12 @@ describe('summariseWins cells for ways and single', () => {
     expect(w.cells).toHaveLength(3)
   })
 
+  it('stepper anyOf (any bars) names the shared category, not the first bar', () => {
+    const w = summariseWins(DIAMOND_DOUBLER, { machineId: 'diamond-doubler', grid: [], wins: [{ line: 'payline', entryId: 'anybar', symbols: ['B3', 'B1', 'B2'], payCredits: 5, wildCount: 0, progressive: false }] } as never)[0]!
+    expect(w.count).toBe(3)
+    expect(w.pluralName).toBe('Bars')
+  })
+
   it('bally run win uses the left-anchored length, not the full line', () => {
     // series-e chx2 = run CH length 2; full line [CH, CH, BL, S7, S7] -> 2 Cherries
     const w = summariseWins(SERIES_E_3LINE, { machineId: 'series-e-3line', grid: [], wins: [{ line: 'center', entryId: 'chx2', symbols: ['CH', 'CH', 'BL', 'S7', 'S7'], payCredits: 5, wildCount: 0, progressive: false }] } as never)[0]!
