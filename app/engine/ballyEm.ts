@@ -83,11 +83,14 @@ export function spinBallyEm(
     machineId: def.id,
     family: 'bally-em',
     coins,
+    gameKind: 'base',
+    coinsIn: coins,
     stops,
     grid,
     wins,
     totalPayout: wins.reduce((s, w) => s + w.payCredits, 0),
     progressiveEvents,
+    featureEvents: [],
     trace: { draws }
   }
 }

@@ -18,18 +18,7 @@ function stopForCenterSymbol(strip: string[], symbol: string): number {
 }
 
 function freshState(def: typeof SERIES_E_3LINE | typeof SERIES_E_MULTIPLIER): MachineSessionState {
-  if (def.progressive?.kind === 'dual') {
-    return {
-      progressive: {
-        kind: 'dual', upper: def.progressive.upper.reset, lower: def.progressive.lower.reset,
-        live: 'upper', coinsTowardToggle: 0, upperCoins: 0, lowerCoins: 0
-      }
-    }
-  }
-  if (def.progressive?.kind === 'single') {
-    return { progressive: { kind: 'single', value: def.progressive.meter.reset, coins: 0 } }
-  }
-  return { progressive: null }
+  return initMachineState(def)
 }
 
 describe('spinBallyEm — grid and lines', () => {

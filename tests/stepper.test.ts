@@ -12,7 +12,7 @@ function riggedVirtual(indices: number[]) {
 }
 
 function noProg(): MachineSessionState {
-  return { progressive: null }
+  return initMachineState(DIAMOND_DOUBLER)
 }
 
 describe('spinStepper — virtual to physical mapping', () => {
@@ -60,15 +60,16 @@ describe('spinStepper — sevens-ablaze progressive', () => {
   }
 
   it('3xF7 at 1 coin pays fixed 1000, no progressive event', () => {
-    const out = spinStepper(SEVENS_ABLAZE, {
-      progressive: { kind: 'percent', value: 2500 }
-    }, 1, riggedVirtual(f7Indices()))
+    const state1 = initMachineState(SEVENS_ABLAZE)
+    state1.progressive = { kind: 'percent', value: 2500 }
+    const out = spinStepper(SEVENS_ABLAZE, state1, 1, riggedVirtual(f7Indices()))
     expect(out.totalPayout).toBe(1000)
     expect(out.progressiveEvents).toEqual([])
   })
 
   it('3xF7 at max coins pays the meter (floored) and resets it', () => {
-    const state: MachineSessionState = { progressive: { kind: 'percent', value: 2500.75 } }
+    const state: MachineSessionState = initMachineState(SEVENS_ABLAZE)
+    state.progressive = { kind: 'percent', value: 2500.75 }
     const out = spinStepper(SEVENS_ABLAZE, state, 2, riggedVirtual(f7Indices()))
     expect(out.totalPayout).toBe(2500)
     expect(out.progressiveEvents).toEqual([{ type: 'hit', meter: 'percent', amountCredits: 2500 }])

@@ -97,11 +97,14 @@ export function spinStepper(
     machineId: def.id,
     family: 'stepper',
     coins,
+    gameKind: 'base',
+    coinsIn: coins,
     stops,
     grid,
     wins,
     totalPayout: wins.reduce((s, w) => s + w.payCredits, 0),
     progressiveEvents,
+    featureEvents: [],
     trace: { draws, virtualStops }
   }
 }

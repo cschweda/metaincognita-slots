@@ -14,7 +14,19 @@ export { validateMachineDef } from './validate'
 export { initProgressiveState, addCoinToProgressive } from './progressive'
 
 export function initMachineState(def: MachineDef): MachineSessionState {
-  return { progressive: def.progressive === null ? null : initProgressiveState(def.progressive) }
+  return {
+    progressive: def.progressive === null ? null : initProgressiveState(def.progressive),
+    videoFeature: null,
+    pachislo: def.family === 'pachislo'
+      ? {
+          oddsLevel: def.defaultOddsLevel,
+          smallQueue: [],
+          bonusQueue: [],
+          replayNext: false,
+          bonus: null
+        }
+      : null
+  }
 }
 
 export function spin(
@@ -28,6 +40,9 @@ export function spin(
       return spinStepper(def, state, coins, rand)
     case 'bally-em':
       return spinBallyEm(def, state, coins, rand)
+    case 'video':
+    case 'pachislo':
+      throw new Error(`${def.family} family lands later in Plan 2`)
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

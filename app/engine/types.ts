@@ -1,8 +1,7 @@
 // Single source of truth for engine types. Pure data + pure functions only —
 // nothing in app/engine may import from Vue, Nuxt, or Pinia.
 
-export type MachineFamily = 'stepper' | 'bally-em'
-// Plan 2 extends this union with 'video' and 'pachislo'.
+export type MachineFamily = 'stepper' | 'bally-em' | 'video' | 'pachislo'
 
 export type SymbolId = string
 
@@ -24,6 +23,54 @@ export type BallyAward
     | { id: string, kind: 'allOf', symbol: SymbolId, pay: number }
 // progressive: 'live'      → pays the live meter of the dual controller (any coin level)
 // progressive: 'maxCoins'  → pays the single meter at max coins, else pay × coins
+
+/** Video line/ways award: exact run length 3..5 anchored on reel 1. */
+export interface VideoPayEntry {
+  id: string
+  symbol: SymbolId
+  length: 3 | 4 | 5
+  /** per 1-coin line bet (lines mode) or per way-unit (ways mode) */
+  pay: number
+}
+
+export interface ScatterConfig {
+  symbol: SymbolId
+  /** pays by count of reels showing the scatter, x TOTAL bet */
+  pays: Record<number, number>
+  /** visible-reel count that triggers free spins (null = pays only) */
+  triggerCount: number | null
+}
+
+export interface FreeSpinsConfig {
+  count: number
+  multiplier: number
+  /** another triggerCount scatters during free spins adds `count` more spins */
+  retrigger: boolean
+}
+
+export interface OrbValueEntry {
+  /** credits at maxCoins bet */
+  credits: number
+  weight: number
+  label?: 'mini' | 'minor' | 'major'
+}
+
+/**
+ * Hold-and-spin (orb) feature configuration.
+ * Filling all 15 cells pays the percent progressive (the Grand).
+ */
+export interface HoldAndSpinConfig {
+  orbSymbol: SymbolId
+  /** total visible orbs that lock and start the feature (15-cell grid) */
+  triggerCount: number
+  respins: number
+  /** per unlocked cell, per respin: P(orb) = respinOrbNumer / respinOrbDenom */
+  respinOrbNumer: number
+  respinOrbDenom: number
+  orbValues: OrbValueEntry[]
+  /** what unlocked cells show in respin grids (declared in symbols, never on strips) */
+  emptySymbol: SymbolId
+}
 
 // ---------- progressives (Bally FO-5140 semantics) ----------
 
@@ -138,12 +185,112 @@ export interface BallyEmMachineDef extends MachineDefBase {
   progressive: DualProgressiveConfig | SingleProgressiveConfig | null
 }
 
-export type MachineDef = StepperMachineDef | BallyEmMachineDef
+export interface VideoMachineDef extends MachineDefBase {
+  family: 'video'
+  /** 5 circular strips; window = 3 consecutive cells; all strips same length */
+  strips: SymbolId[][]
+  /**
+   * 'lines': coins = active line count, lines[i] = row per reel (0 top..2 bottom).
+   * 'ways': left-anchored any-adjacent ways; maxCoins buys all ways.
+   */
+  betMode: { kind: 'lines', lines: number[][] } | { kind: 'ways' }
+  /** true => spin() only accepts coins === maxCoins (feature-bearing machines) */
+  fixedBet: boolean
+  /** never on reel-1 strips (anchoring rule, validator-enforced) */
+  wildSymbol: SymbolId | null
+  scatter: ScatterConfig | null
+  freeSpins: FreeSpinsConfig | null
+  holdAndSpin: HoldAndSpinConfig | null
+  paytable: VideoPayEntry[]
+  /** Thunder Vault Grand; null for machines without one */
+  progressive: PercentProgressiveConfig | null
+}
+
+export type PachisloFlag
+  = 'cherry-top' | 'cherry-mid' | 'cherry-bot' | 'watermelon' | 'bell' | 'replay' | 'reg' | 'big'
+
+/** Per-level lottery rates, integer counts out of 16384. */
+export interface PachisloLevelRates {
+  bell: number
+  reg: number
+  big: number
+}
+
+export interface PachisloMachineDef extends MachineDefBase {
+  family: 'pachislo'
+  /** 3 strips x 21 stops */
+  strips: SymbolId[][]
+  /** max forward slip from the press position (4 on real hardware) */
+  slip: number
+  /** which symbol plays which role in combos/control */
+  roles: {
+    cherry: SymbolId
+    watermelon: SymbolId
+    bell: SymbolId
+    replay: SymbolId
+    seven: SymbolId
+    /** REG combo = seven seven bar */
+    bar: SymbolId
+    blank: SymbolId
+  }
+  /** level-independent lottery rates /16384 (cherry is per ROW; x3 rows total) */
+  baseRates: { cherryPerRow: number, watermelon: number, replay: number }
+  /** index 0..5 = operator levels 1..6 */
+  oddsLevels: PachisloLevelRates[]
+  /** 1-based; the level a fresh session starts at */
+  defaultOddsLevel: number
+  pays: { cherryPerLine: number, watermelon: number, bell: number, bonusLined: number }
+  jac: { perRound: number, pay: number, cost: number }
+  bigRounds: number
+  interlude: { bellWeight: number, endWeight: number, weightDenom: number, bellPay: number, maxBells: number, cost: number }
+  progressive: null
+}
+
+export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef
 
 // ---------- spin results ----------
 
+export type VideoFeatureState
+  = | {
+    kind: 'freeSpins'
+    remaining: number
+    multiplier: number
+    /** the triggering bet, replayed at cost 0 */
+    coins: number
+  }
+  | {
+    kind: 'holdAndSpin'
+    /** 15 cells (cell = reel*3 + row); null = unlocked */
+    locked: ({ credits: number, label?: 'mini' | 'minor' | 'major' } | null)[]
+    respins: number
+    coins: number
+  }
+
+export interface PachisloBonusState {
+  type: 'reg' | 'big'
+  /** 1-based JAC round */
+  round: number
+  jacLeft: number
+  /** non-null while playing an increased-odds interlude (between BIG rounds) */
+  interlude: { index: 1 | 2, bells: number } | null
+}
+
+export interface PachisloSessionState {
+  /** 1-based operator level, set by the in-app operator key */
+  oddsLevel: number
+  /** stocked small flags, FIFO (cherry rows, watermelon, bell, replay) */
+  smallQueue: PachisloFlag[]
+  /** stocked bonus flags, FIFO */
+  bonusQueue: ('reg' | 'big')[]
+  /** a realized replay makes the next normal game free */
+  replayNext: boolean
+  bonus: PachisloBonusState | null
+}
+
 export interface MachineSessionState {
   progressive: ProgressiveState | null
+  videoFeature: VideoFeatureState | null
+  pachislo: PachisloSessionState | null
 }
 
 export interface RngDraw {
@@ -170,6 +317,8 @@ export interface SpinTrace {
   draws: RngDraw[]
   /** stepper only */
   virtualStops?: VirtualStopTrace[]
+  /** pachislo only: per reel — where the player pressed, where control stopped, why */
+  presses?: { reel: number, press: number, stop: number, slipUsed: number, target: string | null }[]
 }
 
 export interface LineWin {
@@ -188,10 +337,39 @@ export interface ProgressiveEvent {
   amountCredits: number
 }
 
+/**
+ * 'base' = paid base-game spin (steppers, bally-em, video); 'free-spin'/'respin' = zero-cost feature spins;
+ * 'normal' = paid (or replay-free) pachislo lottery game; 'jac'/'interlude' =
+ * pachislo bonus games. Steppers/bally are always 'base'. Simulation counts
+ * cycles over base/normal games only.
+ */
+export type GameKind = 'base' | 'free-spin' | 'respin' | 'normal' | 'jac' | 'interlude'
+
+export type FeatureEvent
+  = | { type: 'free-spins-triggered', count: number, multiplier: number }
+    | { type: 'free-spins-retriggered', added: number, remaining: number }
+    | { type: 'free-spin-consumed', remaining: number }
+    | { type: 'orbs-locked', cells: number[], credits: number[] }
+    | { type: 'respins-reset', respins: number }
+    | { type: 'respin-missed', remaining: number }
+    | { type: 'hold-and-spin-ended', totalCredits: number, filled: boolean }
+    | { type: 'flag-drawn', flag: PachisloFlag }
+    | { type: 'flag-stocked', flag: PachisloFlag, queueDepth: number }
+    | { type: 'flag-realized', flag: PachisloFlag }
+    | { type: 'replay-granted' }
+    | { type: 'bonus-started', bonus: 'reg' | 'big' }
+    | { type: 'jac-round-complete', round: number }
+    | { type: 'interlude-started', index: 1 | 2 }
+    | { type: 'interlude-ended', index: 1 | 2, bells: number }
+    | { type: 'bonus-ended', bonus: 'reg' | 'big' }
+
 export interface SpinOutcome {
   machineId: string
   family: MachineFamily
   coins: number
+  gameKind: GameKind
+  /** actual cost of THIS spin: 0 for free spins/respins/replay games, jac/interlude cost during bonuses */
+  coinsIn: number
   /**
    * Strip stop index per reel. Semantics by family: bally-em & video = the
    * TOP-ROW cell index (rows are stop, stop+1, stop+2); stepper = the payline
@@ -204,5 +382,6 @@ export interface SpinOutcome {
   wins: LineWin[]
   totalPayout: number
   progressiveEvents: ProgressiveEvent[]
+  featureEvents: FeatureEvent[]
   trace: SpinTrace
 }

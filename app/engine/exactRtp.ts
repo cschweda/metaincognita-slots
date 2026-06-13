@@ -70,6 +70,9 @@ export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpR
     case 'bally-em':
       weights = ballyWeights(def)
       break
+    case 'video':
+    case 'pachislo':
+      throw new Error(`${def.family} family lands later in Plan 2`)
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
