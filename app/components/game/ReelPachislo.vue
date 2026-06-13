@@ -54,7 +54,7 @@ function labelFor(sym: string): string {
           />
           STOCK {{ queueDepth > 0 ? `· ${queueDepth}` : '' }}
         </span>
-        <span class="text-neutral-500">Level {{ ps.oddsLevel }}</span>
+        <span class="text-neutral-400">Level {{ ps.oddsLevel }}</span>
       </div>
       <span
         v-if="ps.replayNext"
@@ -95,7 +95,7 @@ function labelFor(sym: string): string {
         </div>
         <div
           v-if="presses"
-          class="text-center text-[10px] font-mono text-neutral-500"
+          class="text-center text-[10px] font-mono text-neutral-400"
         >
           press {{ presses[r]!.press }} → stop {{ presses[r]!.stop }}
           <span :class="presses[r]!.slipUsed > 0 ? 'text-amber-400' : ''">(slip {{ presses[r]!.slipUsed }})</span>

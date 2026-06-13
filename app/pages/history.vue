@@ -39,15 +39,15 @@ function exportLog() {
       </UButton>
     </div>
     <div class="rounded-xl bg-neutral-900/70 border border-neutral-800 px-4 py-2.5 font-mono text-sm flex gap-6">
-      <span class="text-neutral-500">Games <span class="text-neutral-200">{{ store.stats.spins.toLocaleString() }}</span></span>
-      <span class="text-neutral-500">Wagered <span class="text-neutral-200">{{ formatCents(store.stats.totalInCents) }}</span></span>
-      <span class="text-neutral-500">Net <span :class="net >= 0 ? 'text-emerald-400' : 'text-red-400'">{{ formatSignedCents(net) }}</span></span>
+      <span class="text-neutral-400">Games <span class="text-neutral-200">{{ store.stats.spins.toLocaleString() }}</span></span>
+      <span class="text-neutral-400">Wagered <span class="text-neutral-200">{{ formatCents(store.stats.totalInCents) }}</span></span>
+      <span class="text-neutral-400">Net <span :class="net >= 0 ? 'text-emerald-400' : 'text-red-400'">{{ formatSignedCents(net) }}</span></span>
     </div>
     <div class="rounded-xl border border-neutral-800 overflow-hidden max-h-[60vh] overflow-y-auto">
       <HistoryTable />
       <div
         v-if="store.history.length === 0"
-        class="p-8 text-center text-neutral-600 text-sm"
+        class="p-8 text-center text-neutral-400 text-sm"
       >
         No games yet. The reels remember everything once you start.
       </div>

@@ -14,7 +14,7 @@ const lastWin = computed(() => {
   <div class="flex items-center justify-between rounded-xl bg-neutral-900 border border-neutral-800 px-4 py-2.5 font-mono">
     <div class="flex items-baseline gap-6">
       <div>
-        <div class="text-[10px] uppercase tracking-widest text-neutral-500">
+        <div class="text-[10px] uppercase tracking-widest text-neutral-400">
           Credits
         </div>
         <div class="text-2xl text-amber-300">
@@ -22,7 +22,7 @@ const lastWin = computed(() => {
         </div>
       </div>
       <div>
-        <div class="text-[10px] uppercase tracking-widest text-neutral-500">
+        <div class="text-[10px] uppercase tracking-widest text-neutral-400">
           Bankroll
         </div>
         <div class="text-sm text-emerald-400">
@@ -31,7 +31,7 @@ const lastWin = computed(() => {
       </div>
     </div>
     <div class="text-right">
-      <div class="text-[10px] uppercase tracking-widest text-neutral-500">
+      <div class="text-[10px] uppercase tracking-widest text-neutral-400">
         Last win
       </div>
       <div

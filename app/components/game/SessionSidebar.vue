@@ -36,30 +36,42 @@ const intel = computed(() => def.value === null ? null : floorIntel(def.value, o
     >
       <tbody class="divide-y divide-neutral-800/50">
         <tr>
-          <td class="py-1 text-neutral-500">
+          <th
+            scope="row"
+            class="py-1 text-left font-normal text-neutral-400"
+          >
             Games
-          </td><td class="py-1 text-right text-neutral-200">
+          </th><td class="py-1 text-right text-neutral-200">
             {{ store.stats.spins.toLocaleString() }}
           </td>
         </tr>
         <tr>
-          <td class="py-1 text-neutral-500">
+          <th
+            scope="row"
+            class="py-1 text-left font-normal text-neutral-400"
+          >
             Wagered
-          </td><td class="py-1 text-right text-neutral-200">
+          </th><td class="py-1 text-right text-neutral-200">
             {{ formatCents(store.stats.totalInCents) }}
           </td>
         </tr>
         <tr>
-          <td class="py-1 text-neutral-500">
+          <th
+            scope="row"
+            class="py-1 text-left font-normal text-neutral-400"
+          >
             Returned
-          </td><td class="py-1 text-right text-neutral-200">
+          </th><td class="py-1 text-right text-neutral-200">
             {{ formatCents(store.stats.totalOutCents) }}
           </td>
         </tr>
         <tr>
-          <td class="py-1 text-neutral-500">
+          <th
+            scope="row"
+            class="py-1 text-left font-normal text-neutral-400"
+          >
             Net
-          </td><td
+          </th><td
             class="py-1 text-right"
             :class="net >= 0 ? 'text-emerald-400' : 'text-red-400'"
           >
@@ -67,23 +79,32 @@ const intel = computed(() => def.value === null ? null : floorIntel(def.value, o
           </td>
         </tr>
         <tr>
-          <td class="py-1 text-neutral-500">
+          <th
+            scope="row"
+            class="py-1 text-left font-normal text-neutral-400"
+          >
             Peak
-          </td><td class="py-1 text-right text-neutral-200">
+          </th><td class="py-1 text-right text-neutral-200">
             {{ formatSignedCents(store.stats.netPeakCents) }}
           </td>
         </tr>
         <tr>
-          <td class="py-1 text-neutral-500">
+          <th
+            scope="row"
+            class="py-1 text-left font-normal text-neutral-400"
+          >
             Max drawdown
-          </td><td class="py-1 text-right text-neutral-200">
+          </th><td class="py-1 text-right text-neutral-200">
             {{ formatCents(store.stats.maxDrawdownCents) }}
           </td>
         </tr>
         <tr v-if="sessionRtp !== null">
-          <td class="py-1 text-neutral-500">
+          <th
+            scope="row"
+            class="py-1 text-left font-normal text-neutral-400"
+          >
             Session RTP
-          </td><td class="py-1 text-right text-neutral-200">
+          </th><td class="py-1 text-right text-neutral-200">
             {{ formatPercent(sessionRtp) }}
           </td>
         </tr>
@@ -103,23 +124,32 @@ const intel = computed(() => def.value === null ? null : floorIntel(def.value, o
       >
         <tbody class="divide-y divide-neutral-800/50">
           <tr>
-            <td class="py-1 text-neutral-500">
+            <th
+              scope="row"
+              class="py-1 text-left font-normal text-neutral-400"
+            >
               Exact RTP
-            </td><td class="py-1 text-right text-emerald-400">
+            </th><td class="py-1 text-right text-emerald-400">
               {{ formatPercent(intel.rtp, 4) }}
             </td>
           </tr>
           <tr>
-            <td class="py-1 text-neutral-500">
+            <th
+              scope="row"
+              class="py-1 text-left font-normal text-neutral-400"
+            >
               Hit frequency
-            </td><td class="py-1 text-right text-neutral-200">
+            </th><td class="py-1 text-right text-neutral-200">
               {{ formatPercent(intel.hitFrequency) }}
             </td>
           </tr>
           <tr>
-            <td class="py-1 text-neutral-500">
+            <th
+              scope="row"
+              class="py-1 text-left font-normal text-neutral-400"
+            >
               Volatility
-            </td><td class="py-1 text-right text-neutral-200">
+            </th><td class="py-1 text-right text-neutral-200">
               {{ intel.sdPerCoin.toFixed(2) }} sd/coin
             </td>
           </tr>

@@ -134,7 +134,7 @@ function meterCents(credits: number): string {
       </div>
     </div>
 
-    <div class="flex items-center justify-between text-[10px] font-mono text-neutral-500">
+    <div class="flex items-center justify-between text-[10px] font-mono text-neutral-400">
       <span>{{ def.stops }} uniform stops/reel — no weighting, 1979 honesty</span>
       <span
         v-if="payoutFlavor"

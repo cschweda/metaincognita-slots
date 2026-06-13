@@ -73,7 +73,7 @@ function spin() {
       </template>
       <template v-else>
         <span class="font-mono text-sm text-neutral-200">{{ betLabel }}</span>
-        <span class="text-[10px] text-neutral-500">{{ fixedReason }}</span>
+        <span class="text-[10px] text-neutral-400">{{ fixedReason }}</span>
       </template>
     </div>
 

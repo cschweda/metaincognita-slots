@@ -1,10 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 
 const store = useSlotsStore()
 const route = useRoute()
 const onFloor = computed(() => route.path === '/')
+
+// Mirror the store's announcement into a local ref, clearing it first so the
+// rendered text always changes — otherwise screen readers suppress a duplicate
+// (e.g. a pachislo replay or a zero-pay free spin at an unchanged balance).
+const announced = ref('')
+watch(() => store.liveAnnouncement, (msg) => {
+  announced.value = ''
+  void nextTick(() => {
+    announced.value = msg
+  })
+})
 
 const navItems = [
   { to: '/history', icon: 'i-lucide-scroll-text', label: 'History' }
@@ -31,7 +42,7 @@ const navItems = [
         </NuxtLink>
         <span
           v-else
-          class="text-xs text-neutral-600"
+          class="text-xs text-neutral-400"
         >
           <span class="text-amber-500/60">Slots</span> Simulator
         </span>
@@ -41,7 +52,7 @@ const navItems = [
         class="flex items-center gap-1"
       >
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
-        <span class="text-[10px] text-neutral-500">Session active</span>
+        <span class="text-[10px] text-neutral-400">Session active</span>
       </div>
     </nav>
 
@@ -49,7 +60,7 @@ const navItems = [
       aria-live="polite"
       class="sr-only"
     >
-      {{ store.liveAnnouncement }}
+      {{ announced }}
     </div>
 
     <main class="flex-1 min-h-0 overflow-y-auto">
@@ -65,7 +76,7 @@ const navItems = [
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
-          class="flex items-center gap-1.5 text-xs transition-colors text-neutral-500 hover:text-neutral-300"
+          class="flex items-center gap-1.5 text-xs transition-colors text-neutral-400 hover:text-neutral-300"
           active-class=""
           exact-active-class="text-amber-400 hover:text-amber-300"
         >

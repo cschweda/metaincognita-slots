@@ -104,7 +104,7 @@ const internals = computed(() => {
       v-if="sparkline"
       class="space-y-1"
     >
-      <div class="flex items-center justify-between text-[10px] text-neutral-500">
+      <div class="flex items-center justify-between text-[10px] text-neutral-400">
         <span>Session RTP vs exact</span>
         <span
           v-if="sessionRtp !== null"
@@ -139,7 +139,7 @@ const internals = computed(() => {
       v-if="presses"
       class="space-y-1"
     >
-      <div class="text-[10px] text-neutral-500 uppercase tracking-wider">
+      <div class="text-[10px] text-neutral-400 uppercase tracking-wider">
         Presses → control
       </div>
       <table class="w-full font-mono text-[11px]">
@@ -148,22 +148,25 @@ const internals = computed(() => {
             v-for="p in presses"
             :key="p.reel"
           >
-            <td class="py-0.5 text-neutral-400">
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
               reel {{ p.reel + 1 }}
-            </td>
+            </th>
             <td class="py-0.5 text-right">
               press {{ p.press }}
             </td>
             <td
               class="py-0.5 text-right"
-              :class="p.slipUsed > 0 ? 'text-amber-300' : 'text-neutral-500'"
+              :class="p.slipUsed > 0 ? 'text-amber-300' : 'text-neutral-400'"
             >
               slip {{ p.slipUsed }}
             </td>
             <td class="py-0.5 text-right text-neutral-300">
               stop {{ p.stop }}
             </td>
-            <td class="py-0.5 text-right text-neutral-500">
+            <td class="py-0.5 text-right text-neutral-400">
               {{ p.target ?? 'avoid wins' }}
             </td>
           </tr>
@@ -175,7 +178,7 @@ const internals = computed(() => {
       v-if="virtualStops"
       class="space-y-1"
     >
-      <div class="text-[10px] text-neutral-500 uppercase tracking-wider">
+      <div class="text-[10px] text-neutral-400 uppercase tracking-wider">
         Virtual → physical (Telnaes)
       </div>
       <table class="w-full font-mono text-[11px]">
@@ -184,9 +187,12 @@ const internals = computed(() => {
             v-for="v in virtualStops"
             :key="v.reel"
           >
-            <td class="py-0.5 text-neutral-400">
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
               reel {{ v.reel + 1 }}
-            </td>
+            </th>
             <td class="py-0.5 text-right">
               virtual {{ v.virtualIndex }}/{{ v.virtualSize }}
             </td>
@@ -205,7 +211,7 @@ const internals = computed(() => {
       v-if="draws.length"
       class="space-y-1"
     >
-      <div class="text-[10px] text-neutral-500 uppercase tracking-wider">
+      <div class="text-[10px] text-neutral-400 uppercase tracking-wider">
         RNG draws (this game)
       </div>
       <div class="max-h-36 overflow-y-auto font-mono text-[11px] divide-y divide-neutral-800/50">
@@ -215,7 +221,7 @@ const internals = computed(() => {
           class="flex justify-between py-0.5"
         >
           <span class="text-neutral-400">{{ d.label }}</span>
-          <span class="text-neutral-300">{{ d.value }} <span class="text-neutral-600">/ {{ d.range }}</span></span>
+          <span class="text-neutral-300">{{ d.value }} <span class="text-neutral-400">/ {{ d.range }}</span></span>
         </div>
       </div>
     </div>
@@ -224,7 +230,7 @@ const internals = computed(() => {
       v-if="internals.length"
       class="space-y-1"
     >
-      <div class="text-[10px] text-neutral-500 uppercase tracking-wider">
+      <div class="text-[10px] text-neutral-400 uppercase tracking-wider">
         Machine internals
       </div>
       <table class="w-full font-mono text-[11px]">
@@ -233,9 +239,12 @@ const internals = computed(() => {
             v-for="row in internals"
             :key="row.k"
           >
-            <td class="py-0.5 text-neutral-500">
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
               {{ row.k }}
-            </td>
+            </th>
             <td class="py-0.5 text-right text-neutral-300">
               {{ row.v }}
             </td>

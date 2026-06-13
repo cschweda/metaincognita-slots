@@ -144,7 +144,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
           v-if="tab === 'strips'"
           class="space-y-2"
         >
-          <p class="text-[11px] text-neutral-500">
+          <p class="text-[11px] text-neutral-400">
             <template v-if="def.family === 'stepper'">
               Physical stops are what you watch; the RNG draws over the VIRTUAL entries (Telnaes 1984).
             </template>
@@ -160,7 +160,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
           </p>
           <table class="w-full text-xs font-mono">
             <thead>
-              <tr class="text-neutral-500 text-left">
+              <tr class="text-neutral-400 text-left">
                 <th
                   scope="col"
                   class="py-1 pr-3"
@@ -229,7 +229,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
             v-if="pachisloRates"
             class="space-y-1"
           >
-            <div class="text-[11px] text-neutral-500">
+            <div class="text-[11px] text-neutral-400">
               Flag lottery at level {{ pachisloLevel }} (counts of 16384 per game):
             </div>
             <table class="w-full text-xs font-mono">
@@ -247,7 +247,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
                   <td class="py-1 text-right text-neutral-400">
                     {{ row.n }} / 16384
                   </td>
-                  <td class="py-1 text-right text-neutral-500">
+                  <td class="py-1 text-right text-neutral-400">
                     {{ formatOdds(row.n / 16384) }}
                   </td>
                 </tr>
@@ -255,7 +255,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
             </table>
             <div
               v-if="bonusValues"
-              class="text-[11px] text-neutral-500"
+              class="text-[11px] text-neutral-400"
             >
               E[REG] = {{ bonusValues.regOut }} tokens gross · E[BIG] = {{ bonusValues.bigOut.toFixed(2) }} tokens
               (ceiling {{ bonusValues.bigMaxOut }} — the manual's "35 payouts")
@@ -269,7 +269,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
         >
           <div
             v-if="computing"
-            class="text-sm text-neutral-500"
+            class="text-sm text-neutral-400"
           >
             Enumerating the complete cycle…
             <span v-if="def.family === 'video'">(all 7,962,624 reel states — about a second)</span>
@@ -277,7 +277,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
           <template v-else-if="report">
             <div class="grid grid-cols-3 gap-2 font-mono text-center">
               <div class="rounded-lg bg-neutral-950 border border-neutral-800 px-2 py-2">
-                <div class="text-[9px] uppercase tracking-widest text-neutral-500">
+                <div class="text-[9px] uppercase tracking-widest text-neutral-400">
                   Exact RTP
                 </div>
                 <div class="text-emerald-400">
@@ -285,7 +285,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
                 </div>
               </div>
               <div class="rounded-lg bg-neutral-950 border border-neutral-800 px-2 py-2">
-                <div class="text-[9px] uppercase tracking-widest text-neutral-500">
+                <div class="text-[9px] uppercase tracking-widest text-neutral-400">
                   Hit freq
                 </div>
                 <div class="text-neutral-200">
@@ -293,7 +293,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
                 </div>
               </div>
               <div class="rounded-lg bg-neutral-950 border border-neutral-800 px-2 py-2">
-                <div class="text-[9px] uppercase tracking-widest text-neutral-500">
+                <div class="text-[9px] uppercase tracking-widest text-neutral-400">
                   Volatility
                 </div>
                 <div class="text-neutral-200">
@@ -303,7 +303,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
             </div>
             <table class="w-full text-xs font-mono">
               <thead>
-                <tr class="text-neutral-500 text-left">
+                <tr class="text-neutral-400 text-left">
                   <th
                     scope="col"
                     class="py-1 pr-2"
@@ -352,11 +352,11 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
             </table>
             <p
               v-if="def.family === 'pachislo'"
-              class="text-[10px] text-neutral-600"
+              class="text-[10px] text-neutral-400"
             >
               Pachislo column is each flag's renewal value ÷ tokens in (so probability × value = RTP share), not credits paid.
             </p>
-            <p class="text-[10px] text-neutral-600">
+            <p class="text-[10px] text-neutral-400">
               RTP-share column sums to the exact RTP. Every figure derives from the machine definition at render time.
             </p>
           </template>

@@ -44,12 +44,13 @@ onUnmounted(() => {
     <div class="flex items-center justify-between">
       <h1 class="text-lg font-bold text-neutral-100">
         {{ store.currentDef.name }}
-        <span class="text-[10px] uppercase tracking-widest text-neutral-500 ml-2">{{ store.currentDef.family }}</span>
+        <span class="text-[10px] uppercase tracking-widest text-neutral-400 ml-2">{{ store.currentDef.family }}</span>
       </h1>
       <div class="flex items-center gap-2">
         <UButton
           :color="store.settings.xray ? 'primary' : 'neutral'"
           :variant="store.settings.xray ? 'solid' : 'outline'"
+          :aria-pressed="store.settings.xray"
           size="xs"
           icon="i-lucide-scan-line"
           @click="store.setXray(!store.settings.xray)"

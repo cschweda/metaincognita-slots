@@ -74,6 +74,9 @@ export function usePachisloPress() {
     armed.value = false
     if (rafId !== null) cancelAnimationFrame(rafId)
     rafId = null
+    // also clear reel state so re-entering the floor doesn't flash stale stops
+    pressed.value = [null, null, null]
+    positions.value = [0, 7, 14]
   }
 
   const canArm = computed(() => {

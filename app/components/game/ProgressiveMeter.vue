@@ -20,7 +20,7 @@ const cents = computed<number | null>(() => {
     class="flex items-baseline gap-2"
     data-test="percent-meter"
   >
-    <span class="text-[10px] uppercase tracking-widest text-neutral-500">{{ label ?? 'Progressive' }}</span>
+    <span class="text-[10px] uppercase tracking-widest text-neutral-400">{{ label ?? 'Progressive' }}</span>
     <span class="text-amber-300 font-mono">{{ formatCents(cents) }}</span>
   </div>
 </template>

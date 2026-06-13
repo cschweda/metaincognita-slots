@@ -32,7 +32,7 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
         <span class="text-amber-400">Slots</span>
         <span class="text-neutral-300"> Simulator</span>
       </h1>
-      <p class="text-neutral-500 text-sm">
+      <p class="text-neutral-400 text-sm">
         Eight authentic machines. Every number computed, never asserted — flip the X-ray on and see the guts.
       </p>
     </div>
@@ -42,14 +42,15 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
     <template v-else>
       <div class="flex items-center justify-between rounded-xl bg-neutral-900/70 border border-neutral-800 px-4 py-2.5">
         <div class="text-sm">
-          <span class="text-neutral-500">Bankroll </span>
+          <span class="text-neutral-400">Bankroll </span>
           <span class="text-emerald-400 font-mono">{{ formatCents(store.bankrollCents) }}</span>
-          <span class="text-neutral-600 font-mono text-xs ml-3">{{ store.stats.spins.toLocaleString() }} games this session</span>
+          <span class="text-neutral-400 font-mono text-xs ml-3">{{ store.stats.spins.toLocaleString() }} games this session</span>
         </div>
         <div class="flex items-center gap-3">
           <UButton
             :color="store.settings.xray ? 'primary' : 'neutral'"
             :variant="store.settings.xray ? 'solid' : 'outline'"
+            :aria-pressed="store.settings.xray"
             size="xs"
             icon="i-lucide-scan-line"
             @click="store.setXray(!store.settings.xray)"
@@ -73,7 +74,7 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
         :key="group.family"
         class="space-y-3"
       >
-        <h2 class="text-xs uppercase tracking-widest text-neutral-500">
+        <h2 class="text-xs uppercase tracking-widest text-neutral-400">
           {{ group.heading }}
         </h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

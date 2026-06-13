@@ -54,7 +54,7 @@ function labelFor(sym: string): string {
     class="rounded-xl bg-neutral-900 border border-neutral-800 p-4 space-y-3"
   >
     <div class="flex items-center justify-between text-[11px] font-mono">
-      <span class="text-neutral-500 uppercase tracking-widest">{{ def.physicalStrips.length }} reels · single payline</span>
+      <span class="text-neutral-400 uppercase tracking-widest">{{ def.physicalStrips.length }} reels · single payline</span>
       <GameProgressiveMeter
         :def="def"
         label="Jackpot"

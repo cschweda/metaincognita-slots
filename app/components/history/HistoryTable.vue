@@ -10,26 +10,47 @@ const rows = computed(() => [...store.history].reverse())
 <template>
   <table class="w-full text-sm">
     <thead class="bg-neutral-900/80 sticky top-0">
-      <tr class="text-neutral-500 text-xs uppercase tracking-wider">
-        <th class="px-4 py-2.5 text-left">
+      <tr class="text-neutral-400 text-xs uppercase tracking-wider">
+        <th
+          scope="col"
+          class="px-4 py-2.5 text-left"
+        >
           #
         </th>
-        <th class="px-4 py-2.5 text-left">
+        <th
+          scope="col"
+          class="px-4 py-2.5 text-left"
+        >
           Machine
         </th>
-        <th class="px-4 py-2.5 text-left">
+        <th
+          scope="col"
+          class="px-4 py-2.5 text-left"
+        >
           Game
         </th>
-        <th class="px-4 py-2.5 text-right">
+        <th
+          scope="col"
+          class="px-4 py-2.5 text-right"
+        >
           Bet
         </th>
-        <th class="px-4 py-2.5 text-right">
+        <th
+          scope="col"
+          class="px-4 py-2.5 text-right"
+        >
           Win
         </th>
-        <th class="px-4 py-2.5 text-right">
+        <th
+          scope="col"
+          class="px-4 py-2.5 text-right"
+        >
           Net
         </th>
-        <th class="px-4 py-2.5 text-left">
+        <th
+          scope="col"
+          class="px-4 py-2.5 text-left"
+        >
           Awards
         </th>
       </tr>
