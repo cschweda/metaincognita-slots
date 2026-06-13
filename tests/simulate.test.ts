@@ -46,8 +46,8 @@ describe('simulateMachine', () => {
     const r = simulateMachine(DIAMOND_DOUBLER, { spins: 50_000, coins: 3, seed: 11, progressiveMode: 'static' })
     expect(r.totalIn).toBe(50_000 * 3)
     expect(r.rtp).toBeCloseTo(r.totalOut / r.totalIn, 12)
-    expect(r.hitRate).toBeGreaterThan(0.10)
-    expect(r.hitRate).toBeLessThan(0.20)
+    expect(r.hitFrequency).toBeGreaterThan(0.10)
+    expect(r.hitFrequency).toBeLessThan(0.20)
     expect(r.maxDrawdown).toBeGreaterThan(0)
   })
 

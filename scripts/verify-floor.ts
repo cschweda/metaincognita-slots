@@ -41,7 +41,7 @@ FLOOR.forEach((def, i) => {
   const pass = delta < 3.5 * se
   allPass &&= pass
   console.log(
-    `${def.id.padEnd(22)}${String(coins).padStart(3)}   ${pct(exact.rtpPerCoin)}  ${pct(sim.rtp)}  ${pct(delta)}  ${pct(exact.hitFrequency)}  ${pct(sim.hitRate)}  ${String(sim.jackpotHits).padStart(8)}  ${pass ? 'PASS' : 'FAIL'}`
+    `${def.id.padEnd(22)}${String(coins).padStart(3)}   ${pct(exact.rtpPerCoin)}  ${pct(sim.rtp)}  ${pct(delta)}  ${pct(exact.hitFrequency)}  ${pct(sim.hitFrequency)}  ${String(sim.jackpotHits).padStart(8)}  ${pass ? 'PASS' : 'FAIL'}`
   )
 })
 

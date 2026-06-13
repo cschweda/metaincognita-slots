@@ -3,7 +3,7 @@ import { resolve } from 'path'
 
 export default defineConfig({
   test: {
-    environment: 'happy-dom',
+    environment: 'node',
     testTimeout: 180_000
   },
   resolve: {

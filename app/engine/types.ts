@@ -192,7 +192,12 @@ export interface SpinOutcome {
   machineId: string
   family: MachineFamily
   coins: number
-  /** physical stop index per reel */
+  /**
+   * Strip stop index per reel. Semantics by family: bally-em & video = the
+   * TOP-ROW cell index (rows are stop, stop+1, stop+2); stepper = the payline
+   * cell index (rows are stop-1, stop, stop+1); pachislo = the top-row cell
+   * index AFTER control/slip resolution.
+   */
   stops: number[]
   /** grid[reel] = visible symbols; bally rows [top, center, bottom], stepper [above, payline, below] */
   grid: SymbolId[][]

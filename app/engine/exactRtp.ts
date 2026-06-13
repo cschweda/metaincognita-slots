@@ -59,7 +59,19 @@ function ballyWeights(def: BallyEmMachineDef): Map<SymbolId, number>[] {
  */
 export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpReport {
   const coins = opts.coins ?? def.maxCoins
-  const weights = def.family === 'stepper' ? stepperWeights(def) : ballyWeights(def)
+  let weights: Map<SymbolId, number>[]
+  switch (def.family) {
+    case 'stepper':
+      weights = stepperWeights(def)
+      break
+    case 'bally-em':
+      weights = ballyWeights(def)
+      break
+    default: {
+      const exhaustive: never = def
+      throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
+    }
+  }
   const totals = weights.map(w => [...w.values()].reduce((a, b) => a + b, 0))
   const denom = totals.reduce((a, b) => a * b, 1)
 

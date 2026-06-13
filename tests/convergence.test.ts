@@ -38,7 +38,7 @@ describe('convergence: simulation reproduces exact math', () => {
       expect(Math.abs(sim.rtp - exact.rtpPerCoin)).toBeLessThan(3.5 * se)
       // hit frequency: binomial SE
       const hfSe = Math.sqrt(exact.hitFrequency * (1 - exact.hitFrequency) / c.spins)
-      expect(Math.abs(sim.hitRate - exact.hitFrequency)).toBeLessThan(3.5 * hfSe)
+      expect(Math.abs(sim.hitFrequency - exact.hitFrequency)).toBeLessThan(3.5 * hfSe)
     })
   }
 

@@ -23,9 +23,16 @@ export function spin(
   coins: number,
   rand: RandomFn
 ): SpinOutcome {
-  return def.family === 'stepper'
-    ? spinStepper(def, state, coins, rand)
-    : spinBallyEm(def, state, coins, rand)
+  switch (def.family) {
+    case 'stepper':
+      return spinStepper(def, state, coins, rand)
+    case 'bally-em':
+      return spinBallyEm(def, state, coins, rand)
+    default: {
+      const exhaustive: never = def
+      throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
+    }
+  }
 }
 
 export interface SimOptions {
@@ -48,10 +55,12 @@ export interface SimResult {
   totalIn: number
   totalOut: number
   rtp: number
-  hitRate: number
+  /** fraction of spins with at least one win (vocabulary matches ExactRtpReport.hitFrequency) */
+  hitFrequency: number
   jackpotHits: number
   /** deepest credits-below-peak point of the cumulative net curve */
   maxDrawdown: number
+  /** win COUNT per paytable entry id — multiple wins of one entry in a spin all count */
   byEntry: Record<string, number>
 }
 
@@ -88,7 +97,7 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
     totalIn,
     totalOut,
     rtp: totalOut / totalIn,
-    hitRate: hits / opts.spins,
+    hitFrequency: hits / opts.spins,
     jackpotHits,
     maxDrawdown,
     byEntry
