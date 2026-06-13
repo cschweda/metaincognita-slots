@@ -8,7 +8,7 @@ import { liveRand } from '~/utils/liveRand'
 export const STORAGE_KEY = 'slots-simulator-session'
 const STORAGE_VERSION = 1
 const HISTORY_LIMIT = 1000
-export const SPARKLINE_EVERY = 10
+const SPARKLINE_EVERY = 10
 const SPARKLINE_LIMIT = 120
 
 export interface SpinRecord {
@@ -22,7 +22,7 @@ export interface SpinRecord {
   t: number
 }
 
-export interface SessionStats {
+interface SessionStats {
   spins: number
   totalInCents: number
   totalOutCents: number
@@ -30,7 +30,7 @@ export interface SessionStats {
   maxDrawdownCents: number
 }
 
-export interface MachineTotals {
+interface MachineTotals {
   inCents: number
   outCents: number
   cycles: number
@@ -38,7 +38,7 @@ export interface MachineTotals {
   samples: number[]
 }
 
-export interface SlotsSettings {
+interface SlotsSettings {
   xray: boolean
   betsByMachine: Record<string, number>
 }
@@ -64,6 +64,9 @@ function asNonNegativeInt(value: unknown, fallback: number): number {
 const PACHISLO_FLAGS: PachisloFlag[] = [
   'cherry-top', 'cherry-mid', 'cherry-bot', 'watermelon', 'bell', 'replay', 'reg', 'big'
 ]
+
+/** The only gameKind values the engine emits — anything else loads as 'base'. */
+const GAME_KINDS = new Set(['base', 'normal', 'free-spin', 'respin', 'jac', 'interlude'])
 
 /** Coerce a persisted machine state to a VALID one for this def, else fresh. */
 function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionState {
@@ -303,7 +306,6 @@ export const useSlotsStore = defineStore('slots', {
 
         this.bankrollCents = Math.max(0, Math.floor(asFiniteNumber(data.bankrollCents, 0)))
         this.phase = data.phase === 'playing' ? 'playing' : 'floor'
-        this.nextRecordId = Math.max(1, asNonNegativeInt(data.nextRecordId, 1))
 
         const states: Record<string, MachineSessionState> = {}
         const rawStates = (data.machineStates ?? {}) as Record<string, unknown>
@@ -327,7 +329,7 @@ export const useSlotsStore = defineStore('slots', {
               return [{
                 id: asNonNegativeInt(e.id, 0),
                 machineId: e.machineId,
-                gameKind: typeof e.gameKind === 'string' ? e.gameKind : 'base',
+                gameKind: typeof e.gameKind === 'string' && GAME_KINDS.has(e.gameKind) ? e.gameKind : 'base',
                 coins: asNonNegativeInt(e.coins, 1),
                 coinsInCents: asNonNegativeInt(e.coinsInCents, 0),
                 payoutCents: asNonNegativeInt(e.payoutCents, 0),
@@ -337,12 +339,17 @@ export const useSlotsStore = defineStore('slots', {
             }).slice(-HISTORY_LIMIT)
           : []
 
+        // Keep new ids past every restored one so a corrupt/missing counter
+        // can't mint a SpinRecord id that collides with restored history.
+        const maxHistoryId = this.history.reduce((m, r) => Math.max(m, r.id), 0)
+        this.nextRecordId = Math.max(asNonNegativeInt(data.nextRecordId, 1), maxHistoryId + 1, 1)
+
         const rawStats = (data.stats ?? {}) as Record<string, unknown>
         this.stats = {
           spins: asNonNegativeInt(rawStats.spins, 0),
           totalInCents: asNonNegativeInt(rawStats.totalInCents, 0),
           totalOutCents: asNonNegativeInt(rawStats.totalOutCents, 0),
-          netPeakCents: asFiniteNumber(rawStats.netPeakCents, 0),
+          netPeakCents: Math.max(0, asFiniteNumber(rawStats.netPeakCents, 0)),
           maxDrawdownCents: asNonNegativeInt(rawStats.maxDrawdownCents, 0)
         }
 
@@ -403,8 +410,8 @@ export const useSlotsStore = defineStore('slots', {
       if (costCents > this.bankrollCents) {
         const inBonus = state.pachislo !== null && state.pachislo.bonus !== null
         this.liveAnnouncement = inBonus
-          ? 'Insufficient credits — bonus in progress. Insert more credits.'
-          : 'Insufficient credits.'
+          ? 'Out of credits mid-bonus — play another machine to rebuild your bankroll, or end the session.'
+          : 'Out of credits — play another machine to rebuild your bankroll, or end the session.'
         return
       }
 

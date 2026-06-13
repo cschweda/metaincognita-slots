@@ -50,7 +50,7 @@ const denomTag = computed(() => store.currentDef ? denominationLabel(store.curre
         v-if="denomTag"
         data-test="denom-tag"
         class="rounded-full border border-neutral-700 bg-neutral-900 px-3 py-1 text-xs font-semibold text-neutral-300"
-      >{{ denomTag }}</span>
+      ><span aria-hidden="true">🪙 </span>{{ denomTag }}</span>
     </div>
   </div>
 </template>

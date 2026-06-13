@@ -12,4 +12,11 @@ describe('icon coverage', () => {
       }
     }
   })
+
+  it('returns null for unknown, undefined, and inherited keys', () => {
+    expect(symbolArt(undefined)).toBeNull()
+    expect(symbolArt('not-a-real-icon')).toBeNull()
+    expect(symbolArt('__proto__')).toBeNull() // no prototype-chain leakage
+    expect(symbolArt('hasOwnProperty')).toBeNull()
+  })
 })

@@ -193,6 +193,46 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(ps.replayNext).toBe(false)
     expect(ps.bonus).toBeNull() // invalid bonus shape → reset
   })
+
+  it('whitelists gameKind — a bogus kind loads as "base"', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1, bankrollCents: 1000, currentMachineId: null, machineStates: {},
+      history: [
+        { id: 1, machineId: 'canal-royale', gameKind: 'free-spin', coins: 25, coinsInCents: 25, payoutCents: 0, entryIds: [], t: 1 },
+        { id: 2, machineId: 'canal-royale', gameKind: 'evil', coins: 25, coinsInCents: 25, payoutCents: 0, entryIds: [], t: 2 }
+      ],
+      stats: null, settings: null
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    expect(store.history.map(r => r.gameKind)).toEqual(['free-spin', 'base'])
+  })
+
+  it('nextRecordId outruns every restored history id', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1, bankrollCents: 1000, currentMachineId: null, machineStates: {},
+      nextRecordId: 1, // corrupt: would collide with restored ids 5 and 6
+      history: [
+        { id: 5, machineId: 'canal-royale', gameKind: 'base', coins: 25, coinsInCents: 25, payoutCents: 0, entryIds: [], t: 1 },
+        { id: 6, machineId: 'canal-royale', gameKind: 'base', coins: 25, coinsInCents: 25, payoutCents: 0, entryIds: [], t: 2 }
+      ],
+      stats: null, settings: null
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    expect(store.nextRecordId).toBe(7)
+  })
+
+  it('clamps a negative netPeakCents to 0 on load', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1, bankrollCents: 1000, currentMachineId: null, machineStates: {},
+      history: [], settings: null,
+      stats: { spins: 0, totalInCents: 0, totalOutCents: 0, netPeakCents: -500, maxDrawdownCents: 0 }
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    expect(store.stats.netPeakCents).toBe(0)
+  })
 })
 
 describe('spin orchestration', () => {
@@ -227,7 +267,7 @@ describe('spin orchestration', () => {
     store.bankrollCents = 3 // < 25¢
     store.spinOnce()
     expect(store.history).toHaveLength(1)
-    expect(store.liveAnnouncement).toMatch(/insufficient/i)
+    expect(store.liveAnnouncement).toMatch(/out of credits/i)
   })
 
   it('feeds progressives with simulateMachine v2 parity (live mode, same seed)', () => {

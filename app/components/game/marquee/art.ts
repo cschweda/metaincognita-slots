@@ -1,7 +1,7 @@
 // app/components/game/marquee/art.ts
-export interface MarqueeArt { accent: string, heroIcon: string, tagline: string }
+interface MarqueeArt { accent: string, heroIcon: string, tagline: string }
 
-export const MACHINE_ART: Record<string, MarqueeArt> = {
+const MACHINE_ART: Record<string, MarqueeArt> = {
   'canal-royale': { accent: '#f59e0b', heroIcon: 'mask', tagline: '25-Line Venetian Video Slot' },
   'dragons-hoard': { accent: '#22c55e', heroIcon: 'dragon', tagline: '243-Ways Fortune Slot' },
   'thunder-vault': { accent: '#a78bfa', heroIcon: 'vault', tagline: 'Hold & Spin · Grand Jackpot' },

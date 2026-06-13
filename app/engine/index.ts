@@ -11,9 +11,8 @@ export * from './types'
 export { mulberry32, cryptoSeed } from './rng'
 export type { RandomFn } from './rng'
 export { exactRtp } from './exactRtp'
-export type { ExactRtpReport, ExactRtpOptions, ExactRtpBreakdownEntry } from './exactRtp'
+export type { ExactRtpReport } from './exactRtp'
 export { nearMisses } from './nearMiss'
-export type { NearMissCallout, NearMissKind } from './nearMiss'
 export { validateMachineDef } from './validate'
 export { initProgressiveState, addCoinToProgressive } from './progressive'
 
@@ -83,7 +82,7 @@ export function spin(
   }
 }
 
-export interface SimOptions {
+interface SimOptions {
   /**
    * Number of CYCLES: base games (video) / normal games (pachislo) / spins
    * (stepper, bally-em). Free spins, respins, JAC and interlude games are
@@ -103,7 +102,7 @@ export interface SimOptions {
   oddsLevel?: number
 }
 
-export interface SimResult {
+interface SimResult {
   machineId: string
   spins: number
   coins: number

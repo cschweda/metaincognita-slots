@@ -65,7 +65,7 @@ const badges = computed(() => {
       :key="i"
       data-test="line-num"
       class="absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md text-xs font-extrabold text-neutral-950"
-      :style="{ left: '18px', top: b.y + 'px', background: b.color }"
+      :style="{ left: (gutter / 2) + 'px', top: b.y + 'px', background: b.color }"
     >{{ b.n }}</span>
   </div>
 </template>

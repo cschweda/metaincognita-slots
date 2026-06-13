@@ -22,7 +22,7 @@ import type { SymbolId, VideoMachineDef } from './types'
  * seconds, and tests/PAR sheets call it repeatedly.
  */
 
-export interface JointAccumulators {
+interface JointAccumulators {
   denom: number
   anyWinOrTrigger: number
   sumB: number

@@ -6,11 +6,11 @@
 // SymbolIcon supplies the wrapper. Typographic ids (royals, sevens, bars) render
 // as styled text instead of art.
 
-export type SymbolArt
+type SymbolArt
   = | { kind: 'svg', body: string }
     | { kind: 'text', text: string, variant: 'royal' | 'seven' | 'bar', color?: string }
 
-export const SYMBOL_ART: Record<string, SymbolArt> = {
+const SYMBOL_ART: Record<string, SymbolArt> = {
   // ---- typographic ----
   'ace': { kind: 'text', text: 'A', variant: 'royal' },
   'king': { kind: 'text', text: 'K', variant: 'royal' },
@@ -54,5 +54,5 @@ export const SYMBOL_ART: Record<string, SymbolArt> = {
 
 export function symbolArt(iconId: string | undefined): SymbolArt | null {
   if (iconId === undefined) return null
-  return SYMBOL_ART[iconId] ?? null
+  return Object.prototype.hasOwnProperty.call(SYMBOL_ART, iconId) ? SYMBOL_ART[iconId]! : null
 }

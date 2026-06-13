@@ -21,7 +21,7 @@ export function ballyAwardForLine(line: SymbolId[], paytable: BallyAward[]): Bal
   return null
 }
 
-export interface StepperLineResult {
+interface StepperLineResult {
   entry: StepperAward
   wildCount: number
   payCredits: number

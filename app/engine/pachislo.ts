@@ -7,7 +7,7 @@ import type { RandomFn } from './rng'
 const N = 21
 
 /** active line row-patterns by token count (manual 2.1) */
-export const PACHISLO_LINES: number[][][] = [
+const PACHISLO_LINES: number[][][] = [
   [[1, 1, 1]],
   [[1, 1, 1], [0, 0, 0], [2, 2, 2]],
   [[1, 1, 1], [0, 0, 0], [2, 2, 2], [0, 1, 2], [2, 1, 0]]
@@ -38,14 +38,14 @@ const DELTAS: number[][] = (() => {
     || x[0]! - y[0]! || x[1]! - y[1]! || x[2]! - y[2]!)
 })()
 
-export type ComboFlag = 'watermelon' | 'bell' | 'replay' | 'reg' | 'big'
+type ComboFlag = 'watermelon' | 'bell' | 'replay' | 'reg' | 'big'
 
 export type ControlTarget
   = | { kind: 'combo', flag: ComboFlag }
     | { kind: 'cherry', row: number }
     | null
 
-export type PachisloHit
+type PachisloHit
   = | { kind: 'combo', flag: ComboFlag, rows: number[] }
     | { kind: 'cherry', row: number }
 
@@ -91,7 +91,7 @@ export function payingHits(def: PachisloMachineDef, stops: number[], tokens: num
   return hits
 }
 
-export interface ControlResult {
+interface ControlResult {
   stops: number[]
   slips: number[]
   realized: boolean

@@ -65,6 +65,7 @@ const barCount = computed(() => art.value?.kind === 'text' && art.value.variant 
 
     <span
       v-if="wild"
+      aria-hidden="true"
       class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-sm bg-amber-500 text-[8px] font-black tracking-wider text-amber-950 px-1.5 py-px"
     >WILD</span>
   </div>

@@ -86,7 +86,7 @@ function spin() {
         v-if="!canSpin && !store.spinning"
         class="text-[10px] text-red-400"
       >
-        {{ inFeature ? 'Insert more credits — bonus in progress' : 'Insufficient credits' }}
+        {{ inFeature ? 'Out of credits — bonus stalled' : 'Out of credits' }}
       </span>
       <UButton
         v-if="def.family !== 'pachislo'"
