@@ -37,7 +37,7 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
       </p>
     </div>
 
-    <BankrollSetup v-if="store.phase === 'floor'" />
+    <FloorBankrollSetup v-if="store.phase === 'floor'" />
 
     <template v-else>
       <div class="flex items-center justify-between rounded-xl bg-neutral-900/70 border border-neutral-800 px-4 py-2.5">
@@ -77,7 +77,7 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
           {{ group.heading }}
         </h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <MachineCard
+          <FloorMachineCard
             v-for="def in group.machines"
             :key="def.id"
             :def="def"

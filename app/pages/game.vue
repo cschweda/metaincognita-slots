@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineComponent, h, nextTick, onMounted, onUnmounted, ref, resolveComponent, watch } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 
 const store = useSlotsStore()
@@ -33,38 +33,6 @@ onMounted(() => {
 onUnmounted(() => {
   store.revealDone() // never leave the session locked
   window.removeEventListener('keydown', onKeydown)
-})
-
-/** Placeholder until Tasks 8-10 land the family surfaces. */
-const ReelPlaceholder = defineComponent({
-  setup() {
-    return () => h('div', {
-      class: 'flex items-center justify-center h-64 rounded-xl border border-dashed border-neutral-800 text-neutral-600 text-sm'
-    }, 'Reel surface lands in a later task')
-  }
-})
-
-function surfaceFor(name: string) {
-  const resolved = resolveComponent(name)
-  return typeof resolved === 'string' ? ReelPlaceholder : resolved
-}
-
-const surface = computed(() => {
-  switch (store.currentDef?.family) {
-    case 'video': return surfaceFor('GameReelVideo')
-    case 'stepper': return surfaceFor('GameReelStepper')
-    case 'bally-em': return surfaceFor('GameReelBally')
-    case 'pachislo': return surfaceFor('GameReelPachislo')
-    default: return ReelPlaceholder
-  }
-})
-
-// staging scaffold: real reel surfaces (Tasks 8-10) own revealDone; until then
-// the placeholder releases the lockout as soon as an outcome lands
-watch(() => store.lastOutcome, () => {
-  if (surface.value === ReelPlaceholder && store.spinning) {
-    nextTick(() => store.revealDone())
-  }
 })
 </script>
 
@@ -106,7 +74,22 @@ watch(() => store.lastOutcome, () => {
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3">
       <div class="relative space-y-3">
         <GameWinBanner />
-        <component :is="surface" />
+        <GameReelVideo
+          v-if="store.currentDef?.family === 'video'"
+          :key="store.currentMachineId ?? ''"
+        />
+        <GameReelStepper
+          v-else-if="store.currentDef?.family === 'stepper'"
+          :key="store.currentMachineId ?? ''"
+        />
+        <GameReelBally
+          v-else-if="store.currentDef?.family === 'bally-em'"
+          :key="store.currentMachineId ?? ''"
+        />
+        <GameReelPachislo
+          v-else-if="store.currentDef?.family === 'pachislo'"
+          :key="store.currentMachineId ?? ''"
+        />
         <GameBetControls>
           <template
             v-if="store.currentDef?.family === 'pachislo'"
