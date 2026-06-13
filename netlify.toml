@@ -8,10 +8,14 @@
   status = 200
 
 [[headers]]
+  # Non-CSP security headers for all routes.
+  # Content-Security-Policy is intentionally absent here — it is generated
+  # per-build with sha256 hashes by scripts/csp-hashes.mjs and written into
+  # dist/_headers (which Netlify processes before netlify.toml headers).
+  # Do NOT add a CSP line here; it would conflict with the hash-pinned version.
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
