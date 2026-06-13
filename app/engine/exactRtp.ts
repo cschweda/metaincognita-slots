@@ -53,7 +53,9 @@ function ballyWeights(def: BallyEmMachineDef): Map<SymbolId, number>[] {
 /**
  * Exact per-coin RTP by full enumeration of symbol tuples with integer weights.
  * Uses the SAME award functions as the spin evaluators, so display math and
- * gameplay math cannot diverge. All weight products are integers << 2^53.
+ * gameplay math cannot diverge. Weight products are integers << 2^53; pays may
+ * be fractional for odd progressive meters (meter/coins), but every sum stays
+ * exact to far beyond the 6-decimal frozen-test tolerance.
  */
 export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpReport {
   const coins = opts.coins ?? def.maxCoins
