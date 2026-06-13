@@ -86,7 +86,14 @@ watch(() => store.lastOutcome, () => {
       <div class="relative space-y-3">
         <GameWinBanner />
         <component :is="surface" />
-        <GameBetControls />
+        <GameBetControls>
+          <template
+            v-if="store.currentDef?.family === 'pachislo'"
+            #pachislo-controls
+          >
+            <GamePachisloControls />
+          </template>
+        </GameBetControls>
       </div>
       <aside class="space-y-3">
         <!-- SessionSidebar + XrayPanel land in Task 12 -->
