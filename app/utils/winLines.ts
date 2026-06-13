@@ -29,23 +29,32 @@ function symbolName(def: MachineDef, id: string): string {
 /** Turn an engine outcome's wins into ordered, colour-tagged display rows. */
 export function summariseWins(def: MachineDef, outcome: SpinOutcome | null): WinLine[] {
   if (outcome === null || !Array.isArray(outcome.wins) || outcome.wins.length === 0) return []
-  const lines = def.family === 'video' && def.betMode.kind === 'lines'
-    ? def.betMode.lines
-    : null
+  const lines = def.family === 'video' && def.betMode.kind === 'lines' ? def.betMode.lines : null
+  const wild = (def as { wildSymbol?: string | null }).wildSymbol ?? null
+  const grid = Array.isArray(outcome.grid) ? outcome.grid : []
   return outcome.wins.map((w, i) => {
     const color = PALETTE[i % PALETTE.length]!
     const symbolId = w.symbols[0] ?? ''
     const name = symbolName(def, symbolId)
     const count = w.symbols.length
     const payout = w.payCredits ?? 0
+    const base = { count, symbolId, symbolName: name, pluralName: pluralize(name), payout, color }
     const lineMatch = /^line-(\d+)$/.exec(w.line)
     if (lineMatch !== null && lines !== null) {
       const lineNumber = Number(lineMatch[1])
       const pattern = lines[lineNumber - 1] ?? null
       const cells = pattern === null ? [] : pattern.slice(0, count).map((row, reel) => ({ reel, row }))
-      return { lineNumber, count, symbolId, symbolName: name, pluralName: pluralize(name), payout, pattern, cells, kind: 'line' as const, color }
+      return { ...base, lineNumber, pattern, cells, kind: 'line' as const }
     }
-    const kind: 'ways' | 'single' = w.line.startsWith('ways') ? 'ways' : 'single'
-    return { lineNumber: null, count, symbolId, symbolName: name, pluralName: pluralize(name), payout, pattern: null, cells: [], kind, color }
+    if (w.line.startsWith('ways')) {
+      const cells: { reel: number, row: number }[] = []
+      grid.forEach((col, reel) => col.forEach((cell, row) => {
+        if (cell === symbolId || (wild !== null && cell === wild)) cells.push({ reel, row })
+      }))
+      return { ...base, lineNumber: null, pattern: null, cells, kind: 'ways' as const }
+    }
+    const row = w.line === 'top' ? 0 : w.line === 'bottom' ? 2 : 1
+    const cells = Array.from({ length: count }, (_, reel) => ({ reel, row }))
+    return { ...base, lineNumber: null, pattern: null, cells, kind: 'single' as const }
   })
 }
