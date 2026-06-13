@@ -1,5 +1,5 @@
 import type {
-  FeatureEvent, LineWin, MachineSessionState, RngDraw,
+  FeatureEvent, LineWin, MachineSessionState, ProgressiveEvent, RngDraw,
   SpinOutcome, SymbolId, VideoFeatureState, VideoMachineDef
 } from './types'
 import type { RandomFn } from './rng'
@@ -186,6 +186,87 @@ function freeSpinSpin(
   }
 }
 
+function holdAndSpinRespin(
+  def: VideoMachineDef,
+  state: MachineSessionState,
+  feature: VideoFeatureState & { kind: 'holdAndSpin' },
+  rand: RandomFn
+): SpinOutcome {
+  const cfg = def.holdAndSpin!
+  const draws: RngDraw[] = []
+  const featureEvents: FeatureEvent[] = []
+  const newCells: number[] = []
+  const newCredits: number[] = []
+
+  for (let cell = 0; cell < 15; cell++) {
+    if (feature.locked[cell] !== null) continue
+    const raw = rand()
+    const value = Math.floor(raw * cfg.respinOrbDenom)
+    draws.push({ label: `cell${cell}-respin`, raw, value, range: cfg.respinOrbDenom })
+    if (value < cfg.respinOrbNumer) {
+      const orb = drawOrbValue(def, rand, draws, cell)
+      feature.locked[cell] = { credits: orb.credits, label: orb.label }
+      newCells.push(cell)
+      newCredits.push(orb.credits)
+    }
+  }
+
+  const lockedCount = feature.locked.filter(c => c !== null).length
+  let ended = false
+  if (newCells.length > 0) {
+    feature.respins = cfg.respins
+    featureEvents.push({ type: 'orbs-locked', cells: newCells, credits: newCredits })
+    featureEvents.push({ type: 'respins-reset', respins: cfg.respins })
+    if (lockedCount === 15) ended = true
+  } else {
+    feature.respins -= 1
+    featureEvents.push({ type: 'respin-missed', remaining: feature.respins })
+    if (feature.respins <= 0) ended = true
+  }
+
+  const wins: LineWin[] = []
+  const progressiveEvents: ProgressiveEvent[] = []
+  if (ended) {
+    const totalCredits = feature.locked.reduce((s, c) => s + (c?.credits ?? 0), 0)
+    const filled = lockedCount === 15
+    wins.push({
+      line: 'hold-and-spin', entryId: 'hold-and-spin', symbols: [],
+      payCredits: totalCredits, wildCount: 0, progressive: false
+    })
+    // validator invariant: holdAndSpin machines always carry a percent progressive
+    if (filled && state.progressive?.kind === 'percent' && def.progressive !== null) {
+      const grand = Math.floor(state.progressive.value)
+      state.progressive.value = def.progressive.reset
+      wins.push({
+        line: 'grand', entryId: 'grand', symbols: [],
+        payCredits: grand, wildCount: 0, progressive: true
+      })
+      progressiveEvents.push({ type: 'hit', meter: 'percent', amountCredits: grand })
+    }
+    featureEvents.push({ type: 'hold-and-spin-ended', totalCredits, filled })
+    state.videoFeature = null
+  }
+
+  // respins have no strip stops; the grid renders the lock board
+  const grid: SymbolId[][] = [0, 1, 2, 3, 4].map(r =>
+    [0, 1, 2].map(row => feature.locked[r * 3 + row] !== null ? cfg.orbSymbol : cfg.emptySymbol))
+
+  return {
+    machineId: def.id,
+    family: 'video',
+    coins: feature.coins,
+    gameKind: 'respin',
+    coinsIn: 0,
+    stops: [],
+    grid,
+    wins,
+    totalPayout: wins.reduce((s, w) => s + w.payCredits, 0),
+    progressiveEvents,
+    featureEvents,
+    trace: { draws }
+  }
+}
+
 /**
  * Video family dispatch. Feature state on MachineSessionState routes
  * free-spin and respin calls; base spins validate the bet.
@@ -199,7 +280,7 @@ export function spinVideo(
   const feature = state.videoFeature
   if (feature !== null) {
     if (feature.kind === 'freeSpins') return freeSpinSpin(def, state, feature, rand)
-    throw new Error('hold-and-spin respins land in Task 7')
+    return holdAndSpinRespin(def, state, feature, rand)
   }
   if (def.fixedBet && coins !== def.maxCoins) {
     throw new Error(`${def.id}: fixed bet machine requires ${def.maxCoins} coins`)

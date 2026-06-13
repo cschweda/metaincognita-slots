@@ -157,3 +157,123 @@ describe('free spins', () => {
     expect(out.featureEvents).toContainEqual({ type: 'free-spin-consumed', remaining: 15 })
   })
 })
+
+describe('hold-and-spin', () => {
+  const HNS_DEF = {
+    id: 'test-hns',
+    name: 'Test HNS',
+    family: 'video',
+    denominationCents: 1,
+    maxCoins: 5,
+    symbols: { AA: { label: 'Ace' }, OR: { label: 'Orb' }, EM: { label: 'Empty' } },
+    strips: [
+      ['OR', 'OR', 'AA', 'AA', 'AA', 'AA'],
+      ['OR', 'OR', 'AA', 'AA', 'AA', 'AA'],
+      ['OR', 'OR', 'AA', 'AA', 'AA', 'AA'],
+      ['AA', 'AA', 'AA', 'AA', 'AA', 'AA'],
+      ['AA', 'AA', 'AA', 'AA', 'AA', 'AA']
+    ],
+    betMode: {
+      kind: 'lines',
+      lines: [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2], [0, 1, 2, 1, 0], [2, 1, 0, 1, 2]]
+    },
+    fixedBet: true,
+    wildSymbol: null,
+    scatter: null,
+    freeSpins: null,
+    holdAndSpin: {
+      orbSymbol: 'OR', triggerCount: 6, respins: 3,
+      respinOrbNumer: 2, respinOrbDenom: 24,
+      orbValues: [{ credits: 25, weight: 1 }],
+      emptySymbol: 'EM'
+    },
+    paytable: [],
+    progressive: { kind: 'percent', reset: 5000, max: 50000, feedRate: 0.01 },
+    history: 'test'
+  } as unknown as VideoMachineDef
+
+  const HIT = 0.01 // floor(0.01 * 24) = 0 < 2 -> orb lands
+  const MISS = 0.5 // floor(0.5 * 24) = 12 -> no orb
+  const VAL = 0.0 // single-entry value table
+
+  /** trigger with 6 orbs: reels 1-3 stop at 5 -> windows [AA,OR,OR] -> cells 1,2 / 4,5 / 7,8 */
+  const trigger = () => {
+    const state = initMachineState(HNS_DEF)
+    const draws = [at(5, 6), at(5, 6), at(5, 6), at(2, 6), at(2, 6), VAL, VAL, VAL, VAL, VAL, VAL]
+    const out = spinVideo(HNS_DEF, state, 5, scripted(draws))
+    expect(out.featureEvents).toContainEqual({
+      type: 'orbs-locked', cells: [1, 2, 4, 5, 7, 8], credits: [25, 25, 25, 25, 25, 25]
+    })
+    expect(out.trace.draws).toHaveLength(11)
+    expect(state.videoFeature?.kind).toBe('holdAndSpin')
+    return state
+  }
+
+  it('locks triggering orbs without paying them in the base game', () => {
+    const state = trigger()
+    const f = state.videoFeature as { kind: 'holdAndSpin', locked: ({ credits: number } | null)[], respins: number }
+    expect(f.respins).toBe(3)
+    expect(f.locked.filter(c => c !== null)).toHaveLength(6)
+  })
+
+  it('ends after three consecutive missed respins and pays the lump', () => {
+    const state = trigger()
+    // 9 unlocked cells x 3 respins, all misses
+    for (let r = 0; r < 2; r++) {
+      const out = spinVideo(HNS_DEF, state, 5, scripted(new Array(9).fill(MISS)))
+      expect(out.gameKind).toBe('respin')
+      expect(out.coinsIn).toBe(0)
+      expect(out.totalPayout).toBe(0)
+      expect(out.featureEvents).toContainEqual({ type: 'respin-missed', remaining: 2 - r })
+      expect(out.trace.draws).toHaveLength(9)
+    }
+    const last = spinVideo(HNS_DEF, state, 5, scripted(new Array(9).fill(MISS)))
+    expect(last.featureEvents).toContainEqual({ type: 'respin-missed', remaining: 0 })
+    expect(last.featureEvents).toContainEqual({ type: 'hold-and-spin-ended', totalCredits: 150, filled: false })
+    expect(last.totalPayout).toBe(150)
+    expect(last.trace.draws).toHaveLength(9)
+    expect(state.videoFeature).toBeNull()
+  })
+
+  it('a new orb resets the counter to 3', () => {
+    const state = trigger()
+    // first unlocked cell (0) hits, others miss: draws = HIT, VAL, then 8 misses
+    const out = spinVideo(HNS_DEF, state, 5, scripted([HIT, VAL, ...new Array(8).fill(MISS)]))
+    expect(out.featureEvents).toContainEqual({ type: 'orbs-locked', cells: [0], credits: [25] })
+    expect(out.featureEvents).toContainEqual({ type: 'respins-reset', respins: 3 })
+    const f = state.videoFeature as { respins: number }
+    expect(f.respins).toBe(3)
+  })
+
+  it('filling all 15 pays the Grand from the percent meter and resets it', () => {
+    const state = trigger()
+    state.progressive = { kind: 'percent', value: 5555.75 }
+    // every one of the 9 unlocked cells hits: 9 x (HIT, VAL)
+    const draws: number[] = []
+    for (let i = 0; i < 9; i++) draws.push(HIT, VAL)
+    const out = spinVideo(HNS_DEF, state, 5, scripted(draws))
+    expect(out.featureEvents).toContainEqual({ type: 'hold-and-spin-ended', totalCredits: 375, filled: true })
+    expect(out.wins.find(w => w.entryId === 'hold-and-spin')!.payCredits).toBe(375)
+    expect(out.wins.find(w => w.entryId === 'grand')!.payCredits).toBe(5555)
+    expect(out.progressiveEvents).toEqual([{ type: 'hit', meter: 'percent', amountCredits: 5555 }])
+    expect(out.totalPayout).toBe(375 + 5555)
+    expect(out.trace.draws).toHaveLength(18)
+    expect(state.progressive).toEqual({ kind: 'percent', value: 5000 })
+    expect(state.videoFeature).toBeNull()
+  })
+
+  it('a respin-added orb joins the lump when the feature later misses out', () => {
+    const state = trigger()
+    // cell 0 hits, the other 8 unlocked cells miss -> counter back to 3
+    let out = spinVideo(HNS_DEF, state, 5, scripted([HIT, VAL, ...new Array(8).fill(MISS)]))
+    expect(out.featureEvents).toContainEqual({ type: 'respins-reset', respins: 3 })
+    // three consecutive all-miss respins over the remaining 8 cells end it
+    for (let r = 2; r >= 0; r--) {
+      out = spinVideo(HNS_DEF, state, 5, scripted(new Array(8).fill(MISS)))
+      expect(out.featureEvents).toContainEqual({ type: 'respin-missed', remaining: r })
+    }
+    expect(out.featureEvents).toContainEqual({ type: 'hold-and-spin-ended', totalCredits: 175, filled: false })
+    expect(out.totalPayout).toBe(175)
+    expect(state.videoFeature).toBeNull()
+  })
+})
