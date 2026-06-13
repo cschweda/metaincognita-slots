@@ -21,7 +21,7 @@ const jackpotCents = computed<number | null>(() => {
     const reset = cfg.kind === 'percent' ? cfg.reset : cfg.kind === 'single' ? cfg.meter.reset : cfg.upper.reset
     return reset * props.def.denominationCents
   }
-  const value = prog.kind === 'percent' ? prog.value : prog.kind === 'single' ? prog.value : Math.max(prog.upper, prog.lower)
+  const value = prog.kind === 'percent' ? prog.value : prog.kind === 'single' ? prog.value : prog.live === 'upper' ? prog.upper : prog.lower
   return Math.floor(value) * props.def.denominationCents
 })
 
@@ -35,7 +35,8 @@ function play() {
 
 <template>
   <button
-    class="rounded-xl border border-neutral-800 bg-neutral-900/70 hover:border-amber-500/40 transition-all p-4 text-left space-y-2"
+    class="rounded-xl border border-neutral-800 bg-neutral-900/70 hover:border-amber-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 transition-all p-4 text-left space-y-2"
+    :aria-label="`Play ${def.name}`"
     @click="play"
   >
     <div class="flex items-start justify-between gap-2">

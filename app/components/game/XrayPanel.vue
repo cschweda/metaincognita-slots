@@ -18,7 +18,9 @@ const draws = computed(() => out.value?.trace.draws.slice(0, 24) ?? [])
 const presses = computed(() => out.value?.trace.presses ?? null)
 const virtualStops = computed(() => out.value?.trace.virtualStops ?? null)
 
-const exactRtpValue = computed(() => def.value === null ? null : floorIntel(def.value).rtp)
+const oddsLevel = computed(() =>
+  def.value?.family === 'pachislo' ? store.currentState?.pachislo?.oddsLevel : undefined)
+const exactRtpValue = computed(() => def.value === null ? null : floorIntel(def.value, oddsLevel.value).rtp)
 const samples = computed(() => def.value === null ? [] : store.perMachine[def.value.id]?.samples ?? [])
 const sessionRtp = computed(() => {
   const d = def.value

@@ -24,10 +24,11 @@ export interface FloorIntel {
 
 const cache = new Map<string, FloorIntel>()
 
-export function floorIntel(def: MachineDef): FloorIntel {
-  const hit = cache.get(def.id)
+export function floorIntel(def: MachineDef, oddsLevel?: number): FloorIntel {
+  const key = `${def.id}:${oddsLevel ?? ''}`
+  const hit = cache.get(key)
   if (hit !== undefined) return hit
-  const report: ExactRtpReport = exactRtp(def)
+  const report: ExactRtpReport = exactRtp(def, oddsLevel === undefined ? {} : { oddsLevel })
   const topId = TOP_AWARD_ENTRY[def.id] ?? null
   const top = topId === null ? undefined : report.breakdown.find(b => b.entryId === topId)
   const intel: FloorIntel = {
@@ -37,6 +38,6 @@ export function floorIntel(def: MachineDef): FloorIntel {
     topAwardId: topId,
     topAwardProbability: top?.probability ?? null
   }
-  cache.set(def.id, intel)
+  cache.set(key, intel)
   return intel
 }

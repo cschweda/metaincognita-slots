@@ -10,7 +10,9 @@ const def = computed(() => store.currentDef)
 const net = computed(() => store.stats.totalOutCents - store.stats.totalInCents)
 const sessionRtp = computed(() =>
   store.stats.totalInCents === 0 ? null : store.stats.totalOutCents / store.stats.totalInCents)
-const intel = computed(() => def.value === null ? null : floorIntel(def.value))
+const oddsLevel = computed(() =>
+  def.value?.family === 'pachislo' ? store.currentState?.pachislo?.oddsLevel : undefined)
+const intel = computed(() => def.value === null ? null : floorIntel(def.value, oddsLevel.value))
 </script>
 
 <template>
