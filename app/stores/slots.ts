@@ -310,6 +310,10 @@ export const useSlotsStore = defineStore('slots', {
         const states: Record<string, MachineSessionState> = {}
         const rawStates = (data.machineStates ?? {}) as Record<string, unknown>
         for (const [id, candidate] of Object.entries(rawStates)) {
+          // defense-in-depth: never let a hostile key (__proto__/constructor/
+          // prototype) index an object, though the MACHINES whitelist below
+          // already excludes it and `states` is a fresh literal
+          if (id === '__proto__' || id === 'constructor' || id === 'prototype') continue
           const def = MACHINES.get(id)
           if (def !== undefined) states[id] = sanitizeMachineState(def, candidate)
         }
@@ -356,6 +360,7 @@ export const useSlotsStore = defineStore('slots', {
         const totals: Record<string, MachineTotals> = {}
         const rawTotals = (data.perMachine ?? {}) as Record<string, unknown>
         for (const [id, t] of Object.entries(rawTotals)) {
+          if (id === '__proto__' || id === 'constructor' || id === 'prototype') continue
           if (!MACHINES.has(id) || t === null || typeof t !== 'object') continue
           const tt = t as Record<string, unknown>
           totals[id] = {

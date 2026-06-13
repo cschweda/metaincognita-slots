@@ -27,7 +27,7 @@ const grid = computed<string[][]>(() => {
 })
 const fillerIds = computed(() => Object.keys(def.value?.symbols ?? {}))
 const { strips, offsetY, blur, durationMs, revealed } = useReelSpin({
-  reelCount: reelCount.value,
+  reelCount: () => reelCount.value,
   visibleRows: 3,
   grid: () => grid.value,
   filler: () => fillerIds.value

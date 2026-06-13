@@ -19,7 +19,7 @@ describe('useReelSpin (reduced motion)', () => {
     store.selectMachine('canal-royale')
     const done = vi.spyOn(store, 'revealDone')
     const w = mount(defineComponent({
-      setup() { return { api: useReelSpin({ reelCount: 5, visibleRows: 3, grid: () => [[], [], [], [], []], filler: () => ['AA'] }) } },
+      setup() { return { api: useReelSpin({ reelCount: () => 5, visibleRows: 3, grid: () => [[], [], [], [], []], filler: () => ['AA'] }) } },
       render() { return h('div') }
     }))
     store.spinning = true

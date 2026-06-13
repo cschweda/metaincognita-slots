@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+- Win display: stepper "count" wins (e.g. cherries) no longer count a wild on
+  the line as the paying symbol — a wild neither inflates the chip count nor
+  lights a non-winning cell (the engine pays the literal symbol only).
+- Bally multi-line hit frequency is computed over the joint reel-stop
+  distribution; treating paylines as independent had under-reported it.
+- Held result, payline drawing, and winning-cell glow reflect the actual
+  matched run rather than the full payline; feature wins no longer emit a
+  stray "0" chip and scatter wins glow their real grid cells.
+- Dual progressive payouts are floored, preserving the integer-cents wallet
+  invariant even for a corrupt restored meter.
+
+### Changed
+- Content-security policy hardened: inline scripts hash-pinned, no
+  `unsafe-inline`, `object-src 'none'`.
+- Restore is explicitly prototype-pollution-guarded; stepper virtual maps must
+  cover every physical stop; reel count is tracked reactively.
+- Reel surfaces share a `GameReelColumn` component + `useReelSymbols`
+  composable (deduplication, no behaviour change).
+
+## [0.4.0] - 2026-06-13
+
+### Added
+- Slot-machine reel presentation: filled-duotone symbol icons, vertically
+  spinning reels with staggered ease-out (reduced-motion snap), drawn paylines
+  with winning-cell glow and gutter line numbers, a held result bar (gross win,
+  bankroll, literal per-line chips, bankroll sparkline), a per-machine marquee,
+  and a denomination tag. Presentation only — the engine, RTP, and money model
+  are unchanged (a display `icon?` field was added to symbol metadata).
+
 ## [0.3.0] - 2026-06-12
 
 ### Added

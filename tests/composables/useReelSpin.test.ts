@@ -11,7 +11,7 @@ const GRID = [['AA', 'KK', 'QQ'], ['AA', 'KK', 'QQ'], ['AA', 'KK', 'QQ'], ['AA',
 function harness() {
   return defineComponent({
     setup() {
-      const api = useReelSpin({ reelCount: 5, visibleRows: 3, grid: () => GRID, filler: () => ['AA', 'KK'] })
+      const api = useReelSpin({ reelCount: () => 5, visibleRows: 3, grid: () => GRID, filler: () => ['AA', 'KK'] })
       return { api }
     },
     render() { return h('div') }

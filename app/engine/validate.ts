@@ -22,11 +22,24 @@ export function validateMachineDef(def: MachineDef): void {
       def.virtualMaps.forEach((vmap, r) => {
         const strip = def.physicalStrips[r]
         if (!strip) return
+        const covered = new Set<number>()
         vmap.forEach((idx) => {
           if (!Number.isInteger(idx) || idx < 0 || idx >= strip.length) {
             errors.push(`virtual map [${r}] index ${idx} out of range 0..${strip.length - 1}`)
+          } else {
+            covered.add(idx)
           }
         })
+        // Every physical stop must be weighted at least once: an unreferenced
+        // stop can never land on the payline, so the modelled odds silently
+        // diverge from the strip the player sees — virtually always a dropped-
+        // index typo, not intent. Both shipped steppers cover all 22 stops; the
+        // engine and the exact-RTP enumerator both draw from this same map.
+        for (let i = 0; i < strip.length; i++) {
+          if (!covered.has(i)) {
+            errors.push(`virtual map [${r}] never references physical stop ${i} (unreachable on the payline)`)
+          }
+        }
       })
       if (def.wildSymbol !== null) checkSymbol(def.wildSymbol, 'wildSymbol')
       for (const entry of def.paytable) {
