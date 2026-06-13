@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { spinStepper } from '../app/engine/stepper'
+import { initMachineState, mulberry32 } from '../app/engine'
 import { DIAMOND_DOUBLER } from '../app/machines/diamond-doubler'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
-import { mulberry32 } from '../app/engine/rng'
 import type { MachineSessionState } from '../app/engine/types'
 
 /** rig virtual indices: floor(v * 72) lands on the wanted entries */
@@ -89,5 +89,13 @@ describe('spinStepper — distribution sanity (chi-squared on virtual draws)', (
     const expected = n / 72
     const chi2 = bins.reduce((s, o) => s + (o - expected) ** 2 / expected, 0)
     expect(chi2).toBeLessThan(112.32)
+  })
+})
+
+describe('coin range', () => {
+  it('throws when coins are out of range', () => {
+    const state = initMachineState(DIAMOND_DOUBLER)
+    expect(() => spinStepper(DIAMOND_DOUBLER, state, 0, mulberry32(1))).toThrow(/out of range/)
+    expect(() => spinStepper(DIAMOND_DOUBLER, state, 4, mulberry32(1))).toThrow(/out of range/)
   })
 })

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { exactRtp } from '../app/engine/exactRtp'
+import { DIAMOND_DOUBLER } from '../app/machines/diamond-doubler'
 import type { StepperMachineDef, BallyEmMachineDef } from '../app/engine/types'
 
 // Toy stepper: 3 reels, 2-entry virtual map, strip [A, BL].
@@ -100,5 +101,12 @@ describe('exactRtp — wild doubling enumerates correctly', () => {
     const r = exactRtp(def)
     expect(r.rtpPerCoin).toBeCloseTo(2.75, 12)
     expect(r.hitFrequency).toBeCloseTo(8 / 64, 12)
+  })
+})
+
+describe('coins guard', () => {
+  it('rejects coin levels the machine does not support', () => {
+    expect(() => exactRtp(DIAMOND_DOUBLER, { coins: 0 })).toThrow(/out of range/)
+    expect(() => exactRtp(DIAMOND_DOUBLER, { coins: 4 })).toThrow(/out of range/)
   })
 })

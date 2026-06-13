@@ -59,6 +59,9 @@ function ballyWeights(def: BallyEmMachineDef): Map<SymbolId, number>[] {
  */
 export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpReport {
   const coins = opts.coins ?? def.maxCoins
+  if (coins < 1 || coins > def.maxCoins) {
+    throw new Error(`${def.id}: coins ${coins} out of range 1..${def.maxCoins}`)
+  }
   let weights: Map<SymbolId, number>[]
   switch (def.family) {
     case 'stepper':

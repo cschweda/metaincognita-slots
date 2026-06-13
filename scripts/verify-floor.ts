@@ -15,7 +15,12 @@ import { FLOOR } from '../app/machines'
 function arg(name: string, fallback: number): number {
   const i = process.argv.indexOf(`--${name}`)
   if (i === -1 || i + 1 >= process.argv.length) return fallback
-  return Number(process.argv[i + 1])
+  const n = Number(process.argv[i + 1])
+  if (!Number.isFinite(n) || n <= 0) {
+    console.error(`--${name} must be a positive number, got "${process.argv[i + 1]}"`)
+    process.exit(2)
+  }
+  return n
 }
 
 const spins = arg('spins', 5_000_000)
