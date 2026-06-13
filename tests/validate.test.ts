@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { validateMachineDef } from '../app/engine/validate'
 import type { StepperMachineDef, BallyEmMachineDef } from '../app/engine/types'
+import { CANAL_ROYALE } from '../app/machines/canal-royale'
+import { DRAGONS_HOARD } from '../app/machines/dragons-hoard'
+import { THUNDER_VAULT } from '../app/machines/thunder-vault'
 
 function tinyStepper(): StepperMachineDef {
   return {
@@ -119,5 +122,47 @@ describe('validateMachineDef', () => {
     const def = tinyStepper()
     def.paytable = [{ id: 'jp', kind: 'allSame', symbol: 'A', pay: 1000, progressiveAtMaxCoins: true }]
     expect(() => validateMachineDef(def)).toThrow(/percent/i)
+  })
+})
+
+describe('video validation', () => {
+  const base = () => JSON.parse(JSON.stringify(CANAL_ROYALE)) as typeof CANAL_ROYALE
+
+  it('rejects a wild on reel 1', () => {
+    const def = base()
+    def.strips[0]![0] = 'WD'
+    def.strips[0]![1] = 'JJ' // keep length; composition change is irrelevant to this rule
+    expect(() => validateMachineDef(def)).toThrow(/wild .* reel 1/i)
+  })
+
+  it('rejects scatter spacing under 3', () => {
+    const def = base()
+    // duplicate the scatter right next to the existing one on reel 1 (cell 4)
+    def.strips[0]![5] = 'SC'
+    expect(() => validateMachineDef(def)).toThrow(/scatter spacing/i)
+  })
+
+  it('rejects incomplete pay-length triples', () => {
+    const def = base()
+    def.paytable = def.paytable.filter(e => e.id !== 'li4')
+    expect(() => validateMachineDef(def)).toThrow(/lengths 3, 4 and 5/i)
+  })
+
+  it('rejects ways machines without fixed bet', () => {
+    const def = JSON.parse(JSON.stringify(DRAGONS_HOARD)) as typeof DRAGONS_HOARD
+    def.fixedBet = false
+    expect(() => validateMachineDef(def)).toThrow(/fixed bet/i)
+  })
+
+  it('rejects hold-and-spin without a percent progressive', () => {
+    const def = JSON.parse(JSON.stringify(THUNDER_VAULT)) as typeof THUNDER_VAULT
+    def.progressive = null
+    expect(() => validateMachineDef(def)).toThrow(/percent progressive/i)
+  })
+
+  it('rejects a scatter that doubles as the wild', () => {
+    const def = base()
+    ;(def.scatter as NonNullable<typeof def.scatter>).symbol = 'WD'
+    expect(() => validateMachineDef(def)).toThrow(/different symbols/i)
   })
 })

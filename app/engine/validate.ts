@@ -83,7 +83,107 @@ export function validateMachineDef(def: MachineDef): void {
       }
       break
     }
-    case 'video':
+    case 'video': {
+      if (def.strips.length !== 5) errors.push(`video needs 5 strips, got ${def.strips.length}`)
+      const L = def.strips[0]?.length ?? 0
+      if (L !== 24) errors.push(`video strips must be 24 cells (full-cycle enumeration), got ${L}`)
+      def.strips.forEach((strip, r) => {
+        if (strip.length !== L) errors.push(`strips[${r}] length ${strip.length} != ${L}`)
+        strip.forEach(s => checkSymbol(s, `strips[${r}]`))
+      })
+      const special = new Set<SymbolId>()
+      if (def.wildSymbol !== null) {
+        checkSymbol(def.wildSymbol, 'wildSymbol')
+        special.add(def.wildSymbol)
+        if (def.strips[0]!.includes(def.wildSymbol)) {
+          errors.push('wild must not appear on reel 1 (line/ways anchoring rule)')
+        }
+      }
+      if (def.scatter !== null) {
+        checkSymbol(def.scatter.symbol, 'scatter')
+        special.add(def.scatter.symbol)
+        def.strips.forEach((strip, r) => {
+          const pos = strip.flatMap((s, i) => s === def.scatter!.symbol ? [i] : [])
+          for (let a = 0; a < pos.length; a++) {
+            for (let b = a + 1; b < pos.length; b++) {
+              const d = Math.abs(pos[a]! - pos[b]!)
+              if (Math.min(d, L - d) < 3) {
+                errors.push(`strips[${r}]: scatter spacing under 3 breaks the one-per-window invariant`)
+              }
+            }
+          }
+        })
+        for (const k of Object.keys(def.scatter.pays)) {
+          const n = Number(k)
+          if (!Number.isInteger(n) || n < 1 || n > 5) errors.push(`scatter pays key ${k} out of range 1..5`)
+        }
+      }
+      if (def.wildSymbol !== null && def.scatter !== null && def.wildSymbol === def.scatter.symbol) {
+        errors.push('wildSymbol and scatter.symbol must be different symbols')
+      }
+      if (def.holdAndSpin !== null) {
+        const h = def.holdAndSpin
+        checkSymbol(h.orbSymbol, 'holdAndSpin.orbSymbol')
+        checkSymbol(h.emptySymbol, 'holdAndSpin.emptySymbol')
+        special.add(h.orbSymbol)
+        special.add(h.emptySymbol)
+        if (h.triggerCount < 1 || h.triggerCount > 15) errors.push('holdAndSpin.triggerCount out of range 1..15')
+        if (h.respins < 1) errors.push('holdAndSpin.respins must be >= 1')
+        if (h.respinOrbDenom < 1 || h.respinOrbNumer < 0 || h.respinOrbNumer > h.respinOrbDenom) {
+          errors.push('holdAndSpin respin probability must be a proper fraction')
+        }
+        if (h.orbValues.length === 0) errors.push('holdAndSpin.orbValues must not be empty')
+        h.orbValues.forEach((v, i) => {
+          if (v.credits <= 0 || v.weight <= 0) errors.push(`holdAndSpin.orbValues[${i}]: credits and weight must be > 0`)
+        })
+        if (def.strips.some(s => s.includes(h.emptySymbol))) {
+          errors.push('holdAndSpin.emptySymbol must not appear on strips')
+        }
+        if (def.progressive?.kind !== 'percent') {
+          errors.push('holdAndSpin requires a percent progressive (the Grand)')
+        }
+        if (def.freeSpins !== null) errors.push('freeSpins and holdAndSpin are mutually exclusive in v0.2')
+        if (!def.fixedBet) errors.push('holdAndSpin machines must be fixed bet')
+      } else if (def.progressive !== null) {
+        errors.push('video percent progressives are only paid by hold-and-spin (the Grand) in v0.2')
+      }
+      if (def.freeSpins !== null) {
+        if (def.scatter === null || def.scatter.triggerCount === null) {
+          errors.push('freeSpins requires a scatter with a triggerCount')
+        }
+        if (def.freeSpins.count < 1 || def.freeSpins.multiplier < 1) {
+          errors.push('freeSpins count and multiplier must be >= 1')
+        }
+      }
+      if (def.betMode.kind === 'lines') {
+        if (def.betMode.lines.length !== def.maxCoins) {
+          errors.push(`lines count ${def.betMode.lines.length} != maxCoins ${def.maxCoins}`)
+        }
+        def.betMode.lines.forEach((pat, i) => {
+          if (pat.length !== def.strips.length) errors.push(`lines[${i}] length ${pat.length} != 5`)
+          pat.forEach((row) => {
+            if (row < 0 || row > 2) errors.push(`lines[${i}] row ${row} out of range 0..2`)
+          })
+        })
+      } else if (!def.fixedBet) {
+        errors.push('ways machines must be fixed bet (the bet buys all ways)')
+      }
+      const bySymbol = new Map<SymbolId, Set<number>>()
+      for (const e of def.paytable) {
+        checkSymbol(e.symbol, `paytable ${e.id}`)
+        if (e.pay <= 0) errors.push(`paytable ${e.id}: pay must be > 0`)
+        if (special.has(e.symbol)) errors.push(`paytable ${e.id}: wild/scatter/orb symbols cannot pay as line symbols`)
+        const set = bySymbol.get(e.symbol) ?? new Set<number>()
+        set.add(e.length)
+        bySymbol.set(e.symbol, set)
+      }
+      for (const [sym, lengths] of bySymbol) {
+        if (!lengths.has(3) || !lengths.has(4) || !lengths.has(5) || lengths.size !== 3) {
+          errors.push(`paytable for ${sym} must cover lengths 3, 4 and 5 (exact-run matching)`)
+        }
+      }
+      break
+    }
     case 'pachislo':
       throw new Error(`${def.family} family lands later in Plan 2`)
     default: {
