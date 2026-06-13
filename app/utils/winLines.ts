@@ -88,7 +88,10 @@ export function summariseWins(def: MachineDef, outcome: SpinOutcome | null): Win
     let paySym: string
     if (entry?.kind === 'count' && entry.symbol !== undefined) {
       paySym = entry.symbol
-      winReels = w.symbols.flatMap((s, r) => (s === entry.symbol || (wild !== null && s === wild)) ? [r] : [])
+      // 'count' awards tally the literal symbol only — the engine does NOT
+      // wild-substitute them (awards.ts: line.filter(s => s === entry.symbol)),
+      // so a wild on the line must not inflate the count or glow as a win cell.
+      winReels = w.symbols.flatMap((s, r) => s === entry.symbol ? [r] : [])
     } else if (entry?.kind === 'run' && entry.length !== undefined) {
       paySym = entry.symbol ?? symbolId
       winReels = Array.from({ length: Math.min(entry.length, reels) }, (_, r) => r)

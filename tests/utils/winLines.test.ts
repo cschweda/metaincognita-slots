@@ -150,6 +150,18 @@ describe('summariseWins cells for ways and single', () => {
     expect(w2.cells).toEqual([{ reel: 0, row: 1 }, { reel: 2, row: 1 }])
   })
 
+  it('stepper count win excludes a wild on the line (count is literal-symbol only)', () => {
+    // diamond-doubler ch1 = count CH n:1; DW is the wild. The engine tallies
+    // literal cherries only (awards.ts does NOT wild-substitute count awards),
+    // so [CH, DW, B3] is 1 Cherry and the wild cell must not glow. Regression
+    // for the count branch wrongly adding `|| s === wild` (final-audit fix).
+    const wild = (DIAMOND_DOUBLER as { wildSymbol?: string }).wildSymbol!
+    const w = summariseWins(DIAMOND_DOUBLER, { machineId: 'diamond-doubler', grid: [], wins: [{ line: 'payline', entryId: 'ch1', symbols: ['CH', wild, 'B3'], payCredits: 2, wildCount: 0, progressive: false }] } as never)[0]!
+    expect(w.count).toBe(1)
+    expect(w.pluralName).toBe('Cherries')
+    expect(w.cells).toEqual([{ reel: 0, row: 1 }])
+  })
+
   it('stepper allSame win names the symbol and glows the whole line', () => {
     const w = summariseWins(DIAMOND_DOUBLER, { machineId: 'diamond-doubler', grid: [], wins: [{ line: 'payline', entryId: '3s7', symbols: ['S7', 'S7', 'S7'], payCredits: 80, wildCount: 0, progressive: false }] } as never)[0]!
     expect(w.count).toBe(3)

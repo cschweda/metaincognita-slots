@@ -52,7 +52,10 @@ export function spinBallyEm(
     if (entry.kind === 'run' && entry.progressive === 'live' && state.progressive?.kind === 'dual') {
       const prog = state.progressive
       const meter = prog.live
-      payCredits = meter === 'upper' ? prog.upper : prog.lower
+      // floor for the same reason single/percent do below: bankrollCents is an
+      // exact-integer source of truth, so a meter must never pay fractional cents
+      // (a no-op for integer-fed dual meters; a guard against a corrupt restore).
+      payCredits = Math.floor(meter === 'upper' ? prog.upper : prog.lower)
       const cfg = def.progressive!
       if (cfg.kind === 'dual') {
         if (meter === 'upper') prog.upper = cfg.upper.reset
@@ -63,8 +66,8 @@ export function spinBallyEm(
     } else if (entry.kind === 'run' && entry.progressive === 'maxCoins' && coins === def.maxCoins
       && state.progressive?.kind === 'single') {
       const prog = state.progressive
-      // floored: single/percent meters accumulate fractional credits from
-      // rate feeds; dual meters are integer-fed and pay raw values
+      // floored: single/percent meters accumulate fractional credits from rate
+      // feeds (the dual branch above floors too, for the integer-cents invariant)
       payCredits = Math.floor(prog.value)
       if (def.progressive?.kind === 'single') prog.value = def.progressive.meter.reset
       progressiveEvents.push({ type: 'hit', meter: 'single', amountCredits: payCredits })
