@@ -1,88 +1,52 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { useReducedMotion } from '~/composables/useReducedMotion'
+import { useReelSpin, REEL_CELL_PX, REEL_GAP_PX } from '~/composables/useReelSpin'
+import { summariseWins } from '~/utils/winLines'
 import { formatCredits } from '~/utils/format'
 import type { VideoMachineDef } from '~/engine'
 
 const store = useSlotsStore()
-const reduced = useReducedMotion()
-
 const def = computed(() => store.currentDef as VideoMachineDef | null)
 const feature = computed(() => store.currentState?.videoFeature ?? null)
 const hns = computed(() => feature.value?.kind === 'holdAndSpin' ? feature.value : null)
 const fs = computed(() => feature.value?.kind === 'freeSpins' ? feature.value : null)
 
-/** outcome grid, falling back to top-of-strip columns before the first spin */
 const grid = computed<string[][]>(() => {
   const d = def.value
   if (d === null) return []
   const out = store.lastOutcome
-  if (out !== null && out.machineId === d.id && out.grid.length === 5 && out.gameKind !== 'respin') {
-    return out.grid
-  }
+  if (out !== null && out.machineId === d.id && out.grid.length === 5 && out.gameKind !== 'respin') return out.grid
   return d.strips.map(s => [s[0]!, s[1]!, s[2]!])
 })
-
-/** cells to highlight: "reel:row" keys from line/ways wins */
-const winCells = computed<Set<string>>(() => {
-  const cells = new Set<string>()
-  const d = def.value
-  const out = store.lastOutcome
-  if (d === null || out === null || revealedReels.value < 5) return cells
-  for (const w of out.wins) {
-    const m = /^line-(\d+)$/.exec(w.line)
-    if (m !== null && d.betMode.kind === 'lines') {
-      const pattern = d.betMode.lines[Number(m[1]) - 1]
-      if (pattern === undefined) continue
-      for (let r = 0; r < w.symbols.length && r < 5; r++) cells.add(`${r}:${pattern[r]}`)
-    } else if (w.line.startsWith('ways-')) {
-      // symbols[0] is always entry.symbol — the engine fills ways-win
-      // symbols with the paying symbol, never the substituting wild
-      const sym = w.symbols[0]
-      grid.value.forEach((col, r) => col.forEach((cell, row) => {
-        if (cell === sym || (d.wildSymbol !== null && cell === d.wildSymbol)) cells.add(`${r}:${row}`)
-      }))
-    }
-  }
-  return cells
+const fillerIds = computed(() => Object.keys(def.value?.symbols ?? {}))
+const { strips, offsetY, blur, durationMs, revealed } = useReelSpin({
+  reelCount: 5,
+  visibleRows: 3,
+  grid: () => grid.value,
+  filler: () => fillerIds.value
 })
 
-const revealedReels = ref(5)
-let timers: ReturnType<typeof setTimeout>[] = []
-
-watch(() => store.spinning, (spinning) => {
-  timers.forEach(clearTimeout)
-  timers = []
-  if (!spinning) return
-  if (reduced.value || store.lastOutcome?.gameKind === 'respin') {
-    revealedReels.value = 5
-    store.revealDone()
-    return
+const wins = computed(() => def.value && revealed.value >= 5 ? summariseWins(def.value, store.lastOutcome) : [])
+const glow = computed(() => {
+  const m = new Map<string, string>()
+  for (const w of wins.value) {
+    for (const c of w.cells) m.set(`${c.reel}:${c.row}`, w.color)
   }
-  revealedReels.value = 0
-  for (let r = 1; r <= 5; r++) {
-    timers.push(setTimeout(() => {
-      revealedReels.value = r
-      if (r === 5) store.revealDone()
-    }, 200 + r * 120))
-  }
+  return m
 })
-
-onUnmounted(() => {
-  timers.forEach(clearTimeout)
-  timers = []
-})
-
-const SYMBOL_HUE: Record<string, string> = {
-  WD: 'text-amber-300', SC: 'text-fuchsia-300', OR: 'text-sky-300'
+function iconFor(sym: string) {
+  return def.value?.symbols[sym]?.icon
 }
-function hueFor(sym: string): string {
-  return SYMBOL_HUE[sym] ?? 'text-neutral-200'
-}
-function labelFor(sym: string): string {
+function labelFor(sym: string) {
   return def.value?.symbols[sym]?.label ?? sym
 }
+function isWild(sym: string) {
+  return def.value?.wildSymbol === sym
+}
+
+const GUTTER = 36
+const winH = REEL_CELL_PX * 3 + REEL_GAP_PX * 2
 </script>
 
 <template>
@@ -147,26 +111,57 @@ function labelFor(sym: string): string {
     <!-- base / free-spin reel grid -->
     <div
       v-else
-      class="grid grid-cols-5 gap-1.5"
+      class="relative mx-auto"
+      :style="{ width: GUTTER + 5 * (REEL_CELL_PX + REEL_GAP_PX) + 'px' }"
     >
       <div
-        v-for="(col, r) in grid"
-        :key="r"
-        class="space-y-1.5"
+        class="flex"
+        :style="{ paddingLeft: GUTTER + 'px', gap: REEL_GAP_PX + 'px' }"
       >
         <div
-          v-for="(cell, row) in col"
-          :key="row"
-          class="h-16 rounded-lg bg-neutral-950 border flex items-center justify-center text-xs font-bold tracking-tight text-center px-1 transition-all"
-          :class="[
-            r < revealedReels ? '' : 'opacity-30 motion-safe:blur-[2px]',
-            winCells.has(`${r}:${row}`) ? 'border-amber-400/70 bg-amber-500/10' : 'border-neutral-800',
-            hueFor(cell)
-          ]"
+          v-for="(strip, r) in strips"
+          :key="r"
+          class="overflow-hidden rounded-lg"
+          :style="{ width: REEL_CELL_PX + 'px', height: winH + 'px' }"
         >
-          {{ r < revealedReels ? labelFor(cell) : '···' }}
+          <div
+            class="flex flex-col"
+            :style="{
+              transform: `translateY(${offsetY[r] ?? 0}px)`,
+              filter: `blur(${blur[r] ?? 0}px)`,
+              transition: `transform ${durationMs[r] ?? 0}ms cubic-bezier(.16,.74,.18,1), filter ${(durationMs[r] ?? 0) * 0.5}ms ease-out`
+            }"
+          >
+            <div
+              v-for="(cell, idx) in strip"
+              :key="idx"
+              class="flex shrink-0 items-center justify-center rounded-lg border bg-neutral-950"
+              :class="(revealed >= 5 && idx >= strip.length - 3 && glow.has(`${r}:${idx - (strip.length - 3)}`))
+                ? 'border-amber-400/80' : 'border-neutral-800'"
+              :style="{
+                height: REEL_CELL_PX + 'px',
+                marginBottom: REEL_GAP_PX + 'px',
+                boxShadow: (revealed >= 5 && idx >= strip.length - 3 && glow.has(`${r}:${idx - (strip.length - 3)}`))
+                  ? `0 0 18px ${glow.get(`${r}:${idx - (strip.length - 3)}`)}55 inset` : 'none'
+              }"
+            >
+              <GameSymbolIcon
+                :icon="iconFor(cell)"
+                :label="labelFor(cell)"
+                :wild="isWild(cell)"
+              />
+            </div>
+          </div>
         </div>
       </div>
+      <GamePaylineOverlay
+        :lines="wins"
+        :gutter="GUTTER"
+        :cell-px="REEL_CELL_PX"
+        :gap-px="REEL_GAP_PX"
+        :rows="3"
+        :cols="5"
+      />
     </div>
   </div>
 </template>

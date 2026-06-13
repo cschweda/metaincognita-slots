@@ -1,0 +1,35 @@
+// @vitest-environment happy-dom
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import ReelVideo from '../../app/components/game/ReelVideo.vue'
+import { useSlotsStore } from '../../app/stores/slots'
+
+const IconStub = { props: ['icon', 'label', 'wild', 'size'], template: '<i data-test="cell" :data-icon="icon" />' }
+const OverlayStub = { props: ['lines', 'gutter', 'cellPx', 'gapPx', 'rows', 'cols'], template: '<div data-test="overlay" />' }
+
+function setup() {
+  setActivePinia(createPinia())
+  localStorage.clear()
+  const store = useSlotsStore()
+  store.startSession(100000)
+  store.selectMachine('canal-royale')
+  const wrapper = mount(ReelVideo, {
+    global: { stubs: { UIcon: true, GameProgressiveMeter: true, GameSymbolIcon: IconStub, GamePaylineOverlay: OverlayStub } }
+  })
+  return { store, wrapper }
+}
+
+describe('ReelVideo', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('renders 15 symbol-icon cells for the idle 5x3 grid', () => {
+    const { wrapper } = setup()
+    expect(wrapper.findAll('[data-test="cell"]').length).toBeGreaterThanOrEqual(15)
+  })
+
+  it('mounts the payline overlay', () => {
+    const { wrapper } = setup()
+    expect(wrapper.find('[data-test="overlay"]').exists()).toBe(true)
+  })
+})
