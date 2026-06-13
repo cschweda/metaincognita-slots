@@ -26,9 +26,11 @@ function points(pattern: number[]): string {
 
 const badges = computed(() => {
   const used: Record<number, number> = {}
+  const maxY = height.value - 12
   return drawn.value.map((l) => {
     let y = cy(l.pattern![0]!)
     while (used[y] !== undefined) y += 20
+    if (y > maxY) y = maxY // keep the badge inside the SVG when many lines stack
     used[y] = 1
     return { n: l.lineNumber!, color: l.color, y }
   })
@@ -49,7 +51,7 @@ const badges = computed(() => {
       <polyline
         v-for="(l, i) in drawn"
         :key="i"
-        :points="points(l.pattern!)"
+        :points="points(l.pattern!.slice(0, l.count))"
         fill="none"
         :stroke="l.color"
         stroke-width="4"

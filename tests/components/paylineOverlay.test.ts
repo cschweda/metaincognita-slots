@@ -29,4 +29,27 @@ describe('PaylineOverlay', () => {
     const w = mount(PaylineOverlay, { props: { ...base, lines: [line({ kind: 'ways', pattern: null, lineNumber: null })] } })
     expect(w.findAll('polyline')).toHaveLength(0)
   })
+
+  it('draws only the winning run for a partial-line win (M2)', () => {
+    // count:3 of a 5-cell pattern -> the polyline spans just the first 3 reels
+    const w = mount(PaylineOverlay, { props: { ...base, lines: [line({ pattern: [0, 1, 2, 1, 0], count: 3 })] } })
+    const pts = w.find('polyline').attributes('points')!.trim().split(/\s+/)
+    expect(pts).toHaveLength(3)
+    expect(pts[0]).toContain(',48') // reel 0, row 0
+    expect(pts[2]).toContain(',256') // reel 2, row 2
+  })
+
+  it('clamps badge stacking so none render past the SVG height (M4)', () => {
+    const stride = base.cellPx + base.gapPx
+    const height = base.rows * stride - base.gapPx
+    // five lines sharing the bottom entry row would stack off the bottom edge
+    const lines = Array.from({ length: 5 }, (_, i) => line({ lineNumber: i + 1, pattern: [2, 2, 2, 2, 2] }))
+    const w = mount(PaylineOverlay, { props: { ...base, lines } })
+    const badges = w.findAll('[data-test="line-num"]')
+    expect(badges).toHaveLength(5)
+    for (const b of badges) {
+      const top = Number(/top:\s*([\d.]+)px/.exec(b.attributes('style') ?? '')?.[1])
+      expect(top).toBeLessThanOrEqual(height)
+    }
+  })
 })

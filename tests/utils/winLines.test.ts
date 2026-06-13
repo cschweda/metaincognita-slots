@@ -61,6 +61,47 @@ describe('summariseWins', () => {
     expect(w!.symbolId).toBe('MA')
     expect(w!.pluralName).toBe('Carnival Masks')
   })
+
+  it('skips feature payouts with empty symbols, keeps co-occurring line wins (H2a)', () => {
+    // hold-and-spin / grand carry symbols:[] — they belong to the gross WIN total,
+    // not a per-line chip. They must NOT produce a garbled count:0 WinLine.
+    const outcome = {
+      machineId: 'canal-royale',
+      grid: [],
+      wins: [
+        { line: 'hold-and-spin', entryId: 'hold-and-spin', symbols: [], payCredits: 500, wildCount: 0, progressive: false },
+        { line: 'line-1', entryId: 'kk4', symbols: ['KK', 'KK', 'KK', 'KK'], payCredits: 30, wildCount: 0, progressive: false }
+      ]
+    } as never
+    const rows = summariseWins(CANAL_ROYALE, outcome)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.lineNumber).toBe(1)
+    expect(rows[0]!.count).toBe(4)
+    expect(rows[0]!.pluralName).toBe('Kings')
+  })
+
+  it('scatter win glows every scatter cell anywhere on the grid, no wild sub (H2b)', () => {
+    // SC is canal-royale's scatter; it pays from any reel/any row and is NOT
+    // wild-substituted. WD (wild) on reel 1 must not count as a scatter.
+    const grid = [
+      ['SC', 'AA', 'KK'],
+      ['AA', 'WD', 'QQ'],
+      ['JJ', 'SC', 'TT'],
+      ['KK', 'QQ', 'AA'],
+      ['SC', 'TT', 'JJ']
+    ]
+    const outcome = {
+      machineId: 'canal-royale',
+      grid,
+      wins: [{ line: 'scatter', entryId: 'sc3', symbols: ['SC', 'SC', 'SC'], payCredits: 50, wildCount: 0, progressive: false }]
+    } as never
+    const [w] = summariseWins(CANAL_ROYALE, outcome)
+    expect(w!.kind).toBe('ways') // PaylineOverlay draws no line for scatters
+    expect(w!.count).toBe(3)
+    expect(w!.pluralName).toBe('Gondola Scatters')
+    expect(w!.cells).toEqual([{ reel: 0, row: 0 }, { reel: 2, row: 1 }, { reel: 4, row: 0 }])
+    expect(w!.cells).not.toContainEqual({ reel: 1, row: 1 }) // the wild is not a scatter
+  })
 })
 
 describe('summariseWins cells for ways and single', () => {
@@ -78,11 +119,14 @@ describe('summariseWins cells for ways and single', () => {
     const outcome = { machineId: def.id, grid, wins: [{ line: 'ways-1', entryId: 'dr', symbols: ['DR', 'DR', 'DR'], payCredits: 50, wildCount: 1, progressive: false }] } as never
     const [w] = summariseWins(def, outcome)
     expect(w!.kind).toBe('ways')
-    // every DR plus the wild cell are glowed
+    // only the winning run glows: scan just the first `symbols.length` (3) reels
     expect(w!.cells).toContainEqual({ reel: 0, row: 0 })
     expect(w!.cells).toContainEqual({ reel: 1, row: 1 })
     expect(w!.cells).toContainEqual({ reel: 2, row: 0 }) // the wild
-    expect(w!.cells).toContainEqual({ reel: 4, row: 0 })
+    expect(w!.cells).toContainEqual({ reel: 2, row: 2 }) // DR on reel 2
+    // the matching DR on reel 4 sits AFTER the 3-run, so it must NOT glow (M3)
+    expect(w!.cells).not.toContainEqual({ reel: 4, row: 0 })
+    expect(w!.cells.every(c => c.reel <= 2)).toBe(true)
   })
 
   it('single payline maps label to a row across the matched reels', () => {

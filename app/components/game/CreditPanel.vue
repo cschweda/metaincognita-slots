@@ -5,10 +5,11 @@ import { formatCents, formatCredits } from '~/utils/format'
 import { denominationLabel } from '~/utils/denomination'
 
 const store = useSlotsStore()
-const lastWin = computed(() => {
-  const out = store.lastOutcome
-  return out === null ? 0 : out.totalPayout
-})
+// Mirror ResultBar: hold the win figure until the reels land (not while spinning)
+// and only for the current machine's own outcome, so it never spoils the result.
+const showWin = computed(() => !store.spinning && store.lastOutcome !== null
+  && store.lastOutcome.machineId === store.currentMachineId)
+const lastWin = computed(() => store.lastOutcome?.totalPayout ?? 0)
 const denomTag = computed(() => store.currentDef ? denominationLabel(store.currentDef.denominationCents) : '')
 </script>
 
@@ -38,10 +39,11 @@ const denomTag = computed(() => store.currentDef ? denominationLabel(store.curre
           Last win
         </div>
         <div
+          data-test="last-win"
           class="text-xl"
-          :class="lastWin > 0 ? 'text-emerald-400' : 'text-neutral-600'"
+          :class="showWin && lastWin > 0 ? 'text-emerald-400' : 'text-neutral-600'"
         >
-          {{ formatCredits(lastWin) }}
+          {{ showWin ? formatCredits(lastWin) : '—' }}
         </div>
       </div>
       <span
