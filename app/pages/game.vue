@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, defineComponent, h, nextTick, onMounted, onUnmounted, resolveComponent, watch } from 'vue'
+import { computed, defineComponent, h, nextTick, onMounted, onUnmounted, ref, resolveComponent, watch } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 
 const store = useSlotsStore()
 const route = useRoute()
+const parOpen = ref(false)
 
 onMounted(() => {
   if (store.phase === 'floor' && store.peekSavedSession()) store.resume()
@@ -76,7 +77,16 @@ watch(() => store.lastOutcome, () => {
         >
           X-ray
         </UButton>
-        <!-- ParSheetModal + its button mount here in Task 11 -->
+        <UButton
+          color="neutral"
+          variant="outline"
+          size="xs"
+          icon="i-lucide-file-spreadsheet"
+          @click="parOpen = true"
+        >
+          PAR sheet
+        </UButton>
+        <GameParSheetModal v-model:open="parOpen" />
       </div>
     </div>
 
