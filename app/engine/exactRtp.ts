@@ -1,5 +1,6 @@
 import type { BallyEmMachineDef, MachineDef, StepperMachineDef, SymbolId } from './types'
 import { ballyAwardForLine, bestStepperAward } from './awards'
+import { videoExactRtp } from './videoRtp'
 
 export interface ExactRtpOptions {
   /** coin level for multiplier/progressive-at-max machines (default: maxCoins) */
@@ -58,6 +59,8 @@ function ballyWeights(def: BallyEmMachineDef): Map<SymbolId, number>[] {
  * exact to far beyond the 6-decimal frozen-test tolerance.
  */
 export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpReport {
+  if (def.family === 'video') return videoExactRtp(def, opts)
+  if (def.family === 'pachislo') throw new Error('pachislo exactRtp lands in Task 12')
   const coins = opts.coins ?? def.maxCoins
   if (coins < 1 || coins > def.maxCoins) {
     throw new Error(`${def.id}: coins ${coins} out of range 1..${def.maxCoins}`)
@@ -70,9 +73,6 @@ export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpR
     case 'bally-em':
       weights = ballyWeights(def)
       break
-    case 'video':
-    case 'pachislo':
-      throw new Error(`${def.family} family lands later in Plan 2`)
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
