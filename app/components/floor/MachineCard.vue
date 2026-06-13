@@ -25,7 +25,13 @@ const jackpotCents = computed<number | null>(() => {
   return Math.floor(value) * props.def.denominationCents
 })
 
-const intel = computed(() => store.settings.xray ? floorIntel(props.def) : null)
+// Floor xray headline: report at the bet dialed in for this machine (defaults
+// to maxCoins) so the per-spin hit frequency/volatility match the in-game
+// sidebar for 'lines' machines.
+const intel = computed(() =>
+  store.settings.xray
+    ? floorIntel(props.def, { coins: store.settings.betsByMachine[props.def.id] ?? props.def.maxCoins })
+    : null)
 
 function play() {
   store.selectMachine(props.def.id)

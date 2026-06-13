@@ -26,13 +26,30 @@ describe('series-e-3line — frozen calibration', () => {
     expect(counts[4]).toEqual({ S7: 1, BAR: 1, BE: 4, PL: 4, OR: 6, CH: 3, BL: 3 })
   })
 
-  it('FROZEN: exact RTP per line = 89.035073% with jackpot at live-average 3000', () => {
-    const r = exactRtp(SERIES_E_3LINE)
-    expect(r.rtpPerCoin).toBeCloseTo(0.89035073, 6)
-    expect(r.hitFrequency).toBeCloseTo(0.11814445, 6)
+  it('FROZEN: exact RTP per coin = 89.035073% (jackpot live-average 3000), line-count invariant', () => {
+    // RTP per coin is the single-line EV and is invariant in the active line
+    // count (each line is bet and paid one coin); default coins = maxCoins = 3.
+    const r3 = exactRtp(SERIES_E_3LINE)
+    const r1 = exactRtp(SERIES_E_3LINE, { coins: 1 })
+    expect(r3.rtpPerCoin).toBeCloseTo(0.89035073, 6)
+    expect(r1.rtpPerCoin).toBeCloseTo(r3.rtpPerCoin, 12)
+    expect(exactRtp(SERIES_E_3LINE, { coins: 2 }).rtpPerCoin).toBeCloseTo(r3.rtpPerCoin, 12)
   })
 
-  it('FROZEN: P(5xS7) = 1/5,153,632', () => {
+  it('FROZEN: per-spin hit frequency reflects the active line count (joint over stop-tuples)', () => {
+    // The 3 window rows of a reel share its stop, so HF is the JOINT P(any
+    // active line wins), not a per-line product. Exact rationals over 22^5:
+    //   1 line  608873/5153632 = 11.814445%  (== the old single-line value)
+    //   2 lines 1191610/5153632 = 23.121752%
+    //   3 lines 1750631/5153632 = 33.968879%  (auditor sim 1M ~ 34%)
+    expect(exactRtp(SERIES_E_3LINE, { coins: 1 }).hitFrequency).toBeCloseTo(608873 / 5153632, 12)
+    expect(exactRtp(SERIES_E_3LINE, { coins: 2 }).hitFrequency).toBeCloseTo(1191610 / 5153632, 12)
+    const r3 = exactRtp(SERIES_E_3LINE) // default coins = 3
+    expect(r3.hitFrequency).toBeCloseTo(1750631 / 5153632, 12)
+    expect(r3.hitFrequency).toBeCloseTo(0.33968879, 6)
+  })
+
+  it('FROZEN: P(5xS7) on a line = 1/5,153,632 (breakdown stays per-payline)', () => {
     const r = exactRtp(SERIES_E_3LINE)
     const jp = r.breakdown.find(b => b.entryId === 's7x5')!
     expect(jp.probability).toBeCloseTo(1 / 5153632, 12)

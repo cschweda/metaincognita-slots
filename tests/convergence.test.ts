@@ -49,12 +49,20 @@ describe('convergence: simulation reproduces exact math', () => {
     })
   }
 
-  it('series-e-3line at 3 coins converges to the same per-coin RTP (loose band, correlated lines)', () => {
+  it('series-e-3line at 3 coins: per-spin HF and per-coin variance match the 3-line joint', () => {
     const exact = exactRtp(SERIES_E_3LINE, { coins: 3 })
     // seed deliberately distinct from the strict 1-coin case above
     const sim = simulateMachine(SERIES_E_3LINE, {
       spins: 2_000_000, coins: 3, seed: 1005, progressiveMode: 'static'
     })
+    // HF is now the true per-spin figure (P any of 3 correlated lines wins),
+    // so it converges under a strict binomial band — not the old loose RTP-only
+    // check that masked the single-line bug.
+    expect(exact.hitFrequency).toBeCloseTo(1750631 / 5153632, 12) // 33.968879%
+    const hfSe = Math.sqrt(exact.hitFrequency * (1 - exact.hitFrequency) / 2_000_000)
+    expect(Math.abs(sim.hitFrequency - exact.hitFrequency)).toBeLessThan(3.5 * hfSe)
+    // RTP/coin is line-count invariant; the static jackpot (upper reset 5000 vs
+    // the 3000 live-average) makes a ~0.04% gap, far inside a loose band.
     expect(Math.abs(sim.rtp - exact.rtpPerCoin)).toBeLessThan(0.01)
   })
 

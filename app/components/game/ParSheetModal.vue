@@ -21,9 +21,11 @@ watch([() => props.open, def, tab], async ([open, d, t]) => {
   report.value = null
   computing.value = true
   await new Promise(resolve => setTimeout(resolve, 30)) // let the modal paint first
+  // Report hit frequency/volatility at the active line count for 'lines'
+  // machines (currentBet); RTP/coin is unaffected. Pachislo is keyed by level.
   const opts = d.family === 'pachislo'
     ? { oddsLevel: store.currentState?.pachislo?.oddsLevel ?? undefined }
-    : {}
+    : { coins: store.currentBet }
   report.value = exactRtp(d, opts)
   computing.value = false
 }, { immediate: true })

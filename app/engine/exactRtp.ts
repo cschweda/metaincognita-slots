@@ -56,6 +56,96 @@ function ballyWeights(def: BallyEmMachineDef): Map<SymbolId, number>[] {
   })
 }
 
+// Mirror spinBallyEm's geometry: grid[reel] = strip[stop+0..2] = rows [top,
+// center, bottom]; coin k activates payline k.
+const BALLY_LINE_ROWS = { center: 1, top: 0, bottom: 2 } as const
+const BALLY_LINES_FOR_COINS = [['center'], ['center', 'top'], ['center', 'top', 'bottom']] as const
+
+/**
+ * True PER-SPIN hit frequency and per-coin variance for a 'lines' Bally machine
+ * at `coins` active paylines. The three window rows of a reel are read off the
+ * SAME stop, so they are correlated — the joint must be taken over reel
+ * stop-tuples (uniform, independent across reels) and every active line scored
+ * on the same tuple (a per-line product would be wrong). Mirrors the video
+ * line joint. At coins=1 this reduces to the single-line figures.
+ *
+ * `linePayPerCoin` is the per-coin credit value of one scored line (the same
+ * value the symbol-tuple pass uses for RTP), so RTP per coin = E[total]/coins
+ * is unchanged; only HF and variance gain the multi-line shape.
+ */
+function ballyLinesJoint(
+  def: BallyEmMachineDef,
+  coins: number,
+  linePayPerCoin: (line: SymbolId[]) => number
+): { hitFrequency: number, variancePerCoin: number } {
+  const reels = def.strips.length
+  const S = def.stops
+  const symList = Object.keys(def.symbols)
+  const symId = new Map<SymbolId, number>(symList.map((s, i) => [s, i]))
+  const nSym = symList.length
+
+  // rowCell[reel][row][stop] = symbol id shown by that reel at that window row.
+  const rowCell: number[][][] = def.strips.map((strip) => {
+    const a: number[][] = [[], [], []]
+    for (let row = 0; row < 3; row++) {
+      for (let s = 0; s < S; s++) a[row]![s] = symId.get(strip[(s + row) % S]!)!
+    }
+    return a
+  })
+  const rows = BALLY_LINES_FOR_COINS[coins - 1]!.map(n => BALLY_LINE_ROWS[n])
+
+  // Per-coin pay of a scored line, memoized by integer-encoded symbol tuple
+  // (award depends only on the symbols, not the stops). Uses the SAME pay
+  // function as the RTP pass so display and gameplay math cannot diverge.
+  const payCache = new Map<number, number>()
+  const line: SymbolId[] = new Array(reels).fill('')
+  const ids = new Array<number>(reels).fill(0)
+  const payForRow = (): number => {
+    let key = 0
+    for (const id of ids) key = key * nSym + id
+    const hit = payCache.get(key)
+    if (hit !== undefined) return hit
+    for (let r = 0; r < reels; r++) line[r] = symList[ids[r]!]!
+    const pay = linePayPerCoin(line)
+    payCache.set(key, pay)
+    return pay
+  }
+
+  const denom = S ** reels
+  let sumX = 0 // sum over tuples of total spin payout (all active lines)
+  let sumX2 = 0
+  let hits = 0
+  const stops = new Array<number>(reels).fill(0)
+  const recurse = (reel: number): void => {
+    if (reel === reels) {
+      let x = 0
+      let any = false
+      for (const row of rows) {
+        for (let r = 0; r < reels; r++) ids[r] = rowCell[r]![row]![stops[r]!]!
+        const p = payForRow()
+        if (p > 0) any = true
+        x += p
+      }
+      sumX += x
+      sumX2 += x * x
+      if (any) hits++
+      return
+    }
+    for (let s = 0; s < S; s++) {
+      stops[reel] = s
+      recurse(reel + 1)
+    }
+  }
+  recurse(0)
+
+  const ex = sumX / denom
+  const ex2 = sumX2 / denom
+  return {
+    hitFrequency: hits / denom,
+    variancePerCoin: (ex2 - ex * ex) / (coins * coins)
+  }
+}
+
 /**
  * Exact per-coin RTP by full enumeration of symbol tuples with integer weights.
  * Uses the SAME award functions as the spin evaluators, so display math and
@@ -151,10 +241,23 @@ export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpR
   recurse(0, 1)
 
   const rtpPerCoin = evNum / denom
+
+  // Single-line figures above are correct for RTP/coin (coin-linear) and for
+  // the per-payline breakdown. But a 'lines' Bally machine plays `coins`
+  // correlated rows per spin, so the displayed PER-SPIN hit frequency and
+  // per-coin variance must be the joint over stop-tuples, not single-line.
+  let hitFrequency = hitNum / denom
+  let variancePerCoin = ev2Num / denom - rtpPerCoin * rtpPerCoin
+  if (def.family === 'bally-em' && def.payMode === 'lines') {
+    const joint = ballyLinesJoint(def, coins, line => payPerCoin(line)?.pay ?? 0)
+    hitFrequency = joint.hitFrequency
+    variancePerCoin = joint.variancePerCoin
+  }
+
   return {
     rtpPerCoin,
-    hitFrequency: hitNum / denom,
-    variancePerCoin: ev2Num / denom - rtpPerCoin * rtpPerCoin,
+    hitFrequency,
+    variancePerCoin,
     breakdown: [...byEntry.entries()].map(([entryId, v]) => ({
       entryId,
       probability: v.pNum / denom,

@@ -47,10 +47,26 @@ describe('exactRtp — toy stepper', () => {
 })
 
 describe('exactRtp — toy bally', () => {
-  it('computes per-line RTP exactly', () => {
-    const r = exactRtp(toyBally)
-    expect(r.rtpPerCoin).toBeCloseTo(0.5, 12)
-    expect(r.hitFrequency).toBeCloseTo(1 / 64, 12)
+  it('per-coin RTP is line-count invariant; HF/variance are true per-spin (all 3 lines)', () => {
+    // Strip [A,BL,BL,BL]: at stop 0 A shows on TOP, stop 3 on CENTER, stop 2 on
+    // BOTTOM, stop 1 nowhere. A row is all-A iff all 3 reels sit at that row's
+    // stop, so the three rows win on disjoint stop-tuples (1 each of 4^3=64).
+    //   coins=1 (center): P(win) = 1/64, Var(X)=32^2/64 - 0.5^2 = 15.75
+    //   coins=3 (3 lines): P(any) = 3/64 (mutually exclusive), X in {0,32};
+    //     E[X]=96/64=1.5 -> RTP/coin=0.5; E[X^2]=48; Var(X)=45.75;
+    //     var/coin=45.75/9=5.083333...
+    const oneLine = exactRtp(toyBally, { coins: 1 })
+    expect(oneLine.rtpPerCoin).toBeCloseTo(0.5, 12)
+    expect(oneLine.hitFrequency).toBeCloseTo(1 / 64, 12)
+    expect(oneLine.variancePerCoin).toBeCloseTo(15.75, 12)
+
+    const threeLines = exactRtp(toyBally) // default coins = maxCoins = 3
+    expect(threeLines.rtpPerCoin).toBeCloseTo(0.5, 12) // unchanged: coin-linear
+    expect(threeLines.hitFrequency).toBeCloseTo(3 / 64, 12)
+    expect(threeLines.variancePerCoin).toBeCloseTo(45.75 / 9, 12)
+
+    const twoLines = exactRtp(toyBally, { coins: 2 })
+    expect(twoLines.hitFrequency).toBeCloseTo(2 / 64, 12)
   })
 
   it('multiplier machines: progressive maxCoins entry pays meter/coins at max', () => {

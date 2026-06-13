@@ -12,7 +12,10 @@ const sessionRtp = computed(() =>
   store.stats.totalInCents === 0 ? null : store.stats.totalOutCents / store.stats.totalInCents)
 const oddsLevel = computed(() =>
   def.value?.family === 'pachislo' ? store.currentState?.pachislo?.oddsLevel : undefined)
-const intel = computed(() => def.value === null ? null : floorIntel(def.value, oddsLevel.value))
+// Hit frequency and volatility are per-spin figures that depend on the active
+// line count for 'lines' machines, so report them at the player's current bet.
+const intel = computed(() =>
+  def.value === null ? null : floorIntel(def.value, { oddsLevel: oddsLevel.value, coins: store.currentBet }))
 </script>
 
 <template>

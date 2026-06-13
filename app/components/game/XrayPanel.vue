@@ -20,7 +20,8 @@ const virtualStops = computed(() => out.value?.trace.virtualStops ?? null)
 
 const oddsLevel = computed(() =>
   def.value?.family === 'pachislo' ? store.currentState?.pachislo?.oddsLevel : undefined)
-const exactRtpValue = computed(() => def.value === null ? null : floorIntel(def.value, oddsLevel.value).rtp)
+const exactRtpValue = computed(() =>
+  def.value === null ? null : floorIntel(def.value, { oddsLevel: oddsLevel.value }).rtp)
 const samples = computed(() => def.value === null ? [] : store.perMachine[def.value.id]?.samples ?? [])
 const sessionRtp = computed(() => {
   const d = def.value
