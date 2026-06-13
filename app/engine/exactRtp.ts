@@ -87,8 +87,9 @@ export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpR
     }
     const e = ballyAwardForLine(line, def.paytable)
     if (e === null) return null
-    if (e.progressive === 'live') return { pay: (liveAverage ?? 0), entryId: e.id }
-    if (e.progressive === 'maxCoins') {
+    // narrow to 'run' before touching .progressive — allOf entries lack it
+    if (e.kind === 'run' && e.progressive === 'live') return { pay: (liveAverage ?? 0), entryId: e.id }
+    if (e.kind === 'run' && e.progressive === 'maxCoins') {
       return coins === def.maxCoins
         ? { pay: (meterValue ?? 0) / coins, entryId: e.id }
         : { pay: e.pay, entryId: e.id }

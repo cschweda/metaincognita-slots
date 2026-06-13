@@ -49,7 +49,7 @@ export function spinBallyEm(
     let payCredits: number
     let isProgressive = false
 
-    if (entry.progressive === 'live' && state.progressive?.kind === 'dual') {
+    if (entry.kind === 'run' && entry.progressive === 'live' && state.progressive?.kind === 'dual') {
       const prog = state.progressive
       const meter = prog.live
       payCredits = meter === 'upper' ? prog.upper : prog.lower
@@ -60,7 +60,7 @@ export function spinBallyEm(
       }
       progressiveEvents.push({ type: 'hit', meter, amountCredits: payCredits })
       isProgressive = true
-    } else if (entry.progressive === 'maxCoins' && coins === def.maxCoins
+    } else if (entry.kind === 'run' && entry.progressive === 'maxCoins' && coins === def.maxCoins
       && state.progressive?.kind === 'single') {
       const prog = state.progressive
       // floored: single/percent meters accumulate fractional credits from
