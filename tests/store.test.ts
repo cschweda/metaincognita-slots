@@ -4,6 +4,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useSlotsStore, STORAGE_KEY } from '../app/stores/slots'
 import { CANAL_ROYALE } from '../app/machines/canal-royale'
 import { STOCK_RUSH } from '../app/machines/stock-rush'
+import { mulberry32, simulateMachine } from '../app/engine'
+import { setLiveRand } from '../app/utils/liveRand'
+import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
 
 function freshStore() {
   setActivePinia(createPinia())
@@ -189,5 +192,133 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(ps.bonusQueue).toEqual(['big', 'reg'])
     expect(ps.replayNext).toBe(false)
     expect(ps.bonus).toBeNull() // invalid bonus shape → reset
+  })
+})
+
+describe('spin orchestration', () => {
+  it('atomic spin: bankroll, state, history, persistence all move together', () => {
+    setLiveRand(mulberry32(42))
+    const store = freshStore()
+    store.startSession(100_000) // $1,000 — sevens-ablaze denom is 100¢
+    store.selectMachine('sevens-ablaze')
+    store.setBet(2)
+    store.spinOnce()
+    expect(store.spinning).toBe(true)
+    expect(store.history).toHaveLength(1)
+    const rec = store.history[0]!
+    expect(rec.coinsInCents).toBe(200)
+    expect(store.bankrollCents).toBe(100_000 - 200 + rec.payoutCents)
+    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
+    expect(persisted.bankrollCents).toBe(store.bankrollCents)
+    store.revealDone()
+    expect(store.spinning).toBe(false)
+  })
+
+  it('refuses to spin while spinning or broke', () => {
+    setLiveRand(mulberry32(43))
+    const store = freshStore()
+    store.startSession(100) // $1 — one canal spin at 25 lines x 1¢ = 25¢
+    store.selectMachine('canal-royale')
+    store.spinOnce()
+    expect(store.history).toHaveLength(1)
+    store.spinOnce() // locked out — spinning
+    expect(store.history).toHaveLength(1)
+    store.revealDone()
+    store.bankrollCents = 3 // < 25¢
+    store.spinOnce()
+    expect(store.history).toHaveLength(1)
+    expect(store.liveAnnouncement).toMatch(/insufficient/i)
+  })
+
+  it('feeds progressives with simulateMachine v2 parity (live mode, same seed)', () => {
+    const SEED = 777
+    const SPINS = 3_000
+    setLiveRand(mulberry32(SEED))
+    const store = freshStore()
+    store.startSession(100_000_000)
+    store.selectMachine('sevens-ablaze')
+    store.setBet(2)
+    for (let i = 0; i < SPINS; i++) {
+      store.spinOnce()
+      store.revealDone()
+    }
+    const sim = simulateMachine(SEVENS_ABLAZE, {
+      spins: SPINS, coins: 2, seed: SEED, progressiveMode: 'live'
+    })
+    const denom = SEVENS_ABLAZE.denominationCents
+    expect(store.stats.totalInCents).toBe(sim.totalIn * denom)
+    expect(store.stats.totalOutCents).toBe(sim.totalOut * denom)
+    // meter parity: live feed = 1% of coin-in; a jackpot hit resets it mid-run
+    const meter = (store.machineStates['sevens-ablaze']!.progressive as { value: number }).value
+    if (sim.jackpotHits === 0) {
+      expect(meter).toBeCloseTo(2000 + 0.01 * sim.totalIn, 6)
+    } else {
+      expect(meter).toBeGreaterThanOrEqual(2000)
+    }
+  })
+
+  it('pachislo: presses flow through; bonus games cost their token; announcements narrate', () => {
+    setLiveRand(mulberry32(99))
+    const store = freshStore()
+    store.startSession(10_000) // $100 in 25¢ tokens
+    store.selectMachine('stock-rush')
+    store.spinOnce([4, 9, 13])
+    store.revealDone()
+    expect(store.lastOutcome!.trace.presses!.map(p => p.press)).toEqual([4, 9, 13])
+    expect(store.history[0]!.coinsInCents).toBe(3 * 25)
+    expect(store.liveAnnouncement.length).toBeGreaterThan(0)
+  })
+
+  it('setOddsLevel only when idle', () => {
+    setLiveRand(mulberry32(123))
+    const store = freshStore()
+    store.startSession(10_000)
+    store.selectMachine('stock-rush')
+    store.setOddsLevel(6)
+    expect(store.machineStates['stock-rush']!.pachislo!.oddsLevel).toBe(6)
+    store.machineStates['stock-rush']!.pachislo!.bonus = { type: 'reg', round: 1, jacLeft: 8, interlude: null }
+    expect(() => store.setOddsLevel(1)).toThrow(/idle/i)
+  })
+
+  it('export produces a readable text log', () => {
+    setLiveRand(mulberry32(7))
+    const store = freshStore()
+    store.startSession(100_000)
+    store.selectMachine('diamond-doubler')
+    store.spinOnce()
+    store.revealDone()
+    const text = store.exportHistory()
+    expect(text).toContain('diamond-doubler')
+    expect(text).toContain('Session totals')
+  })
+
+  it('rejects malformed presses BEFORE any state moves', () => {
+    setLiveRand(mulberry32(55))
+    const store = freshStore()
+    store.startSession(10_000)
+    store.selectMachine('stock-rush')
+    store.spinOnce([4, 9, 99] as unknown as [number, number, number])
+    expect(store.spinning).toBe(false)
+    expect(store.history).toHaveLength(0)
+    expect(store.machineStates['stock-rush']!.pachislo!.smallQueue).toHaveLength(0)
+    expect(store.machineStates['stock-rush']!.pachislo!.bonusQueue).toHaveLength(0)
+    expect(store.liveAnnouncement).toMatch(/timing glitch/i)
+  })
+
+  it('spinOnce survives a resume that lost perMachine totals', () => {
+    setLiveRand(mulberry32(56))
+    const a = freshStore()
+    a.startSession(100_000)
+    a.selectMachine('diamond-doubler')
+    // simulate a save whose perMachine was dropped by sanitize
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
+    delete raw.perMachine
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(raw))
+    const b = freshStore()
+    expect(b.resume()).toBe(true)
+    b.spinOnce()
+    b.revealDone()
+    expect(b.history).toHaveLength(1)
+    expect(b.perMachine['diamond-doubler']!.cycles).toBe(1)
   })
 })

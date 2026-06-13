@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia'
-import { initMachineState, validateMachineDef } from '~/engine'
+import { addCoinToProgressive, initMachineState, nextSpinCost, spin, validateMachineDef } from '~/engine'
 import type { MachineDef, MachineSessionState, PachisloFlag, PachisloBonusState, SpinOutcome } from '~/engine'
+import { spinPachislo } from '~/engine/pachislo'
 import { FLOOR } from '~/machines'
+import { liveRand } from '~/utils/liveRand'
 
 export const STORAGE_KEY = 'slots-simulator-session'
 const STORAGE_VERSION = 1
@@ -379,6 +381,150 @@ export const useSlotsStore = defineStore('slots', {
 
     resume(): boolean {
       return this.loadFromLocalStorage()
+    },
+
+    spinOnce(presses?: readonly [number, number, number]) {
+      const def = this.currentDef
+      const state = this.currentState
+      if (def === null || state === null || this.phase !== 'playing' || this.spinning) return
+
+      if (presses !== undefined) {
+        for (const q of presses) {
+          if (!Number.isInteger(q) || q < 0 || q > 20) {
+            this.liveAnnouncement = 'Press timing glitch — try again.'
+            return
+          }
+        }
+      }
+
+      const coins = this.currentBet
+      const costCoins = nextSpinCost(def, state, coins)
+      const costCents = costCoins * def.denominationCents
+      if (costCents > this.bankrollCents) {
+        const inBonus = state.pachislo !== null && state.pachislo.bonus !== null
+        this.liveAnnouncement = inBonus
+          ? 'Insufficient credits — bonus in progress. Insert more credits.'
+          : 'Insufficient credits.'
+        return
+      }
+
+      this.spinning = true
+
+      if (
+        (def.family === 'stepper' || def.family === 'bally-em')
+        && def.progressive !== null && state.progressive !== null
+      ) {
+        for (let c = 0; c < coins; c++) addCoinToProgressive(state.progressive, def.progressive)
+      }
+
+      const out = def.family === 'pachislo'
+        ? spinPachislo(def, state, coins, liveRand, presses)
+        : spin(def, state, coins, liveRand)
+
+      if (
+        def.family === 'video' && def.progressive !== null && state.progressive !== null
+      ) {
+        for (let c = 0; c < out.coinsIn; c++) addCoinToProgressive(state.progressive, def.progressive)
+      }
+
+      if (out.coinsIn !== costCoins) {
+        throw new Error(`${def.id}: nextSpinCost predicted ${costCoins} but spin charged ${out.coinsIn}`)
+      }
+
+      const inCents = out.coinsIn * def.denominationCents
+      const outCents = out.totalPayout * def.denominationCents
+      this.bankrollCents += outCents - inCents
+
+      this.history.push({
+        id: this.nextRecordId++,
+        machineId: def.id,
+        gameKind: out.gameKind,
+        coins: out.coins,
+        coinsInCents: inCents,
+        payoutCents: outCents,
+        entryIds: out.wins.map(w => w.entryId),
+        t: Date.now()
+      })
+      if (this.history.length > HISTORY_LIMIT) this.history.splice(0, this.history.length - HISTORY_LIMIT)
+
+      this.stats.totalInCents += inCents
+      this.stats.totalOutCents += outCents
+      const net = this.stats.totalOutCents - this.stats.totalInCents
+      if (net > this.stats.netPeakCents) this.stats.netPeakCents = net
+      const drawdown = this.stats.netPeakCents - net
+      if (drawdown > this.stats.maxDrawdownCents) this.stats.maxDrawdownCents = drawdown
+
+      const totals = this.perMachine[def.id] ?? (this.perMachine[def.id] = { inCents: 0, outCents: 0, cycles: 0, samples: [] })
+      totals.inCents += inCents
+      totals.outCents += outCents
+      if (out.gameKind === 'base' || out.gameKind === 'normal') {
+        this.stats.spins += 1
+        totals.cycles += 1
+        if (totals.cycles % SPARKLINE_EVERY === 0 && totals.inCents > 0) {
+          totals.samples.push(totals.outCents / totals.inCents)
+          if (totals.samples.length > SPARKLINE_LIMIT) totals.samples.splice(0, totals.samples.length - SPARKLINE_LIMIT)
+        }
+      }
+
+      this.lastOutcome = out
+      this.liveAnnouncement = this.describeOutcome(def, out)
+      this.saveToLocalStorage()
+    },
+
+    revealDone() {
+      this.spinning = false
+    },
+
+    describeOutcome(def: MachineDef, out: SpinOutcome): string {
+      const parts: string[] = []
+      if (out.totalPayout > 0) {
+        parts.push(`Won ${out.totalPayout.toLocaleString('en-US')} credits.`)
+      } else {
+        parts.push('No win.')
+      }
+      for (const e of out.featureEvents) {
+        if (e.type === 'free-spins-triggered') parts.push(`${e.count} free spins at ${e.multiplier}x.`)
+        if (e.type === 'free-spin-consumed') parts.push(`Free spins: ${e.remaining} remaining.`)
+        if (e.type === 'free-spins-retriggered') parts.push(`Retrigger! ${e.remaining} free spins.`)
+        if (e.type === 'orbs-locked') parts.push(`${e.cells.length} orbs locked.`)
+        if (e.type === 'hold-and-spin-ended') parts.push(`Hold and spin pays ${e.totalCredits.toLocaleString('en-US')} credits${e.filled ? ' — GRAND!' : '.'}`)
+        if (e.type === 'flag-stocked') parts.push(`${e.flag} stocked.`)
+        if (e.type === 'bonus-started') parts.push(`${e.bonus.toUpperCase()} bonus!`)
+        if (e.type === 'interlude-started') parts.push('Bonus interlude.')
+        if (e.type === 'bonus-ended') parts.push('Bonus complete.')
+        if (e.type === 'replay-granted') parts.push('Replay — next game free.')
+      }
+      for (const p of out.progressiveEvents) {
+        parts.push(`PROGRESSIVE: ${p.amountCredits.toLocaleString('en-US')} credits!`)
+      }
+      parts.push(`Balance ${Math.floor(this.bankrollCents / def.denominationCents).toLocaleString('en-US')} credits.`)
+      return parts.join(' ')
+    },
+
+    setOddsLevel(level: number) {
+      const def = this.currentDef
+      const state = this.currentState
+      if (def === null || state === null || def.family !== 'pachislo' || state.pachislo === null) return
+      if (this.spinning || state.pachislo.bonus !== null) {
+        throw new Error('operator key works only while the machine is idle')
+      }
+      if (!Number.isInteger(level) || level < 1 || level > def.oddsLevels.length) {
+        throw new Error(`oddsLevel ${level} out of range 1..${def.oddsLevels.length}`)
+      }
+      state.pachislo.oddsLevel = level
+      this.saveToLocalStorage()
+    },
+
+    exportHistory(): string {
+      const lines = this.history.map(r =>
+        `#${r.id}\t${new Date(r.t).toISOString()}\t${r.machineId}\t${r.gameKind}\tbet ${r.coinsInCents}c\twin ${r.payoutCents}c\t${r.entryIds.join(',') || '-'}`)
+      const net = this.stats.totalOutCents - this.stats.totalInCents
+      return [
+        'metaincognita-slots session log',
+        ...lines,
+        '',
+        `Session totals: in ${this.stats.totalInCents}c out ${this.stats.totalOutCents}c net ${net}c over ${this.stats.spins} games`
+      ].join('\n')
     }
   }
 })
