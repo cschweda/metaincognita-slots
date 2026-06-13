@@ -106,7 +106,8 @@ watch(() => store.lastOutcome, () => {
         </GameBetControls>
       </div>
       <aside class="space-y-3">
-        <!-- SessionSidebar + XrayPanel land in Task 12 -->
+        <GameSessionSidebar />
+        <GameXrayPanel />
       </aside>
     </div>
   </div>
