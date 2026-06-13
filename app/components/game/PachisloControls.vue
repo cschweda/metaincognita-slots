@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { usePachisloPress } from '~/composables/usePachisloPress'
 import { exactRtp } from '~/engine'
@@ -14,6 +14,8 @@ function onKey(e: KeyboardEvent) {
   if (e.metaKey || e.ctrlKey || e.altKey) return
   const target = e.target as HTMLElement | null
   if (target !== null && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
+  // Don't leak stops to the reels behind any open dialog (PAR sheet, operator key).
+  if (typeof document !== 'undefined' && document.querySelector('[role="dialog"][data-state="open"]') !== null) return
   if (e.key === '1') press(0)
   if (e.key === '2') press(1)
   if (e.key === '3') press(2)
@@ -31,6 +33,11 @@ const idle = computed(() => {
 })
 
 const keyOpen = ref(false)
+// The operator key is idle-only; if the machine leaves idle while the modal is
+// open (e.g. a queued bonus starts), close it so its level buttons can't throw.
+watch(idle, (v) => {
+  if (!v) keyOpen.value = false
+})
 const levels = computed(() => {
   const d = def.value
   if (d === null) return []
@@ -40,7 +47,11 @@ const levels = computed(() => {
   }))
 })
 function setLevel(level: number) {
-  store.setOddsLevel(level)
+  try {
+    store.setOddsLevel(level)
+  } catch {
+    // setOddsLevel throws if the machine raced out of idle; swallow and close.
+  }
   keyOpen.value = false
 }
 </script>
@@ -107,7 +118,8 @@ function setLevel(level: number) {
             v-for="row in levels"
             :key="row.level"
             :data-test="`level-${row.level}`"
-            class="w-full flex items-center justify-between rounded-lg border px-3 py-2 font-mono text-sm transition-colors"
+            :disabled="!idle"
+            class="w-full flex items-center justify-between rounded-lg border px-3 py-2 font-mono text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 disabled:opacity-50 disabled:cursor-not-allowed"
             :class="store.currentState?.pachislo?.oddsLevel === row.level
               ? 'border-amber-500 bg-amber-500/10 text-amber-300'
               : 'border-neutral-800 hover:border-neutral-600 text-neutral-300'"

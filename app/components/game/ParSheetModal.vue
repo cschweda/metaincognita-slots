@@ -67,6 +67,10 @@ const bonusValues = computed(() => {
   return d !== null && d.family === 'pachislo' ? pachisloBonusValues(d) : null
 })
 
+// For pachislo the breakdown's avgPayPerCoin is each flag's renewal value ÷ tokens
+// in (out/IN), not credits paid — so don't mislabel it "Avg pay/coin".
+const payColLabel = computed(() => def.value?.family === 'pachislo' ? 'Value ÷ IN' : 'Avg pay/coin')
+
 function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
   switch (d.family) {
     case 'video':
@@ -157,12 +161,16 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
           <table class="w-full text-xs font-mono">
             <thead>
               <tr class="text-neutral-500 text-left">
-                <th class="py-1 pr-3">
+                <th
+                  scope="col"
+                  class="py-1 pr-3"
+                >
                   Symbol
                 </th>
                 <th
                   v-for="(_, r) in stripRows[0]?.counts ?? []"
                   :key="r"
+                  scope="col"
                   class="py-1 pr-3 text-right"
                 >
                   Reel {{ r + 1 }}
@@ -205,9 +213,12 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
                 v-for="row in payRows(def)"
                 :key="row.id"
               >
-                <td class="py-1 pr-3 text-neutral-300">
+                <th
+                  scope="row"
+                  class="py-1 pr-3 text-left font-normal text-neutral-300"
+                >
                   {{ row.text }}
-                </td>
+                </th>
                 <td class="py-1 text-right text-amber-300">
                   {{ row.pay }}
                 </td>
@@ -227,9 +238,12 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
                   v-for="row in pachisloRates"
                   :key="row.flag"
                 >
-                  <td class="py-1 pr-3 text-neutral-300">
+                  <th
+                    scope="row"
+                    class="py-1 pr-3 text-left font-normal text-neutral-300"
+                  >
                     {{ row.flag }}
-                  </td>
+                  </th>
                   <td class="py-1 text-right text-neutral-400">
                     {{ row.n }} / 16384
                   </td>
@@ -290,16 +304,28 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
             <table class="w-full text-xs font-mono">
               <thead>
                 <tr class="text-neutral-500 text-left">
-                  <th class="py-1 pr-2">
+                  <th
+                    scope="col"
+                    class="py-1 pr-2"
+                  >
                     Award
                   </th>
-                  <th class="py-1 pr-2 text-right">
+                  <th
+                    scope="col"
+                    class="py-1 pr-2 text-right"
+                  >
                     Probability
                   </th>
-                  <th class="py-1 pr-2 text-right">
-                    Avg pay/coin
+                  <th
+                    scope="col"
+                    class="py-1 pr-2 text-right"
+                  >
+                    {{ payColLabel }}
                   </th>
-                  <th class="py-1 text-right">
+                  <th
+                    scope="col"
+                    class="py-1 text-right"
+                  >
                     RTP share
                   </th>
                 </tr>
@@ -324,6 +350,12 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
                 </tr>
               </tbody>
             </table>
+            <p
+              v-if="def.family === 'pachislo'"
+              class="text-[10px] text-neutral-600"
+            >
+              Pachislo column is each flag's renewal value ÷ tokens in (so probability × value = RTP share), not credits paid.
+            </p>
             <p class="text-[10px] text-neutral-600">
               RTP-share column sums to the exact RTP. Every figure derives from the machine definition at render time.
             </p>
