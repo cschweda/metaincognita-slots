@@ -2,9 +2,8 @@
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { formatCents } from '~/utils/format'
-import type { MachineDef } from '~/engine'
 
-const props = defineProps<{ def: MachineDef, label?: string }>()
+const props = defineProps<{ def: { id: string, denominationCents: number }, label?: string }>()
 const store = useSlotsStore()
 
 const cents = computed<number | null>(() => {

@@ -89,7 +89,10 @@ export function useReelSpin(opts: ReelSpinOptions) {
     }
   })
 
-  onUnmounted(clearTimers)
+  onUnmounted(() => {
+    clearTimers()
+    store.revealDone()
+  })
 
   return { strips, offsetY, blur, durationMs, revealed, cellPx: REEL_CELL_PX, gapPx: REEL_GAP_PX, stride: STRIDE, visibleRows: opts.visibleRows, buffer: BUFFER }
 }

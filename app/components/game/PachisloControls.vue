@@ -39,6 +39,7 @@ watch(idle, (v) => {
   if (!v) keyOpen.value = false
 })
 const levels = computed(() => {
+  if (!keyOpen.value) return []
   const d = def.value
   if (d === null) return []
   return d.oddsLevels.map((_, i) => ({
