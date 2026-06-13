@@ -43,8 +43,18 @@ export function summariseWins(def: MachineDef, outcome: SpinOutcome | null): Win
     if (lineMatch !== null && lines !== null) {
       const lineNumber = Number(lineMatch[1])
       const pattern = lines[lineNumber - 1] ?? null
-      const cells = pattern === null ? [] : pattern.slice(0, count).map((row, reel) => ({ reel, row }))
-      return { ...base, lineNumber, pattern, cells, kind: 'line' as const }
+      // The video engine fills `symbols` with the FULL line cells (all reels),
+      // not the matched run. Derive the real left-anchored run (wild-substituted)
+      // so count / name / glow reflect the actual win, not the whole payline.
+      const paySym = w.symbols.find(s => s !== wild) ?? w.symbols[0] ?? ''
+      let run = 0
+      for (const s of w.symbols) {
+        if (s === paySym || (wild !== null && s === wild)) run++
+        else break
+      }
+      const payName = symbolName(def, paySym)
+      const cells = pattern === null ? [] : pattern.slice(0, run).map((row, reel) => ({ reel, row }))
+      return { lineNumber, count: run, symbolId: paySym, symbolName: payName, pluralName: pluralize(payName), payout, pattern, cells, kind: 'line' as const, color }
     }
     if (w.line.startsWith('ways')) {
       const cells: { reel: number, row: number }[] = []

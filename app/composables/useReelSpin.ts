@@ -1,5 +1,5 @@
 // app/composables/useReelSpin.ts
-import { onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useReducedMotion } from '~/composables/useReducedMotion'
 
@@ -19,12 +19,24 @@ export function useReelSpin(opts: ReelSpinOptions) {
   const store = useSlotsStore()
   const reduced = useReducedMotion()
 
-  const strips = ref<string[][]>([])
-  const offsetY = ref<number[]>([])
-  const blur = ref<number[]>([])
-  const durationMs = ref<number[]>([])
+  // Filler shown above the landing window; empty when settled (strips === grid).
+  const buffer = ref<string[][]>([])
+  const offsetY = ref<number[]>(Array(opts.reelCount).fill(0))
+  const blur = ref<number[]>(Array(opts.reelCount).fill(0))
+  const durationMs = ref<number[]>(Array(opts.reelCount).fill(0))
   const revealed = ref(opts.reelCount)
   let timers: ReturnType<typeof setTimeout>[] = []
+
+  // Strips are REACTIVE to grid(): the landing cells always reflect the live
+  // resolved outcome, so the board can never display a stale grid relative to
+  // the scored win (the snapshot version could capture the previous outcome
+  // because spinOnce sets `spinning` before `lastOutcome`).
+  const strips = computed<string[][]>(() => {
+    const g = opts.grid()
+    const b = buffer.value
+    return Array.from({ length: opts.reelCount }, (_, r) =>
+      b.length ? [...(b[r] ?? []), ...(g[r] ?? [])] : (g[r] ?? []))
+  })
 
   function pick(): string {
     const f = opts.filler()
@@ -34,9 +46,8 @@ export function useReelSpin(opts: ReelSpinOptions) {
     timers.forEach(clearTimeout)
     timers = []
   }
-
   function settle() {
-    strips.value = Array.from({ length: opts.reelCount }, (_, r) => opts.grid()[r] ?? [])
+    buffer.value = []
     offsetY.value = Array(opts.reelCount).fill(0)
     blur.value = Array(opts.reelCount).fill(0)
     durationMs.value = Array(opts.reelCount).fill(0)
@@ -46,7 +57,6 @@ export function useReelSpin(opts: ReelSpinOptions) {
   watch(() => store.spinning, (spinning) => {
     clearTimers()
     if (!spinning) return
-    const g = opts.grid()
     if (reduced.value) {
       settle()
       store.revealDone()
@@ -55,10 +65,7 @@ export function useReelSpin(opts: ReelSpinOptions) {
 
     revealed.value = 0
     durationMs.value = Array.from({ length: opts.reelCount }, (_, r) => 1100 + r * 220)
-    strips.value = Array.from({ length: opts.reelCount }, (_, r) => {
-      const out = g[r] ?? []
-      return [...Array.from({ length: BUFFER }, pick), ...out]
-    })
+    buffer.value = Array.from({ length: opts.reelCount }, () => Array.from({ length: BUFFER }, pick))
     offsetY.value = Array(opts.reelCount).fill(0)
     blur.value = Array(opts.reelCount).fill(0)
 
@@ -74,13 +81,15 @@ export function useReelSpin(opts: ReelSpinOptions) {
       }, dur * 0.55))
       timers.push(setTimeout(() => {
         revealed.value = r + 1
-        if (r === opts.reelCount - 1) store.revealDone()
+        if (r === opts.reelCount - 1) {
+          store.revealDone()
+          settle() // collapse the buffer: strips === grid (exact outcome, clean a11y tree)
+        }
       }, dur))
     }
   })
 
   onUnmounted(clearTimers)
-  settle()
 
   return { strips, offsetY, blur, durationMs, revealed, cellPx: REEL_CELL_PX, gapPx: REEL_GAP_PX, stride: STRIDE, visibleRows: opts.visibleRows, buffer: BUFFER }
 }

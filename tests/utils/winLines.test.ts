@@ -33,6 +33,32 @@ describe('summariseWins', () => {
     ])
     expect(typeof w!.color).toBe('string')
   })
+
+  it('derives the matched RUN from full-line cells (video fills all 5 reels)', () => {
+    // The engine reports the whole payline in `symbols`; only 3 match here.
+    // line-3 = LINES25[2] = [2,2,2,2,2]; AA, WD, WD then LI breaks -> 3 Aces.
+    const outcome = {
+      machineId: 'canal-royale',
+      wins: [{ line: 'line-3', entryId: 'aa3', symbols: ['AA', 'WD', 'WD', 'LI', 'TT'], payCredits: 12, wildCount: 2, progressive: false }]
+    } as never
+    const [w] = summariseWins(CANAL_ROYALE, outcome)
+    expect(w!.count).toBe(3)
+    expect(w!.symbolId).toBe('AA')
+    expect(w!.pluralName).toBe('Aces')
+    expect(w!.cells).toEqual([{ reel: 0, row: 2 }, { reel: 1, row: 2 }, { reel: 2, row: 2 }])
+    expect(w!.pattern).toEqual([2, 2, 2, 2, 2]) // full payline kept for drawing the line
+  })
+
+  it('names the paying symbol, not the wild, on a wild-led line', () => {
+    const outcome = {
+      machineId: 'canal-royale',
+      wins: [{ line: 'line-2', entryId: 'ma4', symbols: ['WD', 'MA', 'MA', 'MA', 'TT'], payCredits: 120, wildCount: 1, progressive: false }]
+    } as never
+    const [w] = summariseWins(CANAL_ROYALE, outcome)
+    expect(w!.count).toBe(4)
+    expect(w!.symbolId).toBe('MA')
+    expect(w!.pluralName).toBe('Carnival Masks')
+  })
 })
 
 describe('summariseWins cells for ways and single', () => {
