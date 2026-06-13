@@ -45,8 +45,16 @@ export function validateMachineDef(def: MachineDef): void {
       if (entry.kind === 'count' && entry.symbol === def.wildSymbol) {
         errors.push(`paytable ${entry.id}: count entries must not target the wild symbol`)
       }
+      // a progressive award without its matching meter config makes the
+      // evaluator and the exact-RTP enumerator silently disagree
+      if (entry.kind === 'allSame' && entry.progressiveAtMaxCoins === true && def.progressive?.kind !== 'percent') {
+        errors.push(`paytable ${entry.id}: progressiveAtMaxCoins requires a percent progressive config`)
+      }
     }
   } else {
+    if (def.payMode === 'lines' && def.maxCoins > 3) {
+      errors.push(`payMode 'lines' supports at most 3 coins/paylines (maxCoins ${def.maxCoins})`)
+    }
     def.strips.forEach((strip, r) => {
       if (strip.length !== def.stops) {
         errors.push(`strips[${r}] length ${strip.length} != stops ${def.stops}`)
@@ -59,6 +67,12 @@ export function validateMachineDef(def: MachineDef): void {
         checkSymbol(entry.symbol, `paytable ${entry.id}`)
         if (entry.length < 1 || entry.length > def.strips.length) {
           errors.push(`paytable ${entry.id}: run length ${entry.length} out of range`)
+        }
+        if (entry.progressive === 'live' && def.progressive?.kind !== 'dual') {
+          errors.push(`paytable ${entry.id}: progressive 'live' requires a dual progressive config`)
+        }
+        if (entry.progressive === 'maxCoins' && def.progressive?.kind !== 'single') {
+          errors.push(`paytable ${entry.id}: progressive 'maxCoins' requires a single progressive config`)
         }
       } else {
         checkSymbol(entry.symbol, `paytable ${entry.id}`)

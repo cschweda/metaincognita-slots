@@ -96,4 +96,28 @@ describe('validateMachineDef', () => {
     def.paytable = [{ id: '3a', kind: 'allSame', symbol: 'A', pay: 0 }]
     expect(() => validateMachineDef(def)).toThrow(/pay/i)
   })
+
+  it('rejects lines machines with maxCoins above the 3 supported paylines', () => {
+    const def = tinyBally()
+    def.maxCoins = 4
+    expect(() => validateMachineDef(def)).toThrow(/lines/i)
+  })
+
+  it("rejects progressive 'live' awards without a dual progressive config", () => {
+    const def = tinyBally()
+    def.paytable = [{ id: 'jp', kind: 'run', symbol: 'A', length: 3, pay: 1, progressive: 'live' }]
+    expect(() => validateMachineDef(def)).toThrow(/dual/i)
+  })
+
+  it("rejects progressive 'maxCoins' awards without a single progressive config", () => {
+    const def = tinyBally()
+    def.paytable = [{ id: 'jp', kind: 'run', symbol: 'A', length: 3, pay: 1000, progressive: 'maxCoins' }]
+    expect(() => validateMachineDef(def)).toThrow(/single/i)
+  })
+
+  it('rejects progressiveAtMaxCoins awards without a percent progressive config', () => {
+    const def = tinyStepper()
+    def.paytable = [{ id: 'jp', kind: 'allSame', symbol: 'A', pay: 1000, progressiveAtMaxCoins: true }]
+    expect(() => validateMachineDef(def)).toThrow(/percent/i)
+  })
 })
