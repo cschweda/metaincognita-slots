@@ -146,9 +146,15 @@ Single Pinia store `app/stores/slots.ts`: bankroll, current machine, per-machine
 - Telnaes patent US 4,448,419 (1984) — weighted virtual reel mapping (external reference).
 - Sibling conventions: metaincognita-flameout 0.4.1 (engine/test/persistence patterns), -craps (layout, CI, chi² testing), -holdem (headless scripts), -video-poker (worker sims, README philosophy).
 
-## Implementation notes (v0.1.0, Plan 1)
+## Implementation notes
+
+### v0.1.0 (Plan 1)
 
 Two deliberate deviations from the type sketches above landed in Plan 1 (both reviewed and approved during execution):
 
 - **`volatilityClass` dropped from `MachineDef`.** Volatility is computed (`exactRtp().variancePerCoin`), never asserted — the same computed-not-asserted rule this spec sets for RTP. Plan 3's floor cards derive volatility badges from `variancePerCoin`.
 - **`SpinOutcome.progressiveDelta` became `progressiveEvents` (hits only).** Meter feeding happens outside `spin()`: the store/simulator ticks `addCoinToProgressive` per coin-in (FO-5140 semantics); the evaluator owns reset-on-hit. Plan 3's store must own the per-coin feed calls.
+
+### v0.2.0 (Plan 2)
+
+- **Stock Rush takes exactly 3 tokens.** The spec's 1/2-token line modes remain as lamp behavior for the Plan 3 UI, but normal games require the full bet: bonus flag values are fixed token amounts, so under-betting would yield >200% per-coin RTP; real stock-era machines gate bonus eligibility by full bet. Decided at Task 12 execution review.

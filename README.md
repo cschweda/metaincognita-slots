@@ -6,11 +6,11 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: engine milestone.** The headless engine, four calibrated machines,
+**Status: engine milestone.** The headless engine, eight calibrated machines,
 and the statistical verification harness are complete. The playable UI,
 X-ray mode, Sim Lab, and learn pages land in subsequent milestones.
 
-## The floor (so far)
+## The floor
 
 | Machine | Family | Format | Exact RTP |
 |---|---|---|---|
@@ -18,17 +18,69 @@ X-ray mode, Sim Lab, and learn pages land in subsequent milestones.
 | Sevens Ablaze | Telnaes stepper | 3 reels, 2-coin, percent-fed progressive | 94.4881% @ reset + 1%/coin-in feed |
 | Series E 3-Line | Vintage Bally (E-1202 replica) | 5 reels x 22 uniform stops, 3 lines, dual toggling progressive | 89.0351% per line |
 | Series E Multiplier | Vintage Bally (E-1203 replica) | 4 reels x 25 uniform stops, 1-3 coin multiplier | 89.1264% @ 3 coins / 85.0304% @ 1 |
+| Canal Royale | Video (lines) | 5 reels x 24 stops, 25-line, free spins | 92.4559% |
+| Dragon's Hoard | Video (ways) | 5 reels x 24 stops, 243-ways, hold-and-spin | 93.9950% |
+| Thunder Vault | Video (lines) | 5 reels x 24 stops, 25-line, Grand progressive | 90.2948% @ Grand reset |
+| Stock Rush | Pachislo (skill-stop) | 3 reels x 21 stops, flag lottery, stock queue | 66.0012%–120.0028% by operator level (L4 default 91.5013%) |
 
 Every RTP shown is **computed** from the machine definition by exact
 enumeration (`exactRtp`) — never asserted — and verified by seeded
 multi-million-spin simulation.
+
+## Stepper (Telnaes virtual-reel)
+
+Classic 3-reel cabinets with Telnaes virtual reels: each physical stop maps
+to one or more virtual stops, giving the designer precise RTP control without
+increasing the physical reel size. Diamond Doubler uses a wild symbol that
+multiplies 2x/4x. Sevens Ablaze adds a percent-fed progressive whose meter
+grows with every coin wagered.
+
+## Bally E-series (electromechanical)
+
+Uniform-stop mechanical reels with no virtual layer — the math is pure
+combinatorics. The E-1202 pays three independent lines; the E-1203 uses a
+1-3 coin multiplier. Both use the FO-5140 dual-toggling progressive
+controller documented in the Bally service manuals.
+
+## Video (lines / ways / hold-and-spin)
+
+24-cell strips so the full 24⁵ cycle is exactly enumerable; line and ways
+evaluation anchored on reel 1; free-spin EV via Wald/branching identities;
+hold-and-spin via an absorbing Markov chain; Thunder Vault's Grand is a
+percentage-fed progressive.
+
+## Pachislo (skill-stop)
+
+The lottery decides, the reels obey: flags stock and are never lost, control
+slips ≤ 4 stops, and an exhaustive 21³ check proves no win can land without a
+flag — so your timing changes *when*, never *how much*. Six operator odds
+levels straight from the manual's bands (65–67% up to 115–125%).
 
 ## Verification
 
 ```bash
 pnpm install
 pnpm test          # unit + frozen-calibration + convergence suites
-pnpm verify        # headless floor verification report (5M spins/machine)
+pnpm verify        # headless floor verification report (5M cycles/machine)
+```
+
+`pnpm verify` now covers 8 machines and prints a jackpot-column footnote
+distinguishing progressive meter hits (Bally, Thunder Vault Grand) from
+pachislo bonus flags. Convergence tests include video cycle-SE cases and
+pachislo block-SE at levels 1/4/6.
+
+Full-run table (5M cycles/machine, seed 20260612):
+
+```
+machine               coins   exact RTP    sim RTP      Δ           HF exact     HF sim      jackpots  σ-band
+canal-royale           25     92.4559%    92.3114%     0.1446%    55.5343%    55.5288%         0  PASS
+dragons-hoard          25     93.9950%    93.8912%     0.1038%    53.5534%    53.5202%         0  PASS
+thunder-vault          25     90.2948%    90.2476%     0.0471%    41.2899%    41.3153%       947  PASS
+diamond-doubler         3     94.7442%    94.3475%     0.3967%    14.6675%    14.6593%         0  PASS
+sevens-ablaze           2     94.4881%    94.8581%     0.3700%    15.7193%    15.7259%       369  PASS
+series-e-3line          1     89.0351%    89.0187%     0.0164%    11.8144%    11.8206%         0  PASS
+series-e-multiplier     3     89.1264%    89.7747%     0.6483%    14.2559%    14.2505%       214  PASS
+stock-rush              3     91.5013%    91.1733%     0.3280%    21.2341%    21.2506%         0  PASS
 ```
 
 ## Tech

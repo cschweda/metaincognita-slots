@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] - 2026-06-12
+
+### Added
+- Video family: anchored line evaluation (25-line geometry), 243-ways evaluation,
+  scatter pays, free spins (multipliers + retriggers), hold-and-spin with orb
+  values and a percentage-fed Grand progressive.
+- Pachislo family: /16384 flag lottery, stock queues that never lose a flag,
+  deterministic skill-stop control (slip ≤ 4) exhaustively verified win-free
+  without a flag, REG/BIG bonus rounds with increased-odds interludes, six
+  operator odds levels.
+- Machines: Canal Royale (92.4559%), Dragon's Hoard (93.9950%), Thunder Vault
+  (90.2948% @ Grand reset), Stock Rush (66.0012%–120.0028% by level) — floor
+  complete at 8.
+- Exact math: full 24⁵ video cycle enumeration with analytic feature moments
+  (Wald, branching second moments, absorbing Markov chain); pachislo renewal
+  closed form; all frozen values reproduced from the plan calibration.
+- `SpinOutcome.gameKind`/`coinsIn`/`featureEvents`; simulator v2 counts cycles,
+  drains in-flight features, and takes a pachislo `oddsLevel`.
+
+### Changed
+- Family dispatch uses exhaustive switches with never-checks.
+- `SimResult.hitRate` renamed to `hitFrequency`.
+- Vitest engine suites run in the node environment.
+- `verify-floor`: 8 machines, NaN-guarded args, pachislo block-empirical sigma,
+  jackpot-column footnote.
+
+### Fixed
+- `exactRtp` rejects out-of-range coin levels.
+
 ## [0.1.0] - 2026-06-12
 
 ### Added
