@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import ReelStepper from '../../app/components/game/ReelStepper.vue'
 import ReelBally from '../../app/components/game/ReelBally.vue'
 import ReelPachislo from '../../app/components/game/ReelPachislo.vue'
+import GameReelColumn from '../../app/components/game/ReelColumn.vue'
 import { useSlotsStore } from '../../app/stores/slots'
 
 const IconStub = { props: ['icon', 'label', 'wild', 'size'], template: '<i data-test="cell" :data-icon="icon" />' }
@@ -15,7 +16,12 @@ function withMachine(Comp: unknown, id: string) {
   const store = useSlotsStore()
   store.startSession(100000)
   store.selectMachine(id)
-  return mount(Comp as never, { global: { stubs: { UIcon: true, GameProgressiveMeter: true, GameSymbolIcon: IconStub } } })
+  return mount(Comp as never, {
+    global: {
+      components: { GameReelColumn },
+      stubs: { UIcon: true, GameProgressiveMeter: true, GameSymbolIcon: IconStub }
+    }
+  })
 }
 
 describe('Reel surfaces', () => {

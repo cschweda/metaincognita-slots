@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { usePachisloPress } from '~/composables/usePachisloPress'
+import { useReelSymbols } from '~/composables/useReelSymbols'
 import type { PachisloMachineDef } from '~/engine'
 
 const store = useSlotsStore()
@@ -31,12 +32,7 @@ const queueDepth = computed(() => ps.value === null
   ? 0
   : ps.value.smallQueue.length + ps.value.bonusQueue.length)
 
-function labelFor(sym: string): string {
-  return def.value?.symbols[sym]?.label ?? sym
-}
-function iconFor(sym: string) {
-  return def.value?.symbols[sym]?.icon
-}
+const { iconFor, labelFor } = useReelSymbols(def)
 </script>
 
 <template>

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ReelVideo from '../../app/components/game/ReelVideo.vue'
+import GameReelColumn from '../../app/components/game/ReelColumn.vue'
 import { useSlotsStore } from '../../app/stores/slots'
 
 const IconStub = { props: ['icon', 'label', 'wild', 'size'], template: '<i data-test="cell" :data-icon="icon" />' }
@@ -15,7 +16,10 @@ function setup() {
   store.startSession(100000)
   store.selectMachine('canal-royale')
   const wrapper = mount(ReelVideo, {
-    global: { stubs: { UIcon: true, GameProgressiveMeter: true, GameSymbolIcon: IconStub, GamePaylineOverlay: OverlayStub } }
+    global: {
+      components: { GameReelColumn },
+      stubs: { UIcon: true, GameProgressiveMeter: true, GameSymbolIcon: IconStub, GamePaylineOverlay: OverlayStub }
+    }
   })
   return { store, wrapper }
 }

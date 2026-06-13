@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useReelSpin, REEL_CELL_PX, REEL_GAP_PX } from '~/composables/useReelSpin'
+import { useReelSymbols } from '~/composables/useReelSymbols'
 import { summariseWins } from '~/utils/winLines'
 import type { StepperMachineDef } from '~/engine'
 
@@ -31,13 +32,7 @@ const glow = computed(() => {
   return m
 })
 const paylineWin = computed(() => wins.value.length > 0)
-function iconFor(sym: string) {
-  return def.value?.symbols[sym]?.icon
-}
-function labelFor(sym: string) {
-  return def.value?.symbols[sym]?.label ?? sym
-}
-const winH = REEL_CELL_PX * 3 + REEL_GAP_PX * 2
+const { iconFor, labelFor } = useReelSymbols(def)
 </script>
 
 <template>
@@ -66,40 +61,20 @@ const winH = REEL_CELL_PX * 3 + REEL_GAP_PX * 2
         class="flex"
         :style="{ gap: REEL_GAP_PX + 'px' }"
       >
-        <div
+        <GameReelColumn
           v-for="(strip, r) in strips"
           :key="r"
-          class="overflow-hidden rounded-lg"
-          :style="{ width: REEL_CELL_PX + 'px', height: winH + 'px' }"
-        >
-          <div
-            class="flex flex-col"
-            :style="{
-              transform: `translateY(${offsetY[r] ?? 0}px)`,
-              filter: `blur(${blur[r] ?? 0}px)`,
-              transition: `transform ${durationMs[r] ?? 0}ms cubic-bezier(.16,.74,.18,1), filter ${(durationMs[r] ?? 0) * 0.5}ms ease-out`
-            }"
-          >
-            <div
-              v-for="(cell, idx) in strip"
-              :key="idx"
-              class="flex shrink-0 items-center justify-center rounded-lg border bg-neutral-950"
-              :class="(revealed >= reelCount && idx >= strip.length - 3 && glow.has(`${r}:${idx - (strip.length - 3)}`))
-                ? 'border-amber-400/80' : 'border-neutral-800'"
-              :style="{
-                height: REEL_CELL_PX + 'px',
-                marginBottom: REEL_GAP_PX + 'px',
-                boxShadow: (revealed >= reelCount && idx >= strip.length - 3 && glow.has(`${r}:${idx - (strip.length - 3)}`))
-                  ? `0 0 18px ${glow.get(`${r}:${idx - (strip.length - 3)}`)}55 inset` : 'none'
-              }"
-            >
-              <GameSymbolIcon
-                :icon="iconFor(cell)"
-                :label="labelFor(cell)"
-              />
-            </div>
-          </div>
-        </div>
+          :reel="r"
+          :strip="strip"
+          :offset-y="offsetY[r] ?? 0"
+          :blur="blur[r] ?? 0"
+          :duration-ms="durationMs[r] ?? 0"
+          :revealed="revealed"
+          :reel-count="reelCount"
+          :glow="glow"
+          :icon-for="iconFor"
+          :label-for="labelFor"
+        />
       </div>
     </div>
   </div>
