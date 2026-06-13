@@ -3,6 +3,7 @@ import type { RandomFn } from './rng'
 import { mulberry32 } from './rng'
 import { spinStepper } from './stepper'
 import { spinBallyEm } from './ballyEm'
+import { spinVideo } from './video'
 import { initProgressiveState, addCoinToProgressive } from './progressive'
 
 export * from './types'
@@ -41,6 +42,7 @@ export function spin(
     case 'bally-em':
       return spinBallyEm(def, state, coins, rand)
     case 'video':
+      return spinVideo(def, state, coins, rand)
     case 'pachislo':
       throw new Error(`${def.family} family lands later in Plan 2`)
     default: {
