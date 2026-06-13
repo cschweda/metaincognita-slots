@@ -2,12 +2,14 @@
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { formatCents, formatCredits } from '~/utils/format'
+import { denominationLabel } from '~/utils/denomination'
 
 const store = useSlotsStore()
 const lastWin = computed(() => {
   const out = store.lastOutcome
   return out === null ? 0 : out.totalPayout
 })
+const denomTag = computed(() => store.currentDef ? denominationLabel(store.currentDef.denominationCents) : '')
 </script>
 
 <template>
@@ -30,16 +32,23 @@ const lastWin = computed(() => {
         </div>
       </div>
     </div>
-    <div class="text-right">
-      <div class="text-[10px] uppercase tracking-widest text-neutral-400">
-        Last win
+    <div class="flex items-center gap-4">
+      <div class="text-right">
+        <div class="text-[10px] uppercase tracking-widest text-neutral-400">
+          Last win
+        </div>
+        <div
+          class="text-xl"
+          :class="lastWin > 0 ? 'text-emerald-400' : 'text-neutral-600'"
+        >
+          {{ formatCredits(lastWin) }}
+        </div>
       </div>
-      <div
-        class="text-xl"
-        :class="lastWin > 0 ? 'text-emerald-400' : 'text-neutral-600'"
-      >
-        {{ formatCredits(lastWin) }}
-      </div>
+      <span
+        v-if="denomTag"
+        data-test="denom-tag"
+        class="rounded-full border border-neutral-700 bg-neutral-900 px-3 py-1 text-xs font-semibold text-neutral-300"
+      >{{ denomTag }}</span>
     </div>
   </div>
 </template>
