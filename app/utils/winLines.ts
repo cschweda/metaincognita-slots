@@ -63,8 +63,38 @@ export function summariseWins(def: MachineDef, outcome: SpinOutcome | null): Win
       }))
       return { ...base, lineNumber: null, pattern: null, cells, kind: 'ways' as const }
     }
+    // Single payline (stepper 'payline' / bally 'center'|'top'|'bottom'). The
+    // engine fills `symbols` with the full payline, so derive the true win size
+    // and the winning cells from the paytable entry: `count` (n anywhere, e.g.
+    // cherries), `run` (left-anchored length), or a whole-line kind.
     const row = w.line === 'top' ? 0 : w.line === 'bottom' ? 2 : 1
-    const cells = Array.from({ length: count }, (_, reel) => ({ reel, row }))
-    return { ...base, lineNumber: null, pattern: null, cells, kind: 'single' as const }
+    const entry = (def as { paytable?: { id: string, kind: string, symbol?: string, n?: number, length?: number }[] })
+      .paytable?.find(e => e.id === w.entryId)
+    const reels = w.symbols.length
+    let winReels: number[]
+    let paySym: string
+    if (entry?.kind === 'count' && entry.symbol !== undefined) {
+      paySym = entry.symbol
+      winReels = w.symbols.flatMap((s, r) => (s === entry.symbol || (wild !== null && s === wild)) ? [r] : [])
+    } else if (entry?.kind === 'run' && entry.length !== undefined) {
+      paySym = entry.symbol ?? symbolId
+      winReels = Array.from({ length: Math.min(entry.length, reels) }, (_, r) => r)
+    } else {
+      paySym = entry?.symbol ?? symbolId
+      winReels = Array.from({ length: reels }, (_, r) => r)
+    }
+    const singleName = symbolName(def, paySym)
+    return {
+      lineNumber: null,
+      count: winReels.length,
+      symbolId: paySym,
+      symbolName: singleName,
+      pluralName: pluralize(singleName),
+      payout,
+      pattern: null,
+      cells: winReels.map(reel => ({ reel, row })),
+      kind: 'single' as const,
+      color
+    }
   })
 }

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { pluralize, summariseWins } from '../../app/utils/winLines'
 import { CANAL_ROYALE } from '../../app/machines/canal-royale'
 import { DRAGONS_HOARD } from '../../app/machines/dragons-hoard'
+import { DIAMOND_DOUBLER } from '../../app/machines/diamond-doubler'
+import { SERIES_E_3LINE } from '../../app/machines/series-e-3line'
 
 describe('pluralize', () => {
   it.each([
@@ -89,5 +91,33 @@ describe('summariseWins cells for ways and single', () => {
     expect(mk('center').cells).toEqual([{ reel: 0, row: 1 }, { reel: 1, row: 1 }, { reel: 2, row: 1 }])
     expect(mk('top').cells).toEqual([{ reel: 0, row: 0 }, { reel: 1, row: 0 }, { reel: 2, row: 0 }])
     expect(mk('bottom').cells).toEqual([{ reel: 0, row: 2 }, { reel: 1, row: 2 }, { reel: 2, row: 2 }])
+  })
+
+  it('stepper count win (cherries) reports the real n, not the full line', () => {
+    // diamond-doubler ch1 = count CH n:1; full line is [CH, BL, S7] -> 1 Cherry
+    const w1 = summariseWins(DIAMOND_DOUBLER, { machineId: 'diamond-doubler', grid: [], wins: [{ line: 'payline', entryId: 'ch1', symbols: ['CH', 'BL', 'S7'], payCredits: 2, wildCount: 0, progressive: false }] } as never)[0]!
+    expect(w1.count).toBe(1)
+    expect(w1.pluralName).toBe('Cherries')
+    expect(w1.cells).toEqual([{ reel: 0, row: 1 }])
+
+    // ch2 = count CH n:2; [CH, BL, CH] -> 2 Cherries at reels 0 and 2
+    const w2 = summariseWins(DIAMOND_DOUBLER, { machineId: 'diamond-doubler', grid: [], wins: [{ line: 'payline', entryId: 'ch2', symbols: ['CH', 'BL', 'CH'], payCredits: 5, wildCount: 0, progressive: false }] } as never)[0]!
+    expect(w2.count).toBe(2)
+    expect(w2.cells).toEqual([{ reel: 0, row: 1 }, { reel: 2, row: 1 }])
+  })
+
+  it('stepper allSame win names the symbol and glows the whole line', () => {
+    const w = summariseWins(DIAMOND_DOUBLER, { machineId: 'diamond-doubler', grid: [], wins: [{ line: 'payline', entryId: '3s7', symbols: ['S7', 'S7', 'S7'], payCredits: 80, wildCount: 0, progressive: false }] } as never)[0]!
+    expect(w.count).toBe(3)
+    expect(w.pluralName).toBe('Sevens')
+    expect(w.cells).toHaveLength(3)
+  })
+
+  it('bally run win uses the left-anchored length, not the full line', () => {
+    // series-e chx2 = run CH length 2; full line [CH, CH, BL, S7, S7] -> 2 Cherries
+    const w = summariseWins(SERIES_E_3LINE, { machineId: 'series-e-3line', grid: [], wins: [{ line: 'center', entryId: 'chx2', symbols: ['CH', 'CH', 'BL', 'S7', 'S7'], payCredits: 5, wildCount: 0, progressive: false }] } as never)[0]!
+    expect(w.count).toBe(2)
+    expect(w.pluralName).toBe('Cherries')
+    expect(w.cells).toEqual([{ reel: 0, row: 1 }, { reel: 1, row: 1 }])
   })
 })
