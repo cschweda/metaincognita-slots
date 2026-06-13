@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/og-image.png" alt="Slots Simulator — Telnaes virtual reels, exact-enumeration RTP, and the math the floor never shows" width="800">
+</p>
+
 # Metaincognita Slots
 
 An educational slot machine simulator — part of the Metaincognita Casino

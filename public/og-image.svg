@@ -1,0 +1,192 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <!-- Metaincognita branded background (design-system.md §8 / guidelines §6) + slots content layer.
+       Structure mirrors the canonical blackjack og-image.svg; accent, title, and content layer differ.
+       textPath-free so librsvg (rsvg-convert) and the SVG render identically. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0c1a"/>
+      <stop offset="1" stop-color="#060810"/>
+    </linearGradient>
+    <pattern id="grid-fine" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e2848" stroke-width="0.6" opacity="0.75"/>
+    </pattern>
+    <pattern id="grid-major" width="100" height="100" patternUnits="userSpaceOnUse">
+      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#283458" stroke-width="1.2"/>
+    </pattern>
+    <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="10" r="0.8" fill="#2a3460"/>
+    </pattern>
+    <radialGradient id="vignette" cx="0.5" cy="0.45" r="0.75">
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.55"/>
+    </radialGradient>
+    <!-- machine cabinet shells -->
+    <linearGradient id="cabinet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a4570"/>
+      <stop offset="1" stop-color="#161c33"/>
+    </linearGradient>
+    <linearGradient id="cabinetTop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fcd34d"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="window" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#10131f"/>
+      <stop offset="1" stop-color="#05060c"/>
+    </linearGradient>
+    <linearGradient id="reel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#26262b"/>
+      <stop offset="0.5" stop-color="#f4f4f5"/>
+      <stop offset="1" stop-color="#26262b"/>
+    </linearGradient>
+    <radialGradient id="payglow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#f59e0b" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cabShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <!-- background stack -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid-fine)"/>
+  <rect width="1200" height="630" fill="url(#grid-major)"/>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+
+  <!-- ====================== content layer: slot machine ====================== -->
+  <!-- enumerated-cycle motif (the exact-math engine, right edge) -->
+  <g transform="translate(1010 150)" opacity="0.85">
+    <text x="0" y="-12" font-family="'Fira Code', Menlo, monospace" font-size="13" fill="#64748b" letter-spacing="2">EXACT RTP</text>
+    <g font-family="'Fira Code', Menlo, monospace" font-size="13">
+      <text x="0" y="8" fill="#94a3b8">7 7 7</text><text x="96" y="8" fill="#fbbf24" text-anchor="end">200&#215;</text>
+      <text x="0" y="30" fill="#94a3b8">BAR BAR BAR</text><text x="96" y="30" fill="#fbbf24" text-anchor="end">50&#215;</text>
+      <text x="0" y="52" fill="#94a3b8">&#160;&#160;C C C</text><text x="96" y="52" fill="#fbbf24" text-anchor="end">20&#215;</text>
+      <text x="0" y="74" fill="#94a3b8">&#160;&#160;&#160;C C</text><text x="96" y="74" fill="#fbbf24" text-anchor="end">5&#215;</text>
+    </g>
+    <line x1="0" y1="86" x2="96" y2="86" stroke="#283458" stroke-width="1"/>
+    <text x="0" y="106" font-family="'Fira Code', Menlo, monospace" font-size="14" fill="#f59e0b">RTP 94.74%</text>
+  </g>
+
+  <!-- the machine cabinet, drawn in the project's filled style -->
+  <g filter="url(#cabShadow)" transform="translate(560 250)">
+    <!-- cabinet body -->
+    <rect x="0" y="0" width="470" height="330" rx="26" fill="url(#cabinet)" stroke="#0a0c16" stroke-width="2"/>
+    <!-- lit top crown -->
+    <rect x="28" y="-30" width="414" height="52" rx="16" fill="url(#cabinetTop)"/>
+    <text x="235" y="6" font-family="'Fira Code', Menlo, monospace" font-size="22" font-weight="700" letter-spacing="9" fill="#1c1207" text-anchor="middle">JACKPOT</text>
+
+    <!-- glass window with three reels -->
+    <rect x="34" y="46" width="402" height="200" rx="12" fill="url(#window)" stroke="#f59e0b" stroke-width="3"/>
+
+    <!-- reel strips -->
+    <g>
+      <rect x="50"  y="58" width="118" height="176" rx="8" fill="url(#reel)"/>
+      <rect x="176" y="58" width="118" height="176" rx="8" fill="url(#reel)"/>
+      <rect x="302" y="58" width="118" height="176" rx="8" fill="url(#reel)"/>
+      <!-- reel separators -->
+      <line x1="173" y1="58" x2="173" y2="234" stroke="#161c33" stroke-width="3"/>
+      <line x1="299" y1="58" x2="299" y2="234" stroke="#161c33" stroke-width="3"/>
+    </g>
+
+    <!-- center payline glow band -->
+    <rect x="40" y="118" width="390" height="56" rx="6" fill="url(#payglow)"/>
+
+    <!-- ===== symbols, in the app's icon house style ===== -->
+    <!-- top row: BAR  7  cherry (partial spin hint) -->
+    <g opacity="0.5">
+      <!-- BAR pill (reel 1) -->
+      <g transform="translate(109 84)">
+        <rect x="-26" y="-9" width="52" height="18" rx="4" fill="#f59e0b"/>
+        <text x="0" y="5" font-family="Arial Black, Impact, sans-serif" font-size="13" font-weight="900" letter-spacing="2" fill="#1c1207" text-anchor="middle">BAR</text>
+      </g>
+      <!-- seven (reel 2) -->
+      <text x="235" y="98" font-family="Arial Black, Impact, sans-serif" font-size="40" font-weight="900" font-style="italic" fill="#f59e0b" text-anchor="middle">7</text>
+      <!-- cherry (reel 3) -->
+      <g transform="translate(361 86)">
+        <path d="M-7 -10c-6 -10 -16 -6 -16 2 0 6 8 10 14 10" stroke="#15803d" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <circle cx="-7" cy="8" r="8" fill="#f43f5e"/><circle cx="7" cy="9" r="7" fill="#e11d48"/>
+      </g>
+    </g>
+
+    <!-- WINNING center row: 7  7  7 (signature slots image — italic black amber with dark-red shadow) -->
+    <g filter="url(#softGlow)">
+      <text x="109" y="160" font-family="Arial Black, Impact, sans-serif" font-size="62" font-weight="900" font-style="italic" fill="#7c2d12" text-anchor="middle">7</text>
+      <text x="109" y="158" font-family="Arial Black, Impact, sans-serif" font-size="62" font-weight="900" font-style="italic" fill="#f59e0b" text-anchor="middle">7</text>
+      <text x="235" y="160" font-family="Arial Black, Impact, sans-serif" font-size="62" font-weight="900" font-style="italic" fill="#7c2d12" text-anchor="middle">7</text>
+      <text x="235" y="158" font-family="Arial Black, Impact, sans-serif" font-size="62" font-weight="900" font-style="italic" fill="#f59e0b" text-anchor="middle">7</text>
+      <text x="361" y="160" font-family="Arial Black, Impact, sans-serif" font-size="62" font-weight="900" font-style="italic" fill="#7c2d12" text-anchor="middle">7</text>
+      <text x="361" y="158" font-family="Arial Black, Impact, sans-serif" font-size="62" font-weight="900" font-style="italic" fill="#f59e0b" text-anchor="middle">7</text>
+    </g>
+
+    <!-- bottom row: cherry  BAR  bell (partial spin hint) -->
+    <g opacity="0.5">
+      <!-- cherry (reel 1) -->
+      <g transform="translate(109 208)">
+        <path d="M-7 -10c-6 -10 -16 -6 -16 2 0 6 8 10 14 10" stroke="#15803d" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <circle cx="-7" cy="8" r="8" fill="#f43f5e"/><circle cx="7" cy="9" r="7" fill="#e11d48"/>
+      </g>
+      <!-- BAR pill (reel 2) -->
+      <g transform="translate(235 208)">
+        <rect x="-26" y="-9" width="52" height="18" rx="4" fill="#f59e0b"/>
+        <text x="0" y="5" font-family="Arial Black, Impact, sans-serif" font-size="13" font-weight="900" letter-spacing="2" fill="#1c1207" text-anchor="middle">BAR</text>
+      </g>
+      <!-- bell (reel 3) -->
+      <g transform="translate(361 198) scale(1.5)">
+        <path d="M0 -7.6c.9 0 1.6.7 1.6 1.6v.5c2.9 1 4.8 3.8 4.8 7v3.1l1.6 2.1c.3.4 0 1-.5 1H-7.1c-.5 0-.8-.6-.5-1l1.6-2.1V2.6c0-3.2 1.9-6 4.8-7v-.5c0-.9.7-1.6 1.6-1.6z" fill="#fcd34d"/>
+        <circle cx="0" cy="10.4" r="1.9" fill="#fcd34d"/>
+      </g>
+    </g>
+
+    <!-- payline marker + left-gutter line number (slots convention) -->
+    <circle cx="28" cy="146" r="11" fill="#f59e0b"/>
+    <text x="28" y="151" font-family="'Fira Code', Menlo, monospace" font-size="13" font-weight="700" fill="#1c1207" text-anchor="middle">1</text>
+
+    <!-- machine deck: credits / denom / bet, in mono (credits beside money) -->
+    <rect x="34" y="258" width="402" height="52" rx="10" fill="#0a0c16" stroke="#283458" stroke-width="1"/>
+    <text x="52" y="282" font-family="'Fira Code', Menlo, monospace" font-size="13" fill="#64748b">CREDITS</text>
+    <text x="52" y="300" font-family="'Fira Code', Menlo, monospace" font-size="17" font-weight="700" fill="#f5f0e1">1000 &#183; 25&#162;</text>
+    <text x="418" y="282" font-family="'Fira Code', Menlo, monospace" font-size="13" fill="#64748b" text-anchor="end">WIN</text>
+    <text x="418" y="300" font-family="'Fira Code', Menlo, monospace" font-size="17" font-weight="700" fill="#f59e0b" text-anchor="end">+200</text>
+    <!-- spin button -->
+    <circle cx="235" cy="284" r="19" fill="#f59e0b"/>
+    <text x="235" y="289" font-family="-apple-system, 'SF Pro Display', Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1" fill="#1c1207" text-anchor="middle">SPIN</text>
+  </g>
+
+  <!-- title block -->
+  <g>
+    <text x="64" y="118" font-family="'Fira Code', Menlo, monospace" font-size="58" font-weight="700" fill="#f59e0b" filter="url(#glow)">Slots Simulator</text>
+    <text x="66" y="162" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#64748b" letter-spacing="1">Telnaes virtual reels &#183; exact-enumeration RTP &#183; eight machines</text>
+    <text x="66" y="200" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1aa" letter-spacing="5">SEE THE STRIPS. KNOW THE EDGE. SPIN WITH YOUR EYES OPEN.</text>
+  </g>
+
+  <!-- vignette over everything except chrome -->
+  <rect width="1200" height="630" fill="url(#vignette)"/>
+
+  <!-- corner registration marks -->
+  <g stroke="#3a4570" stroke-width="2" fill="none">
+    <path d="M 24 44 L 24 24 L 44 24"/>
+    <path d="M 1156 24 L 1176 24 L 1176 44"/>
+    <path d="M 1176 586 L 1176 606 L 1156 606"/>
+    <path d="M 44 606 L 24 606 L 24 586"/>
+  </g>
+
+  <!-- bottom branding -->
+  <rect x="64" y="594" width="120" height="4" fill="#f59e0b"/>
+  <line x1="0" y1="600" x2="1200" y2="600" stroke="#1e2848" stroke-width="1"/>
+  <text x="64" y="621" font-family="'Fira Code', Menlo, monospace" font-size="13" fill="#3a4570" letter-spacing="6">METAINCOGNITA</text>
+  <text x="1136" y="621" font-family="'Fira Code', Menlo, monospace" font-size="13" fill="#3a4570" letter-spacing="2" text-anchor="end">CASINO SIMULATOR SUITE</text>
+</svg>
