@@ -4,6 +4,7 @@ import { mulberry32 } from './rng'
 import { spinStepper } from './stepper'
 import { spinBallyEm } from './ballyEm'
 import { spinVideo } from './video'
+import { spinPachislo } from './pachislo'
 import { initProgressiveState, addCoinToProgressive } from './progressive'
 
 export * from './types'
@@ -44,7 +45,7 @@ export function spin(
     case 'video':
       return spinVideo(def, state, coins, rand)
     case 'pachislo':
-      throw new Error(`${def.family} family lands later in Plan 2`)
+      return spinPachislo(def, state, coins, rand)
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
