@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { useReducedMotion } from '~/composables/useReducedMotion'
+import { useReelSpin, REEL_CELL_PX, REEL_GAP_PX } from '~/composables/useReelSpin'
+import { summariseWins } from '~/utils/winLines'
 import type { StepperMachineDef } from '~/engine'
 
 const store = useSlotsStore()
-const reduced = useReducedMotion()
 const def = computed(() => store.currentDef as StepperMachineDef | null)
-
+const reelCount = computed(() => def.value?.physicalStrips.length ?? 3)
 const grid = computed<string[][]>(() => {
   const d = def.value
   if (d === null) return []
@@ -15,37 +15,29 @@ const grid = computed<string[][]>(() => {
   if (out !== null && out.machineId === d.id) return out.grid
   return d.physicalStrips.map(s => [s[s.length - 1]!, s[0]!, s[1]!])
 })
-const paylineWin = computed(() =>
-  revealed.value === 3 && (store.lastOutcome?.wins.length ?? 0) > 0)
-
-const revealed = ref(3)
-let timers: ReturnType<typeof setTimeout>[] = []
-watch(() => store.spinning, (spinning) => {
-  timers.forEach(clearTimeout)
-  timers = []
-  if (!spinning) return
-  if (reduced.value) {
-    revealed.value = 3
-    store.revealDone()
-    return
-  }
-  revealed.value = 0
-  for (let r = 1; r <= 3; r++) {
-    timers.push(setTimeout(() => {
-      revealed.value = r
-      if (r === 3) store.revealDone()
-    }, 250 + r * 150))
-  }
+const fillerIds = computed(() => Object.keys(def.value?.symbols ?? {}))
+const { strips, offsetY, blur, durationMs, revealed } = useReelSpin({
+  reelCount: reelCount.value,
+  visibleRows: 3,
+  grid: () => grid.value,
+  filler: () => fillerIds.value
 })
-
-onUnmounted(() => {
-  timers.forEach(clearTimeout)
-  timers = []
+const wins = computed(() => def.value && revealed.value >= reelCount.value ? summariseWins(def.value, store.lastOutcome) : [])
+const glow = computed(() => {
+  const m = new Map<string, string>()
+  for (const w of wins.value) {
+    for (const c of w.cells) m.set(`${c.reel}:${c.row}`, w.color)
+  }
+  return m
 })
-
-function labelFor(sym: string): string {
+const paylineWin = computed(() => wins.value.length > 0)
+function iconFor(sym: string) {
+  return def.value?.symbols[sym]?.icon
+}
+function labelFor(sym: string) {
   return def.value?.symbols[sym]?.label ?? sym
 }
+const winH = REEL_CELL_PX * 3 + REEL_GAP_PX * 2
 </script>
 
 <template>
@@ -60,27 +52,53 @@ function labelFor(sym: string): string {
         label="Jackpot"
       />
     </div>
-    <div class="relative grid grid-cols-3 gap-2 max-w-[420px] mx-auto">
-      <!-- payline glass -->
+    <div
+      class="relative mx-auto"
+      :style="{ width: reelCount * REEL_CELL_PX + (reelCount - 1) * REEL_GAP_PX + 'px' }"
+    >
+      <!-- payline glass over the center row -->
       <div
-        class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[4.5rem] rounded border pointer-events-none z-10 transition-colors"
+        class="pointer-events-none absolute inset-x-0 z-10 rounded border transition-colors"
+        :style="{ top: (REEL_CELL_PX + REEL_GAP_PX) + 'px', height: REEL_CELL_PX + 'px' }"
         :class="paylineWin ? 'border-amber-400/80 bg-amber-400/5' : 'border-amber-500/25'"
       />
       <div
-        v-for="(col, r) in grid"
-        :key="r"
-        class="space-y-2"
+        class="flex"
+        :style="{ gap: REEL_GAP_PX + 'px' }"
       >
         <div
-          v-for="(cell, row) in col"
-          :key="row"
-          class="h-16 rounded-lg bg-neutral-950 border border-neutral-800 flex items-center justify-center text-xs font-bold text-center px-1"
-          :class="[
-            row === 1 ? 'text-neutral-100' : 'text-neutral-600',
-            r < revealed ? '' : 'opacity-30 motion-safe:blur-[2px]'
-          ]"
+          v-for="(strip, r) in strips"
+          :key="r"
+          class="overflow-hidden rounded-lg"
+          :style="{ width: REEL_CELL_PX + 'px', height: winH + 'px' }"
         >
-          {{ r < revealed ? labelFor(cell) : '···' }}
+          <div
+            class="flex flex-col"
+            :style="{
+              transform: `translateY(${offsetY[r] ?? 0}px)`,
+              filter: `blur(${blur[r] ?? 0}px)`,
+              transition: `transform ${durationMs[r] ?? 0}ms cubic-bezier(.16,.74,.18,1), filter ${(durationMs[r] ?? 0) * 0.5}ms ease-out`
+            }"
+          >
+            <div
+              v-for="(cell, idx) in strip"
+              :key="idx"
+              class="flex shrink-0 items-center justify-center rounded-lg border bg-neutral-950"
+              :class="(revealed >= reelCount && idx >= strip.length - 3 && glow.has(`${r}:${idx - (strip.length - 3)}`))
+                ? 'border-amber-400/80' : 'border-neutral-800'"
+              :style="{
+                height: REEL_CELL_PX + 'px',
+                marginBottom: REEL_GAP_PX + 'px',
+                boxShadow: (revealed >= reelCount && idx >= strip.length - 3 && glow.has(`${r}:${idx - (strip.length - 3)}`))
+                  ? `0 0 18px ${glow.get(`${r}:${idx - (strip.length - 3)}`)}55 inset` : 'none'
+              }"
+            >
+              <GameSymbolIcon
+                :icon="iconFor(cell)"
+                :label="labelFor(cell)"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

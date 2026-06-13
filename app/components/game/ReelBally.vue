@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { useReducedMotion } from '~/composables/useReducedMotion'
+import { useReelSpin, REEL_CELL_PX, REEL_GAP_PX } from '~/composables/useReelSpin'
+import { summariseWins } from '~/utils/winLines'
 import { formatCents, formatCredits } from '~/utils/format'
 import type { BallyEmMachineDef } from '~/engine'
 
 const store = useSlotsStore()
-const reduced = useReducedMotion()
 const def = computed(() => store.currentDef as BallyEmMachineDef | null)
-
 const dual = computed(() => {
   const prog = store.currentState?.progressive
   return prog !== undefined && prog !== null && prog.kind === 'dual' ? prog : null
@@ -17,7 +16,7 @@ const single = computed(() => {
   const prog = store.currentState?.progressive
   return prog !== undefined && prog !== null && prog.kind === 'single' ? prog : null
 })
-
+const reelCount = computed(() => def.value?.strips.length ?? 0)
 const grid = computed<string[][]>(() => {
   const d = def.value
   if (d === null) return []
@@ -25,33 +24,21 @@ const grid = computed<string[][]>(() => {
   if (out !== null && out.machineId === d.id) return out.grid
   return d.strips.map(s => [s[0]!, s[1]!, s[2]!])
 })
-const reels = computed(() => def.value?.strips.length ?? 0)
-
-const revealed = ref(99)
-let timers: ReturnType<typeof setTimeout>[] = []
-watch(() => store.spinning, (spinning) => {
-  timers.forEach(clearTimeout)
-  timers = []
-  if (!spinning) return
-  if (reduced.value) {
-    revealed.value = reels.value
-    store.revealDone()
-    return
-  }
-  revealed.value = 0
-  for (let r = 1; r <= reels.value; r++) {
-    timers.push(setTimeout(() => {
-      revealed.value = r
-      if (r === reels.value) store.revealDone()
-    }, 200 + r * 110))
-  }
+const fillerIds = computed(() => Object.keys(def.value?.symbols ?? {}))
+const { strips, offsetY, blur, durationMs, revealed } = useReelSpin({
+  reelCount: reelCount.value,
+  visibleRows: 3,
+  grid: () => grid.value,
+  filler: () => fillerIds.value
 })
-
-onUnmounted(() => {
-  timers.forEach(clearTimeout)
-  timers = []
+const wins = computed(() => def.value && revealed.value >= reelCount.value ? summariseWins(def.value, store.lastOutcome) : [])
+const glow = computed(() => {
+  const m = new Map<string, string>()
+  for (const w of wins.value) {
+    for (const c of w.cells) m.set(`${c.reel}:${c.row}`, w.color)
+  }
+  return m
 })
-
 const payoutFlavor = computed<string | null>(() => {
   const out = store.lastOutcome
   if (out === null || store.spinning || out.totalPayout === 0) return null
@@ -59,13 +46,16 @@ const payoutFlavor = computed<string | null>(() => {
   if (out.totalPayout > 50) return 'Hopper pays — listen to it count'
   return 'Hopper pays'
 })
-
-function labelFor(sym: string): string {
+function iconFor(sym: string) {
+  return def.value?.symbols[sym]?.icon
+}
+function labelFor(sym: string) {
   return def.value?.symbols[sym]?.label ?? sym
 }
 function meterCents(credits: number): string {
   return formatCents(Math.floor(credits) * (def.value?.denominationCents ?? 100))
 }
+const winH = REEL_CELL_PX * 3 + REEL_GAP_PX * 2
 </script>
 
 <template>
@@ -112,24 +102,46 @@ function meterCents(credits: number): string {
     </div>
 
     <div
-      class="grid gap-1.5"
-      :style="{ gridTemplateColumns: `repeat(${reels}, minmax(0, 1fr))` }"
+      class="relative mx-auto"
+      :style="{ width: reelCount * REEL_CELL_PX + (reelCount - 1) * REEL_GAP_PX + 'px' }"
     >
       <div
-        v-for="(col, r) in grid"
-        :key="r"
-        class="space-y-1.5"
+        class="flex"
+        :style="{ gap: REEL_GAP_PX + 'px' }"
       >
         <div
-          v-for="(cell, row) in col"
-          :key="row"
-          class="h-14 rounded bg-neutral-950 border border-neutral-800 flex items-center justify-center text-[11px] font-bold text-center px-0.5"
-          :class="[
-            row === 1 || def.payMode === 'lines' ? 'text-neutral-100' : 'text-neutral-600',
-            r < revealed ? '' : 'opacity-30 motion-safe:blur-[2px]'
-          ]"
+          v-for="(strip, r) in strips"
+          :key="r"
+          class="overflow-hidden rounded-lg"
+          :style="{ width: REEL_CELL_PX + 'px', height: winH + 'px' }"
         >
-          {{ r < revealed ? labelFor(cell) : '···' }}
+          <div
+            class="flex flex-col"
+            :style="{
+              transform: `translateY(${offsetY[r] ?? 0}px)`,
+              filter: `blur(${blur[r] ?? 0}px)`,
+              transition: `transform ${durationMs[r] ?? 0}ms cubic-bezier(.16,.74,.18,1), filter ${(durationMs[r] ?? 0) * 0.5}ms ease-out`
+            }"
+          >
+            <div
+              v-for="(cell, idx) in strip"
+              :key="idx"
+              class="flex shrink-0 items-center justify-center rounded-lg border bg-neutral-950"
+              :class="(revealed >= reelCount && idx >= strip.length - 3 && glow.has(`${r}:${idx - (strip.length - 3)}`))
+                ? 'border-amber-400/80' : 'border-neutral-800'"
+              :style="{
+                height: REEL_CELL_PX + 'px',
+                marginBottom: REEL_GAP_PX + 'px',
+                boxShadow: (revealed >= reelCount && idx >= strip.length - 3 && glow.has(`${r}:${idx - (strip.length - 3)}`))
+                  ? `0 0 18px ${glow.get(`${r}:${idx - (strip.length - 3)}`)}55 inset` : 'none'
+              }"
+            >
+              <GameSymbolIcon
+                :icon="iconFor(cell)"
+                :label="labelFor(cell)"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
