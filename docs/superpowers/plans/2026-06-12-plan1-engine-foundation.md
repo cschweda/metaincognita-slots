@@ -12,7 +12,7 @@
 
 **Roadmap context:** This is Plan 1 of 4. Plan 2 = video + pachislo families. Plan 3 = UI (store, shell, floor, game page, X-ray, PAR sheet, history). Plan 4 = Sim Lab worker, learn page, CI polish, Netlify deploy. Each plan lands working, testable software.
 
-**Conventions for every commit:** descriptive message, **NO AI co-author trailers** (user rule). Work on `main` (family convention — solo-dev repos commit to main). Run `pnpm test` before each commit.
+**Conventions for every commit:** descriptive message, **NO AI co-author trailers** (user rule). Work on `main` (family convention — solo-dev repos commit to main). Run `pnpm test` AND `pnpm lint` before each commit (the eslint stylistic config may disagree with plan snippets — `pnpm exec eslint . --fix` then resolve the rest by hand; never change test semantics to satisfy style).
 
 ---
 
@@ -32,6 +32,7 @@ Award-matching semantics that produced these numbers (the TS code in Tasks 3/6/8
 - **Bally-EM (`run`/`allOf` paytable):** awards match on **exact left-run length** (a left-run of 4 does NOT match a length-3 entry; every length is its own entry). `allOf` matches when every cell equals the symbol. First matching entry in paytable order wins (entries are mutually exclusive by construction, so order is belt-and-suspenders).
 - **Stepper (max-pay-wins):** every entry is tested; the **highest pay wins**. `allWild` matches only all-wilds (flat pay, no multiplier). `allSame`/`anyOf` allow wild substitution but NOT all-wilds (guard: `wildCount < lineLength`), and multiply pay by `wildMultiplier^wildCount`. `count` entries count **actual** symbols only (no substitution, no multiplier).
 - Uniform-stop machines: every visible row of a 22/25-stop reel is uniform, so all paylines have identical EV — the per-line frozen value applies to every line.
+- Percent-meter breakage: a progressive hit pays `floor(meter)` and resets to exactly `reset`, discarding the sub-credit remainder (~1.8e-5 RTP per coin — far below every test tolerance). Real machines carry breakage on-meter (MGC rules); flagged as an authenticity backlog item for a later plan, not v0.1.
 
 ---
 
@@ -1002,10 +1003,50 @@ describe('validateMachineDef', () => {
     expect(() => validateMachineDef(def)).toThrow(/wild/i)
   })
 
+  it('rejects anyOf entries listing the wild symbol (would double-apply the wild)', () => {
+    const def = tinyStepper()
+    def.symbols = { A: { label: 'A' }, W: { label: 'wild' }, BL: { label: 'blank' } }
+    def.wildSymbol = 'W'
+    def.paytable = [{ id: 'any', kind: 'anyOf', symbols: ['A', 'W'], pay: 5 }]
+    expect(() => validateMachineDef(def)).toThrow(/anyOf/i)
+  })
+
+  it('rejects count entries targeting the wild symbol', () => {
+    const def = tinyStepper()
+    def.symbols = { A: { label: 'A' }, W: { label: 'wild' }, BL: { label: 'blank' } }
+    def.wildSymbol = 'W'
+    def.paytable = [{ id: 'cw', kind: 'count', symbol: 'W', n: 1, pay: 2 }]
+    expect(() => validateMachineDef(def)).toThrow(/count/i)
+  })
+
   it('rejects nonpositive pays', () => {
     const def = tinyStepper()
     def.paytable = [{ id: '3a', kind: 'allSame', symbol: 'A', pay: 0 }]
     expect(() => validateMachineDef(def)).toThrow(/pay/i)
+  })
+
+  it('rejects lines machines with maxCoins above the 3 supported paylines', () => {
+    const def = tinyBally()
+    def.maxCoins = 4
+    expect(() => validateMachineDef(def)).toThrow(/lines/i)
+  })
+
+  it("rejects progressive 'live' awards without a dual progressive config", () => {
+    const def = tinyBally()
+    def.paytable = [{ id: 'jp', kind: 'run', symbol: 'A', length: 3, pay: 1, progressive: 'live' }]
+    expect(() => validateMachineDef(def)).toThrow(/dual/i)
+  })
+
+  it("rejects progressive 'maxCoins' awards without a single progressive config", () => {
+    const def = tinyBally()
+    def.paytable = [{ id: 'jp', kind: 'run', symbol: 'A', length: 3, pay: 1000, progressive: 'maxCoins' }]
+    expect(() => validateMachineDef(def)).toThrow(/single/i)
+  })
+
+  it('rejects progressiveAtMaxCoins awards without a percent progressive config', () => {
+    const def = tinyStepper()
+    def.paytable = [{ id: 'jp', kind: 'allSame', symbol: 'A', pay: 1000, progressiveAtMaxCoins: true }]
+    expect(() => validateMachineDef(def)).toThrow(/percent/i)
   })
 })
 ```
@@ -1054,9 +1095,27 @@ export function validateMachineDef(def: MachineDef): void {
         errors.push(`paytable ${entry.id}: allWild requires a wild symbol`)
       }
       if (entry.kind === 'allSame' || entry.kind === 'count') checkSymbol(entry.symbol, `paytable ${entry.id}`)
-      if (entry.kind === 'anyOf') entry.symbols.forEach(s => checkSymbol(s, `paytable ${entry.id}`))
+      if (entry.kind === 'anyOf') {
+        entry.symbols.forEach(s => checkSymbol(s, `paytable ${entry.id}`))
+        // wild substitution already applies inside anyOf matching; listing the
+        // wild in symbols would double-apply it and silently corrupt the RTP
+        if (def.wildSymbol !== null && entry.symbols.includes(def.wildSymbol)) {
+          errors.push(`paytable ${entry.id}: anyOf symbols must not include the wild symbol`)
+        }
+      }
+      if (entry.kind === 'count' && entry.symbol === def.wildSymbol) {
+        errors.push(`paytable ${entry.id}: count entries must not target the wild symbol`)
+      }
+      // a progressive award without its matching meter config makes the
+      // evaluator and the exact-RTP enumerator silently disagree
+      if (entry.kind === 'allSame' && entry.progressiveAtMaxCoins === true && def.progressive?.kind !== 'percent') {
+        errors.push(`paytable ${entry.id}: progressiveAtMaxCoins requires a percent progressive config`)
+      }
     }
   } else {
+    if (def.payMode === 'lines' && def.maxCoins > 3) {
+      errors.push(`payMode 'lines' supports at most 3 coins/paylines (maxCoins ${def.maxCoins})`)
+    }
     def.strips.forEach((strip, r) => {
       if (strip.length !== def.stops) {
         errors.push(`strips[${r}] length ${strip.length} != stops ${def.stops}`)
@@ -1069,6 +1128,12 @@ export function validateMachineDef(def: MachineDef): void {
         checkSymbol(entry.symbol, `paytable ${entry.id}`)
         if (entry.length < 1 || entry.length > def.strips.length) {
           errors.push(`paytable ${entry.id}: run length ${entry.length} out of range`)
+        }
+        if (entry.progressive === 'live' && def.progressive?.kind !== 'dual') {
+          errors.push(`paytable ${entry.id}: progressive 'live' requires a dual progressive config`)
+        }
+        if (entry.progressive === 'maxCoins' && def.progressive?.kind !== 'single') {
+          errors.push(`paytable ${entry.id}: progressive 'maxCoins' requires a single progressive config`)
         }
       } else {
         checkSymbol(entry.symbol, `paytable ${entry.id}`)
@@ -1272,7 +1337,9 @@ function ballyWeights(def: BallyEmMachineDef): Map<SymbolId, number>[] {
 /**
  * Exact per-coin RTP by full enumeration of symbol tuples with integer weights.
  * Uses the SAME award functions as the spin evaluators, so display math and
- * gameplay math cannot diverge. All weight products are integers << 2^53.
+ * gameplay math cannot diverge. Weight products are integers << 2^53; pays may
+ * be fractional for odd progressive meters (meter/coins), but every sum stays
+ * exact to far beyond the 6-decimal frozen-test tolerance.
  */
 export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpReport {
   const coins = opts.coins ?? def.maxCoins
@@ -1304,8 +1371,9 @@ export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpR
     }
     const e = ballyAwardForLine(line, def.paytable)
     if (e === null) return null
-    if (e.progressive === 'live') return { pay: (liveAverage ?? 0), entryId: e.id }
-    if (e.progressive === 'maxCoins') {
+    // narrow to 'run' before touching .progressive — allOf entries lack it
+    if (e.kind === 'run' && e.progressive === 'live') return { pay: (liveAverage ?? 0), entryId: e.id }
+    if (e.kind === 'run' && e.progressive === 'maxCoins') {
       return coins === def.maxCoins
         ? { pay: (meterValue ?? 0) / coins, entryId: e.id }
         : { pay: e.pay, entryId: e.id }
@@ -1701,7 +1769,7 @@ export function spinBallyEm(
     let payCredits: number
     let isProgressive = false
 
-    if (entry.progressive === 'live' && state.progressive?.kind === 'dual') {
+    if (entry.kind === 'run' && entry.progressive === 'live' && state.progressive?.kind === 'dual') {
       const prog = state.progressive
       const meter = prog.live
       payCredits = meter === 'upper' ? prog.upper : prog.lower
@@ -1712,7 +1780,7 @@ export function spinBallyEm(
       }
       progressiveEvents.push({ type: 'hit', meter, amountCredits: payCredits })
       isProgressive = true
-    } else if (entry.progressive === 'maxCoins' && coins === def.maxCoins
+    } else if (entry.kind === 'run' && entry.progressive === 'maxCoins' && coins === def.maxCoins
       && state.progressive?.kind === 'single') {
       const prog = state.progressive
       payCredits = Math.floor(prog.value)
@@ -1833,10 +1901,8 @@ import { describe, it, expect } from 'vitest'
 import {
   initProgressiveState, addCoinToProgressive
 } from '../app/engine/progressive'
-import { exactRtp } from '../app/engine/exactRtp'
-import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
 import { SERIES_E_MULTIPLIER } from '../app/machines/series-e-multiplier'
-import type { DualProgressiveConfig, DualProgressiveState, PercentProgressiveState, SingleProgressiveState } from '../app/engine/types'
+import type { DualProgressiveConfig, DualProgressiveState, SingleProgressiveState } from '../app/engine/types'
 
 const DUAL: DualProgressiveConfig = {
   kind: 'dual',
@@ -1904,38 +1970,15 @@ describe('single progressive', () => {
   })
 })
 
-describe('percent progressive', () => {
-  it('feeds exactly feedRate per coin', () => {
-    const cfg = SEVENS_ABLAZE.progressive!
-    const st = initProgressiveState(cfg) as PercentProgressiveState
-    for (let i = 0; i < 100; i++) addCoinToProgressive(st, cfg)
-    expect(st.value).toBeCloseTo(cfg.reset + 100 * cfg.feedRate, 9)
-  })
-})
-
-describe('break-even meter identity (self-validating, no hand constants)', () => {
-  it('sevens-ablaze: RTP at the computed break-even meter is exactly 100%', () => {
-    const def = SEVENS_ABLAZE
-    const pJackpot = exactRtp(def, { progressiveValues: { meter: 0 } })
-    // rtp(M) = rtpEx + P(jp) * M / coins  =>  M_be = coins * (1 - rtpEx) / P(jp)
-    const jpEntry = exactRtp(def).breakdown.find(b => b.entryId === '3f7')!
-    const rtpEx = pJackpot.rtpPerCoin
-    const beMeter = def.maxCoins * (1 - rtpEx) / jpEntry.probability
-    expect(beMeter).toBeGreaterThan(3500)
-    expect(beMeter).toBeLessThan(3550)
-    const atBe = exactRtp(def, { progressiveValues: { meter: beMeter } })
-    expect(atBe.rtpPerCoin).toBeCloseTo(1.0, 10)
-  })
-})
 ```
 
-Note: this test file imports `SEVENS_ABLAZE`, created in Task 8. **Implement Task 8 Step 1 (the two stepper machine data files) before running this file**, or temporarily run only the dual/single describe blocks. Recommended order: write this file now, expect "module not found" until Task 8 lands, and run the full file at Task 8 Step 5.
+The percent-feed and break-even-identity tests live in Task 8 (they need the `SEVENS_ABLAZE` machine) — Task 8 appends them to this file, keeping the suite green after every commit.
 
 - [ ] **Step 2: Implement** (`app/engine/progressive.ts`)
 
 ```ts
 import type {
-  DualProgressiveState, MeterConfig, ProgressiveConfig, ProgressiveState
+  MeterConfig, ProgressiveConfig, ProgressiveState
 } from './types'
 
 export function initProgressiveState(cfg: ProgressiveConfig): ProgressiveState {
@@ -2002,10 +2045,10 @@ export function addCoinToProgressive(state: ProgressiveState, cfg: ProgressiveCo
 }
 ```
 
-- [ ] **Step 3: Run the dual/single tests** (percent + break-even need Task 8's machines)
+- [ ] **Step 3: Run the tests**
 
-Run: `pnpm test -- tests/progressive.test.ts -t "dual progressive"` and `-t "single progressive"`
-Expected: PASS for these; the file as a whole fails on the sevens-ablaze import until Task 8.
+Run: `pnpm exec vitest run tests/progressive.test.ts`
+Expected: PASS (5 tests: 4 dual + 1 single). Full suite stays green.
 
 - [ ] **Step 4: Commit**
 
@@ -2450,15 +2493,71 @@ describe('sevens-ablaze — frozen calibration', () => {
 })
 ```
 
-- [ ] **Step 6: Run everything**
+- [ ] **Step 6: Append the machine-dependent progressive tests** to `tests/progressive.test.ts` (moved here from Task 7 so the suite stays green between tasks). Add these imports at the top alongside the existing ones, then the two describes at the end of the file:
 
-Run: `pnpm test`
-Expected: ALL files pass now, including the full `tests/progressive.test.ts` (sevens-ablaze import now resolves) and its break-even identity test.
+```ts
+import { exactRtp } from '../app/engine/exactRtp'
+import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
+import type { PercentProgressiveState } from '../app/engine/types'
+```
 
-- [ ] **Step 7: Commit**
+```ts
+describe('percent progressive', () => {
+  it('feeds exactly feedRate per coin', () => {
+    const cfg = SEVENS_ABLAZE.progressive!
+    const st = initProgressiveState(cfg) as PercentProgressiveState
+    for (let i = 0; i < 100; i++) addCoinToProgressive(st, cfg)
+    expect(st.value).toBeCloseTo(cfg.reset + 100 * cfg.feedRate, 9)
+  })
+
+  it('clips at max', () => {
+    const cfg = SEVENS_ABLAZE.progressive!
+    const st = initProgressiveState(cfg) as PercentProgressiveState
+    st.value = cfg.max - 0.005
+    addCoinToProgressive(st, cfg)
+    addCoinToProgressive(st, cfg)
+    expect(st.value).toBe(cfg.max)
+  })
+})
+
+describe('single progressive — clip at max', () => {
+  it('freezes increments but keeps cycling its counter', () => {
+    const cfg = SERIES_E_MULTIPLIER.progressive!
+    if (cfg.kind !== 'single') throw new Error('expected single')
+    const st = initProgressiveState(cfg) as SingleProgressiveState
+    st.value = cfg.meter.max
+    // at max >= rate1Limit, rate2 applies (8 coins per increment); 40 coins = 5 full cycles
+    for (let i = 0; i < 40; i++) addCoinToProgressive(st, cfg)
+    expect(st.value).toBe(cfg.meter.max)
+    expect(st.coins).toBe(0)
+  })
+})
+
+describe('break-even meter identity (self-validating, no hand constants)', () => {
+  it('sevens-ablaze: RTP at the computed break-even meter is exactly 100%', () => {
+    const def = SEVENS_ABLAZE
+    const pJackpot = exactRtp(def, { progressiveValues: { meter: 0 } })
+    // rtp(M) = rtpEx + P(jp) * M / coins  =>  M_be = coins * (1 - rtpEx) / P(jp)
+    const jpEntry = exactRtp(def).breakdown.find(b => b.entryId === '3f7')!
+    const rtpEx = pJackpot.rtpPerCoin
+    const beMeter = def.maxCoins * (1 - rtpEx) / jpEntry.probability
+    expect(beMeter).toBeGreaterThan(3500)
+    expect(beMeter).toBeLessThan(3550)
+    const atBe = exactRtp(def, { progressiveValues: { meter: beMeter } })
+    expect(atBe.rtpPerCoin).toBeCloseTo(1.0, 10)
+  })
+})
+```
+
+- [ ] **Step 7: Run everything**
+
+Run: `pnpm test` and `pnpm lint`
+Expected: ALL green, including the appended progressive tests and the break-even identity test.
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add app/engine/stepper.ts app/machines/diamond-doubler.ts app/machines/sevens-ablaze.ts tests/stepper.test.ts tests/machines.test.ts
+git add app/engine/stepper.ts app/machines/diamond-doubler.ts app/machines/sevens-ablaze.ts tests/stepper.test.ts tests/machines.test.ts tests/progressive.test.ts
 git commit -m "Add Telnaes stepper evaluator, Diamond Doubler and Sevens Ablaze with frozen exact-RTP tests"
 ```
 
@@ -2472,7 +2571,7 @@ git commit -m "Add Telnaes stepper evaluator, Diamond Doubler and Sevens Ablaze 
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import { initMachineState, simulateMachine, spin } from '../app/engine'
+import { addCoinToProgressive, initMachineState, simulateMachine, spin } from '../app/engine'
 import { FLOOR } from '../app/machines'
 import { DIAMOND_DOUBLER } from '../app/machines/diamond-doubler'
 import { SERIES_E_3LINE } from '../app/machines/series-e-3line'
@@ -2481,7 +2580,7 @@ import { mulberry32 } from '../app/engine/rng'
 describe('FLOOR', () => {
   it('contains the four Plan-1 machines, all valid', () => {
     expect(FLOOR.map(m => m.id).sort()).toEqual([
-      'diamond-doubler', 'sevens-ablaze', 'series-e-3line', 'series-e-multiplier'
+      'diamond-doubler', 'series-e-3line', 'series-e-multiplier', 'sevens-ablaze'
     ])
   })
 })
@@ -2532,6 +2631,32 @@ describe('simulateMachine', () => {
     // meters grew before each hit, so payout >= the static-reset accounting
     const stat = simulateMachine(def, { spins: 500_000, coins: 3, seed: 13, progressiveMode: 'static' })
     expect(live.totalOut).toBeGreaterThanOrEqual(stat.totalOut)
+  })
+})
+
+describe('FO-5140 counter persistence across a jackpot hit', () => {
+  it('dual toggle/coin counters continue through a hit; only the hit meter resets', () => {
+    const def = SERIES_E_3LINE
+    const state = initMachineState(def)
+    const prog = state.progressive
+    if (prog?.kind !== 'dual' || def.progressive?.kind !== 'dual') throw new Error('expected dual')
+    // 7 coins, coinsPerToggle 1: upper sees coins 1,3,5,7 (counter 4 of 5); live ends 'lower'
+    for (let i = 0; i < 7; i++) addCoinToProgressive(prog, def.progressive)
+    expect(prog.upperCoins).toBe(4)
+    expect(prog.live).toBe('lower')
+    // force 5xS7 on the center line via rigged stops
+    const stops = def.strips.map((strip) => {
+      const idx = strip.indexOf('S7')
+      return (idx - 1 + strip.length) % strip.length
+    })
+    let i = 0
+    const rigged = () => (stops[i++]! + 0.5) / def.stops
+    const out = spin(def, state, 1, rigged)
+    expect(out.progressiveEvents).toHaveLength(1)
+    // the LIVE (lower) meter paid and reset; counters and live did NOT reset
+    expect(prog.lower).toBe(def.progressive.lower.reset)
+    expect(prog.upperCoins).toBe(4)
+    expect(prog.live).toBe('lower')
   })
 })
 ```
@@ -2715,7 +2840,7 @@ git commit -m "Add engine facade: spin dispatch, machine state init, seeded batc
 
 **Files:** Create `tests/convergence.test.ts`
 
-Statistical design: for N seeded spins, the simulated RTP's standard error is `sqrt(variancePerCoin / N) / coins`-free since we track per-coin pay; we assert `|simRtp − exactRtp| < 3.5 × sqrt(variance/N)`. With fixed seeds the test is deterministic — it either always passes or the engine is wrong. 3.5σ keeps the false-trip probability ~5e-4 per machine if you ever change seeds; if a new seed lands outside, bump the seed once and note it — do NOT widen the band.
+Statistical design: for N seeded spins we assert `|simRtp − exactRtp| < 3.5 × sqrt(variancePerCoin / N)`. The divisor is N (spins), NOT N × coins: on coins-linear machines (steppers, multiplier mode) every coin of a spin pays the identical per-coin amount — within-spin coins are perfectly correlated, so coins contribute no additional independent samples. (`lines` mode at >1 coin has near-independent rows instead, which is exactly why the strict block tests the lines machine at 1 coin only.) With fixed seeds the test is deterministic — it either always passes or the engine is wrong. 3.5σ keeps the false-trip probability ~5e-4 per machine if you ever change seeds; if a new seed lands outside, bump the seed once and note it — do NOT widen the band.
 
 Multi-line correlation note: `variancePerCoin` is per-line variance, so lines machines (E-1202) are convergence-tested at **1 coin** (single line). A separate looser assertion covers 3-coin play (mean is unaffected by row correlation; only variance is).
 
@@ -2754,7 +2879,10 @@ describe('convergence: simulation reproduces exact math', () => {
       const sim = simulateMachine(c.def, {
         spins: c.spins, coins: c.coins, seed: c.seed, progressiveMode: 'static'
       })
-      const se = Math.sqrt(exact.variancePerCoin / (c.spins * c.coins))
+      // SE divisor is spins, not spins x coins: per-coin pay is identical for
+      // every coin of a spin on these machines (coins-linear), so within-spin
+      // coins are perfectly correlated and add no independent samples
+      const se = Math.sqrt(exact.variancePerCoin / c.spins)
       expect(Math.abs(sim.rtp - exact.rtpPerCoin)).toBeLessThan(3.5 * se)
       // hit frequency: binomial SE
       const hfSe = Math.sqrt(exact.hitFrequency * (1 - exact.hitFrequency) / c.spins)
@@ -2763,7 +2891,8 @@ describe('convergence: simulation reproduces exact math', () => {
   }
 
   it('series-e-3line at 3 coins converges to the same per-coin RTP (loose band, correlated lines)', () => {
-    const exact = exactRtp(SERIES_E_3LINE)
+    const exact = exactRtp(SERIES_E_3LINE, { coins: 3 })
+    // seed deliberately distinct from the strict 1-coin case above
     const sim = simulateMachine(SERIES_E_3LINE, {
       spins: 2_000_000, coins: 3, seed: 1005, progressiveMode: 'static'
     })
@@ -2771,12 +2900,14 @@ describe('convergence: simulation reproduces exact math', () => {
   })
 
   it('jackpots actually occur at the expected rate (series-e-multiplier)', () => {
-    // P(4xS7) = 1/24,414 -> ~82 expected hits in 2M spins; assert a wide Poisson band.
+    // P(4xS7) = 1/24,414 -> lambda ~82 hits in 2M spins (sigma ~9). Bounds sit
+    // ~3 sigma out so the fixed seed never flakes, yet both a half-rate and a
+    // double-rate jackpot regression land outside the band.
     const sim = simulateMachine(SERIES_E_MULTIPLIER, {
       spins: 2_000_000, coins: 3, seed: 1004, progressiveMode: 'static'
     })
-    expect(sim.jackpotHits).toBeGreaterThan(40)
-    expect(sim.jackpotHits).toBeLessThan(140)
+    expect(sim.jackpotHits).toBeGreaterThan(55)
+    expect(sim.jackpotHits).toBeLessThan(110)
   })
 })
 ```
@@ -2840,7 +2971,9 @@ FLOOR.forEach((def, i) => {
   const coins = def.family === 'bally-em' && def.payMode === 'lines' ? 1 : def.maxCoins
   const exact = exactRtp(def, { coins })
   const sim = simulateMachine(def, { spins, coins, seed: seed + i, progressiveMode: 'static' })
-  const se = Math.sqrt(exact.variancePerCoin / (spins * coins))
+  // SE divisor is spins alone: within-spin coins are perfectly correlated on
+  // coins-linear machines (see tests/convergence.test.ts)
+  const se = Math.sqrt(exact.variancePerCoin / spins)
   const delta = Math.abs(sim.rtp - exact.rtpPerCoin)
   const pass = delta < 3.5 * se
   allPass &&= pass
