@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ReelStepper from '../../app/components/game/ReelStepper.vue'
 import ReelBally from '../../app/components/game/ReelBally.vue'
+import ReelPachislo from '../../app/components/game/ReelPachislo.vue'
 import { useSlotsStore } from '../../app/stores/slots'
 
 const IconStub = { props: ['icon', 'label', 'wild', 'size'], template: '<i data-test="cell" :data-icon="icon" />' }
@@ -24,5 +25,8 @@ describe('Reel surfaces', () => {
   })
   it('bally renders icon cells', () => {
     expect(withMachine(ReelBally, 'series-e-3line').findAll('[data-test="cell"]').length).toBeGreaterThanOrEqual(9)
+  })
+  it('pachislo renders icon cells', () => {
+    expect(withMachine(ReelPachislo, 'stock-rush').findAll('[data-test="cell"]').length).toBeGreaterThanOrEqual(9)
   })
 })

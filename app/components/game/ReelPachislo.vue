@@ -34,6 +34,9 @@ const queueDepth = computed(() => ps.value === null
 function labelFor(sym: string): string {
   return def.value?.symbols[sym]?.label ?? sym
 }
+function iconFor(sym: string) {
+  return def.value?.symbols[sym]?.icon
+}
 </script>
 
 <template>
@@ -91,7 +94,7 @@ function labelFor(sym: string): string {
           class="h-16 rounded-lg bg-neutral-950 border flex items-center justify-center text-xs font-bold text-center px-1"
           :class="[row === 1 ? 'border-amber-500/30 text-neutral-100' : 'border-neutral-800 text-neutral-600']"
         >
-          {{ labelFor(cell) }}
+          <GameSymbolIcon :icon="iconFor(cell)" :label="labelFor(cell)" :size="48" />
         </div>
         <div
           v-if="presses"

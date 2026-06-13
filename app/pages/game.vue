@@ -41,11 +41,8 @@ onUnmounted(() => {
     v-if="store.currentDef"
     class="px-4 py-4 max-w-[1100px] mx-auto space-y-3"
   >
-    <div class="flex items-center justify-between">
-      <h1 class="text-lg font-bold text-neutral-100">
-        {{ store.currentDef.name }}
-        <span class="text-[10px] uppercase tracking-widest text-neutral-400 ml-2">{{ store.currentDef.family }}</span>
-      </h1>
+    <GameMachineMarquee />
+    <div class="flex items-center justify-end">
       <div class="flex items-center gap-2">
         <UButton
           :color="store.settings.xray ? 'primary' : 'neutral'"
@@ -73,8 +70,7 @@ onUnmounted(() => {
     <GameCreditPanel />
 
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3">
-      <div class="relative space-y-3">
-        <GameWinBanner />
+      <div class="space-y-3">
         <GameReelVideo
           v-if="store.currentDef?.family === 'video'"
           :key="store.currentMachineId ?? ''"
@@ -91,6 +87,7 @@ onUnmounted(() => {
           v-else-if="store.currentDef?.family === 'pachislo'"
           :key="store.currentMachineId ?? ''"
         />
+        <GameResultBar />
         <GameBetControls>
           <template
             v-if="store.currentDef?.family === 'pachislo'"
