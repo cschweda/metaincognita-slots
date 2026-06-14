@@ -71,22 +71,24 @@ onUnmounted(() => {
 
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3">
       <div class="space-y-3">
-        <GameReelVideo
-          v-if="store.currentDef?.family === 'video'"
-          :key="store.currentMachineId ?? ''"
-        />
-        <GameReelStepper
-          v-else-if="store.currentDef?.family === 'stepper'"
-          :key="store.currentMachineId ?? ''"
-        />
-        <GameReelBally
-          v-else-if="store.currentDef?.family === 'bally-em'"
-          :key="store.currentMachineId ?? ''"
-        />
-        <GameReelPachislo
-          v-else-if="store.currentDef?.family === 'pachislo'"
-          :key="store.currentMachineId ?? ''"
-        />
+        <GameMachineChrome>
+          <GameReelVideo
+            v-if="store.currentDef?.family === 'video'"
+            :key="store.currentMachineId ?? ''"
+          />
+          <GameReelStepper
+            v-else-if="store.currentDef?.family === 'stepper'"
+            :key="store.currentMachineId ?? ''"
+          />
+          <GameReelBally
+            v-else-if="store.currentDef?.family === 'bally-em'"
+            :key="store.currentMachineId ?? ''"
+          />
+          <GameReelPachislo
+            v-else-if="store.currentDef?.family === 'pachislo'"
+            :key="store.currentMachineId ?? ''"
+          />
+        </GameMachineChrome>
         <GameResultBar />
         <GameBetControls>
           <template

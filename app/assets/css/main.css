@@ -5,3 +5,12 @@
   --font-sans: system-ui, -apple-system, sans-serif;
   --font-mono: 'Fira Code', 'JetBrains Mono', 'Courier New', monospace;
 }
+
+/* Per-machine cabinet chrome is decorative; kill all of its ambient motion when
+   the user prefers reduced motion. (.chrome-frame is set by GameMachineChrome.) */
+@media (prefers-reduced-motion: reduce) {
+  .chrome-frame, .chrome-frame * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
