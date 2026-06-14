@@ -334,7 +334,7 @@ export function videoExactRtp(def: VideoMachineDef, opts: ExactRtpOptions): Exac
     throw new Error(`${def.id}: fixed bet machine requires ${def.maxCoins} coins`)
   }
   const meter = opts.progressiveValues?.meter ?? def.progressive?.reset ?? 0
-  const key = `${def.id}:${coins}:${meter}`
+  const key = `${def.id}:${coins}:${meter}:${JSON.stringify(def.holdAndSpin?.orbValues ?? null)}`
   const cached = cache.get(key)
   if (cached !== undefined) return cached
 
@@ -415,9 +415,19 @@ export function videoExactRtp(def: VideoMachineDef, opts: ExactRtpOptions): Exac
   if (def.holdAndSpin !== null) {
     const cfg = def.holdAndSpin
     const wsum = cfg.orbValues.reduce((s, e) => s + e.weight, 0)
-    const muV = cfg.orbValues.reduce((s, e) => s + ('mult' in e ? 0 : e.credits) * e.weight, 0) / wsum
-    const m2V = cfg.orbValues.reduce((s, e) => { const c = 'mult' in e ? 0 : e.credits; return s + c * c * e.weight }, 0) / wsum
-    const varV = m2V - muV * muV
+    const creditEntries = cfg.orbValues.filter(e => !('mult' in e)) as { credits: number, weight: number }[]
+    const multEntries = cfg.orbValues.filter(e => 'mult' in e) as { mult: number, weight: number }[]
+    const cw = creditEntries.reduce((s, e) => s + e.weight, 0)
+    const mw = multEntries.reduce((s, e) => s + e.weight, 0)
+    const pMult = mw / wsum
+    // moments conditional on the orb's kind
+    const muC = cw === 0 ? 0 : creditEntries.reduce((s, e) => s + e.credits * e.weight, 0) / cw
+    const m2C = cw === 0 ? 0 : creditEntries.reduce((s, e) => s + e.credits * e.credits * e.weight, 0) / cw
+    const varC = m2C - muC * muC
+    const muF = mw === 0 ? 0 : multEntries.reduce((s, e) => s + e.mult * e.weight, 0) / mw
+    const m2F = mw === 0 ? 0 : multEntries.reduce((s, e) => s + e.mult * e.mult * e.weight, 0) / mw
+    const varF = m2F - muF * muF
+
     let featEV = 0
     let pTrigger = 0
     let pFill = 0
@@ -429,9 +439,27 @@ export function videoExactRtp(def: VideoMachineDef, opts: ExactRtpOptions): Exac
       let EFt2 = 0
       for (const [k, pk] of kd) {
         const g = k === 15 ? meter : 0
-        const mean = k * muV + g
-        EFt += pk * mean
-        EFt2 += pk * (k * varV + mean * mean)
+        // condition on j = number of multiplier cells among k ~ Binomial(k, pMult).
+        // credit sum C over (k-j) cells is independent of the multiplier M over j
+        // cells given j; M = sum of faces (>= 1 when j >= 1, else 1).
+        const jpmf = binomPmf(k, pMult)
+        let EF = 0
+        let EF2 = 0
+        for (let j = 0; j <= k; j++) {
+          const pj = jpmf[j]!
+          if (pj === 0) continue
+          const nc = k - j
+          const EC = nc * muC
+          const EC2 = nc * varC + EC * EC
+          const EM = j === 0 ? 1 : j * muF
+          const EM2 = j === 0 ? 1 : j * varF + EM * EM
+          const EFj = EC * EM + g
+          const EF2j = EC2 * EM2 + 2 * g * EC * EM + g * g
+          EF += pj * EFj
+          EF2 += pj * EF2j
+        }
+        EFt += pk * EF
+        EFt2 += pk * EF2
       }
       EX += pt * EFt
       EX2 += 2 * (acc.sumBT[t]! / acc.denom) * EFt + pt * EFt2

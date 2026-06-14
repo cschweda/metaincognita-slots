@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { hnsFinalDist, videoExactRtp } from '../app/engine/videoRtp'
 import type { VideoMachineDef } from '../app/engine/types'
+import { LINES25 } from '../app/engine/videoAwards'
 
 // Hand-checkable single-line machine: 4-cell strips, P(AA cell) = 1/4.
 // rtp = 64*P(run=3) + 256*P(run=4) + 1024*P(run=5)
@@ -100,5 +101,57 @@ describe('hold-and-spin Markov chain', () => {
   it('with p=0 the feature never grows: K = T', () => {
     const dist = hnsFinalDist(7, 0, 24, 3)
     expect(dist.get(7)).toBeCloseTo(1, 12)
+  })
+})
+
+describe('videoExactRtp — hold-and-spin multiplier orbs', () => {
+  // Base game pays nothing (anchor reel 1 is all orbs, never a paytable symbol).
+  // Reels 1-3 are all-orb -> every window shows 9 orbs -> T = 9 with probability 1.
+  // respinOrbNumer = 0 -> the feature never grows: final k = 9, no Grand.
+  // orbValues: credit 100 (weight 3) + mult x2 (weight 1) -> pMult = 1/4.
+  const MULT_RTP_DEF = {
+    id: 'hand-hns-mult', name: 'Hand HNS Mult', family: 'video',
+    denominationCents: 1, maxCoins: 25,
+    symbols: { OR: { label: 'Orb' }, EM: { label: 'Empty' }, AA: { label: 'Ace' } },
+    strips: [
+      new Array(8).fill('OR'), new Array(8).fill('OR'), new Array(8).fill('OR'),
+      new Array(8).fill('AA'), new Array(8).fill('AA')
+    ],
+    betMode: { kind: 'lines', lines: LINES25 },
+    fixedBet: true, wildSymbol: null, scatter: null, freeSpins: null,
+    holdAndSpin: {
+      orbSymbol: 'OR', triggerCount: 9, respins: 3,
+      respinOrbNumer: 0, respinOrbDenom: 24,
+      orbValues: [{ credits: 100, weight: 3 }, { mult: 2, weight: 1 }],
+      emptySymbol: 'EM'
+    },
+    paytable: [],
+    progressive: { kind: 'percent', reset: 0, max: 0, feedRate: 0.01 },
+    history: 'test'
+  } as unknown as VideoMachineDef
+
+  const choose = (n: number, k: number) => { let c = 1; for (let i = 0; i < k; i++) c = c * (n - i) / (i + 1); return c }
+
+  it('matches an independent combinatorial reference (additive multiplier, k=9 fixed)', () => {
+    const r = videoExactRtp(MULT_RTP_DEF, {})
+    // E[F] = sum_{j=0..9} C(9,j) p^j (1-p)^(9-j) * (9-j)*100 * (j ? 2j : 1), p = 1/4
+    const p = 1 / 4
+    let EF = 0
+    for (let j = 0; j <= 9; j++) {
+      const pj = choose(9, j) * p ** j * (1 - p) ** (9 - j)
+      const M = j === 0 ? 1 : 2 * j
+      EF += pj * (9 - j) * 100 * M
+    }
+    expect(r.rtpPerCoin).toBeCloseTo(EF / 25, 10)
+    const hns = r.breakdown.find(b => b.entryId === 'hold-and-spin')!
+    expect(hns.probability).toBeCloseTo(1, 12) // always triggers
+  })
+
+  it('reduces to the plain credit sum when there are no multiplier orbs', () => {
+    const def = JSON.parse(JSON.stringify(MULT_RTP_DEF)) as VideoMachineDef
+    def.holdAndSpin!.orbValues = [{ credits: 100, weight: 1 }]
+    const r = videoExactRtp(def, {})
+    // no multipliers, k = 9 -> E[F] = 9 * 100 = 900
+    expect(r.rtpPerCoin).toBeCloseTo(9 * 100 / 25, 10)
   })
 })
