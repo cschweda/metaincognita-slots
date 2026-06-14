@@ -97,7 +97,7 @@ const navItems = [
         aria-label="Source on GitHub"
       >
         <UIcon
-          name="i-simple-icons-github"
+          name="i-lucide-github"
           class="w-3.5 h-3.5"
         />
       </a>
