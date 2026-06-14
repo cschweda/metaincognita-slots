@@ -3,6 +3,40 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-06-14
+
+### Added
+- Sim Lab (`/sim-lab`, top-level nav): risk/bankroll Monte-Carlo lab. Runs
+  thousands of sessions against any of the nine machines in a Web Worker (UI
+  stays responsive; live progress bar + cancel returning partial results). Each
+  session plays from a starting bankroll at a fixed bet until bust or a spin
+  cap. Headline stats: risk of ruin, median/mean ending bankroll, % ended
+  ahead, avg session length, avg max drawdown, empirical RTP, house edge. Four
+  inline-SVG charts: survival curve, ending-bankroll histogram, sample session
+  trajectories, max-drawdown histogram.
+- Learn section (`/learn` index + four topic pages, top-level nav): layered
+  "intuition + one live number, then a collapsible rigorous derivation with
+  live tables" explainers, all driven by live machine data.
+  - **House edge** — floor-wide RTP/house-edge table via `exactRtp()`.
+  - **Telnaes virtual reels** — virtual vs physical reel weight mechanics; the
+    combined 3-reel jackpot squeeze (~1 in 31,104 virtual vs 1 in 10,648
+    physical on Diamond Doubler).
+  - **Hold-and-spin** — Ruby of Gargoyle respin-reset as an absorbing Markov
+    chain (P(fill)=2.35%, E[final]=10.19 cells).
+  - **Gargoyle's Eye** — the additive ×N multiplier gem: ×2.5 expected added
+    multiplier; additive ×5 vs multiplicative ×6.
+- Engine: `app/engine/sessions.ts` — `simulateSession`, `aggregateSessions`,
+  `createSimLabRun` reuse the existing per-spin primitives (`spin`,
+  `nextSpinCost`, `initMachineState`); `simulateMachine` is untouched.
+- Deploy: CSP extended with `worker-src 'self'`; `/sim-lab` and all `/learn/*`
+  routes added to `nitro.prerender.routes`; worker verified loading under the
+  production CSP (no blob URL, no CSP violation).
+
+### Changed
+- Nav is now **Sim Lab / Learn / History** (was History only).
+- Test suite: 357 tests (was 325 at v0.5.0).
+- Social meta descriptions updated to reflect Sim Lab and /learn capabilities.
+
 ## [0.5.0] - 2026-06-14
 
 ### Added

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/og-image.png" alt="Slots Simulator — Telnaes virtual reels, exact-enumeration RTP, and the math the floor never shows" width="800">
+  <img src="public/og-image.png" alt="Slots Simulator — nine machines, Monte-Carlo Sim Lab, /learn explainers, and the math the floor never shows" width="800">
 </p>
 
 # Metaincognita Slots
@@ -10,9 +10,9 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: playable UI milestone.** The floor is open: nine machines, full game
-surfaces, X-ray mode, PAR sheets, and session history. The Sim Lab and
-learn pages land in a subsequent milestone.
+**Status: v0.6.0.** The floor is open: nine machines, full game surfaces,
+X-ray mode, PAR sheets, session history, a Monte-Carlo Sim Lab, and /learn
+explainers on the math the floor never shows.
 
 ## Playing it
 
@@ -31,7 +31,15 @@ pnpm dev        # open http://localhost:3000
    variance.
 4. **Pachislo keys** — on Stock Rush press **1/2/3** to stop reels manually;
    the slip (≤ 4 stops) is visible in X-ray.
-5. Everything persists in **localStorage** — reload mid-feature and your
+5. **Sim Lab** — run thousands of bankroll sessions against any machine in a
+   Web Worker (live progress, cancel mid-run). Outputs risk of ruin, median/mean
+   ending bankroll, survival curve, drawdown histogram, sample trajectories, and
+   empirical RTP.
+6. **Learn** — four explainer pages covering house edge (live floor-wide table),
+   Telnaes virtual-reel mechanics, hold-and-spin as an absorbing Markov chain,
+   and the Gargoyle's Eye additive multiplier. Each page layers intuition first,
+   then a collapsible rigorous derivation with live numbers.
+7. Everything persists in **localStorage** — reload mid-feature and your
    free spins are still waiting exactly where you left them.
 
 This is an educational simulator. No real money is involved.
@@ -134,8 +142,9 @@ stock-rush              3     91.5013%    92.3172%     0.8159%    21.2341%    21
 ## Tech
 
 Nuxt 4 SPA (ssr:false) - TypeScript strict - @nuxt/ui + Tailwind 4 -
-Pinia - Vitest - pnpm. The engine (`app/engine/`) is pure TypeScript with
-no framework imports; machines (`app/machines/`) are pure data.
+Pinia - Vitest - Web Worker (Sim Lab) - pnpm. The engine (`app/engine/`) is
+pure TypeScript with no framework imports; machines (`app/machines/`) are
+pure data.
 
 ## Sources
 
