@@ -8,7 +8,10 @@ const MODULES: Record<string, () => Promise<{ default: Component }>> = {
   'canal-royale': () => import('./CanalRoyaleChrome.vue'),
   'dragons-hoard': () => import('./DragonsHoardChrome.vue'),
   'thunder-vault': () => import('./ThunderVaultChrome.vue'),
-  'diamond-doubler': () => import('./DiamondDoublerChrome.vue')
+  'diamond-doubler': () => import('./DiamondDoublerChrome.vue'),
+  'sevens-ablaze': () => import('./SevensAblazeChrome.vue'),
+  'series-e-3line': () => import('./SeriesE3LineChrome.vue'),
+  'series-e-multiplier': () => import('./SeriesEMultiplierChrome.vue')
 }
 
 const cache: Record<string, Component> = {}
