@@ -6,6 +6,7 @@ import LabStatCards from '../../app/components/lab/LabStatCards.vue'
 import SurvivalCurve from '../../app/components/lab/SurvivalCurve.vue'
 import EndHistogram from '../../app/components/lab/EndHistogram.vue'
 import DrawdownHistogram from '../../app/components/lab/DrawdownHistogram.vue'
+import SampleCurves from '../../app/components/lab/SampleCurves.vue'
 import type { SimLabResult } from '../../app/engine/sessions'
 
 const result: SimLabResult = {
@@ -62,5 +63,16 @@ describe('DrawdownHistogram', () => {
   it('draws one rect per bin', () => {
     const w = mount(DrawdownHistogram, { props: { result } })
     expect(w.findAll('rect').length).toBe(result.drawdownHistogram.counts.length)
+  })
+})
+
+describe('SampleCurves', () => {
+  it('draws one polyline per sample trajectory, colored by fate', () => {
+    const w = mount(SampleCurves, { props: { result } })
+    const lines = w.findAll('polyline')
+    expect(lines.length).toBe(result.sampleTrajectories.length)
+    // busted curves rose, survived curves emerald
+    expect(lines.some(l => l.attributes('stroke') === '#fb7185')).toBe(true)
+    expect(lines.some(l => l.attributes('stroke') === '#34d399')).toBe(true)
   })
 })
