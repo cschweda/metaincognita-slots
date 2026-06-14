@@ -3,6 +3,52 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.0] - 2026-06-14
+
+### Added
+- Per-machine decorative cabinet chrome: every machine's reel window is now
+  wrapped in a bespoke, gaudy, themed frame. Nine hand-crafted chrome modules:
+  - **Ruby of Gargoyle** — gothic stone ring, cathedral arches, bobbing
+    gargoyles, Gargoyle's Eye, crimson breathing glow.
+  - **Stock Rush** — triple-neon tube frame, kanji big-win sign, chasing
+    bulbs, torii ⛩️ and lucky cat 🐱.
+  - **Canal Royale** — baroque carnival gold scrollwork, masquerade masks 🎭,
+    fluted gold rails, shimmer sweep.
+  - **Dragon's Hoard** — fire-breathing dragon 🐉 with soft flame flicker,
+    emerald scale-arc border, coin row 🪙.
+  - **Thunder Vault** — riveted brushed-steel frame, SVG lightning bolts,
+    vault-dial motif, violet/electric-blue glow.
+  - **Diamond Doubler** — frosted ice facets, silver rails, prismatic gleam
+    sweep, cool restrained sparkle.
+  - **Sevens Ablaze** — layered flame shapes licking up from the base, ember
+    dots, charred dark frame, hot red/orange glow.
+  - **Series E 3-Line** — warm brass gradient, bell finial 🔔, cream bakelite
+    corner inlays, tungsten glow; the least animated (period-correct calm).
+  - **Series E Multiplier** — same Bally era, cool turquoise + chrome,
+    red ×2/×3 multiplier numerals as side ornaments; deliberately distinct
+    from the 3-Line so the two Ballys no longer look identical.
+- `<GameMachineChrome>` wrapper component: injects per-machine palette as CSS
+  variables (`--chrome-accent/secondary/glow/backdrop`) + a radial stage
+  backdrop; resolves the active machine's chrome module via a registry.
+- `chromeFor()` registry + `DefaultChrome` fallback: future games get per-
+  machine chrome by dropping in one `.vue` module and one registry line;
+  unknown machines fall back automatically to the accent-framed default.
+- Global `prefers-reduced-motion` guard in `main.css`: all chrome ambient
+  animation is suppressed with a single `@media` rule so the guard applies to
+  every present and future module automatically.
+
+### Notes
+- Reels, controls, bet logic, and the engine are **completely unchanged**.
+- All chrome is `aria-hidden` + `pointer-events:none` — no accessibility
+  regressions; a11y audit remains 100/100.
+- CSS/SVG-only hand-built art: no external images, no CSP violations.
+- Ambient keyframe motion is subtle throughout (brightness ≈1↔1.1,
+  translateY ≤2–3px, opacity glows, durations 3–6s ease-in-out); no
+  strobing or rapid blinking anywhere.
+
+### Changed
+- Test suite: 363 tests (was 357 at v0.6.0).
+
 ## [0.6.0] - 2026-06-14
 
 ### Added

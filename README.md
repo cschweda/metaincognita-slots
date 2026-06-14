@@ -10,9 +10,9 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.6.0.** The floor is open: nine machines, full game surfaces,
-X-ray mode, PAR sheets, session history, a Monte-Carlo Sim Lab, and /learn
-explainers on the math the floor never shows.
+**Status: v0.7.0.** The floor is open: nine machines, full game surfaces,
+per-machine cabinet chrome, X-ray mode, PAR sheets, session history, a
+Monte-Carlo Sim Lab, and /learn explainers on the math the floor never shows.
 
 ## Playing it
 
@@ -23,7 +23,10 @@ pnpm dev        # open http://localhost:3000
 
 1. **Floor** — set a bankroll, then pick a machine from the family-grouped
    card grid. Each card shows the exact RTP and a one-line description.
-2. **Machine** — spin, adjust your bet, watch the reels. Hit **X-ray** to
+2. **Machine** — spin, adjust your bet, watch the reels inside each
+   machine's bespoke decorative cabinet chrome (nine themed frames: gothic
+   stone, pachinko neon, baroque gold, emerald scales, riveted steel, ice
+   facets, rising flames, warm brass, cool turquoise). Hit **X-ray** to
    open the side panel: labeled RNG trace, near-miss callouts, a live
    session-vs-exact RTP convergence sparkline, and machine internals.
 3. **PAR sheet** — click the spreadsheet icon for the full pay-table with
@@ -106,6 +109,21 @@ The lottery decides, the reels obey: flags stock and are never lost, control
 slips ≤ 4 stops, and an exhaustive 21³ check proves no win can land without a
 flag — so your timing changes *when*, never *how much*. Six operator odds
 levels straight from the manual's bands (65–67% up to 115–125%).
+
+## Per-machine cabinet chrome
+
+Each machine's reel window sits inside a bespoke, gaudy, "weird-Vegas"
+decorative frame built entirely from hand-crafted CSS and inline SVG
+(no external images → CSP-clean, zero bundle weight). A `<GameMachineChrome>`
+wrapper injects per-machine palette CSS variables and a radial stage backdrop,
+then resolves the active machine's frame module from a registry. Unknown or
+future machines fall back automatically to a clean accent-framed default, so
+new games get chrome by adding one `.vue` file and one registry line.
+
+The chrome layer is `aria-hidden` + `pointer-events:none` throughout — the
+reels, controls, and engine are unaffected, and the a11y audit remains
+100/100. All ambient animation (breathing glows, slow bobs, shimmer sweeps)
+is suppressed by a single global `prefers-reduced-motion` media query guard.
 
 ## Verification
 
