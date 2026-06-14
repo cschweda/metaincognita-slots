@@ -110,7 +110,7 @@ const pContinueRows = computed(() => {
 
 <template>
   <div class="px-4 py-8 max-w-[760px] mx-auto space-y-8">
-    <nav class="text-xs text-neutral-500">
+    <nav class="text-xs text-neutral-400">
       <NuxtLink
         to="/learn"
         class="hover:text-amber-400"
