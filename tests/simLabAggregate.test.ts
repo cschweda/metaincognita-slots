@@ -1,7 +1,17 @@
 // tests/simLabAggregate.test.ts
 import { describe, expect, it } from 'vitest'
-import { aggregateSessions } from '../app/engine/sessions'
-import type { SessionRecord, SimLabContext } from '../app/engine/sessions'
+import { aggregateSessions, createSimLabRun } from '../app/engine/sessions'
+import type { SessionRecord, SimLabContext, SimLabOptions } from '../app/engine/sessions'
+import { FLOOR } from '../app/machines'
+
+const byId = (id: string) => FLOOR.find(m => m.id === id)!
+
+function labOpts(over: Partial<SimLabOptions> = {}): SimLabOptions {
+  return {
+    machineId: 'diamond-doubler', startCredits: 200, bet: 1, spinCap: 200,
+    progressiveMode: 'static', sessions: 300, seed: 42, ...over
+  }
+}
 
 function ctx(over: Partial<SimLabContext> = {}): SimLabContext {
   return {
@@ -59,5 +69,44 @@ describe('aggregateSessions', () => {
     expect(r.riskOfRuin).toBe(0)
     expect(Number.isNaN(r.medianEnd)).toBe(false)
     expect(r.drawdownHistogram.counts.reduce((a, b) => a + b, 0)).toBe(1)
+  })
+})
+
+describe('createSimLabRun', () => {
+  it('runs to completion in batches and is batch-size independent', () => {
+    const def = byId('diamond-doubler')
+    const big = createSimLabRun(def, labOpts())
+    expect(big.runBatch(10_000).done).toBe(true)
+    const r1 = big.result()
+
+    const small = createSimLabRun(def, labOpts())
+    let done = false
+    while (!done) done = small.runBatch(37).done
+    const r2 = small.result()
+
+    expect(r2).toEqual(r1) // identical regardless of batch size
+    expect(r1.sessions).toBe(300)
+    expect(r1.houseEdge).toBeGreaterThan(0)
+    expect(r1.empiricalRtp).toBeGreaterThan(0)
+  })
+
+  it('keeps a mix of busted and survived sample trajectories', () => {
+    // small bankroll + moderate cap → both fates occur
+    const def = byId('diamond-doubler')
+    const run = createSimLabRun(def, labOpts({ startCredits: 40, spinCap: 300, sessions: 400 }))
+    run.runBatch(10_000)
+    const r = run.result()
+    expect(r.sampleTrajectories.length).toBeGreaterThan(0)
+    expect(r.sampleTrajectories.some(t => t.busted)).toBe(true)
+    expect(r.sampleTrajectories.some(t => !t.busted)).toBe(true)
+  })
+
+  it('property: more bankroll lowers risk of ruin', () => {
+    const def = byId('diamond-doubler')
+    const low = createSimLabRun(def, labOpts({ startCredits: 30, spinCap: 500, sessions: 500 }))
+    const high = createSimLabRun(def, labOpts({ startCredits: 300, spinCap: 500, sessions: 500 }))
+    low.runBatch(10_000)
+    high.runBatch(10_000)
+    expect(high.result().riskOfRuin).toBeLessThan(low.result().riskOfRuin)
   })
 })
