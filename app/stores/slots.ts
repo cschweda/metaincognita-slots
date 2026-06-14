@@ -123,6 +123,7 @@ function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionStat
       const locked = (f.locked as unknown[]).slice(0, 15).map((cell) => {
         if (cell === null || typeof cell !== 'object') return null
         const c = cell as Record<string, unknown>
+        if (Number.isInteger(c.mult) && (c.mult as number) >= 2) return { mult: c.mult as number }
         if (!Number.isInteger(c.credits) || (c.credits as number) <= 0) return null
         const label = c.label === 'mini' || c.label === 'minor' || c.label === 'major'
           ? c.label as 'mini' | 'minor' | 'major'

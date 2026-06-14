@@ -90,6 +90,26 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(b.phase).toBe('playing')
   })
 
+  it('round-trips a hold-and-spin multiplier gem without dropping it', () => {
+    const a = freshStore()
+    a.startSession(50_000)
+    a.selectMachine('ruby-of-gargoyle')
+    a.machineStates['ruby-of-gargoyle']!.videoFeature = {
+      kind: 'holdAndSpin',
+      locked: [{ mult: 2 }, { credits: 25, label: 'mini' }, ...new Array(13).fill(null)],
+      respins: 3,
+      coins: 25
+    }
+    a.saveToLocalStorage()
+    const b = freshStore()
+    expect(b.resume()).toBe(true)
+    const f = b.machineStates['ruby-of-gargoyle']!.videoFeature!
+    expect(f.kind).toBe('holdAndSpin')
+    expect(f.locked[0]).toEqual({ mult: 2 })
+    expect(f.locked[1]).toEqual({ credits: 25, label: 'mini' })
+    expect(f.locked.slice(2).every(c => c === null)).toBe(true)
+  })
+
   it('round-trips pachislo queues and bonus state exactly', () => {
     const a = freshStore()
     a.startSession(50_000)
