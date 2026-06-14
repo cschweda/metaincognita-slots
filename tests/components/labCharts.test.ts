@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ChartFrame from '../../app/components/lab/ChartFrame.vue'
 import LabStatCards from '../../app/components/lab/LabStatCards.vue'
+import SurvivalCurve from '../../app/components/lab/SurvivalCurve.vue'
 import type { SimLabResult } from '../../app/engine/sessions'
 
 const result: SimLabResult = {
@@ -34,5 +35,15 @@ describe('LabStatCards', () => {
     expect(w.text()).toMatch(/62(\.0+)?%/) // risk of ruin
     expect(w.text()).toMatch(/21(\.0+)?%/) // % ahead
     expect(w.text().toLowerCase()).toContain('risk of ruin')
+  })
+})
+
+describe('SurvivalCurve', () => {
+  it('plots a polyline and labels the final survival rate', () => {
+    const w = mount(SurvivalCurve, { props: { result } })
+    expect(w.find('polyline').exists()).toBe(true)
+    const pts = w.find('polyline').attributes('points')!.trim().split(/\s+/)
+    expect(pts.length).toBe(result.survival.length) // one point per survival sample
+    expect(w.find('svg').attributes('aria-label')).toMatch(/survival/i)
   })
 })
