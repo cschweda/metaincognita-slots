@@ -504,6 +504,7 @@ export const useSlotsStore = defineStore('slots', {
         if (e.type === 'free-spin-consumed') parts.push(`Free spins: ${e.remaining} remaining.`)
         if (e.type === 'free-spins-retriggered') parts.push(`Retrigger! ${e.remaining} free spins.`)
         if (e.type === 'orbs-locked') parts.push(`${e.cells.length} orbs locked.`)
+        if (e.type === 'mult-orbs-locked') parts.push(`${e.mults.map(m => `times ${m}`).join(' ')} multiplier locked.`)
         if (e.type === 'hold-and-spin-ended') parts.push(`Hold and spin pays ${e.totalCredits.toLocaleString('en-US')} credits${e.filled ? ' — GRAND!' : '.'}`)
         if (e.type === 'flag-stocked') parts.push(`${e.flag} stocked.`)
         if (e.type === 'bonus-started') parts.push(`${e.bonus.toUpperCase()} bonus!`)

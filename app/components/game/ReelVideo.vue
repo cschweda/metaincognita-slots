@@ -40,9 +40,11 @@ const { iconFor, labelFor, isWild } = useReelSymbols(def)
 
 const GUTTER = 36
 
-type LockedCell = { credits: number; label?: 'mini' | 'minor' | 'major' } | { mult: number }
-function isCreditCell(c: LockedCell): c is { credits: number; label?: 'mini' | 'minor' | 'major' } {
-  return 'credits' in c
+type LockCell = { credits: number, label?: string } | { mult: number } | null | undefined
+function lockText(cell: LockCell): { mult: boolean, text: string, label?: string } | null {
+  if (cell == null) return null
+  if ('mult' in cell) return { mult: true, text: `×${cell.mult}` }
+  return { mult: false, text: formatCredits(cell.credits), label: cell.label }
 }
 </script>
 
@@ -88,22 +90,21 @@ function isCreditCell(c: LockedCell): c is { credits: number; label?: 'mini' | '
           :key="`${r}:${row}`"
           class="h-16 rounded-lg flex items-center justify-center font-mono text-sm border"
           :class="hns.locked[(r - 1) * 3 + (row - 1)]
-            ? 'bg-sky-500/15 border-sky-500/50 text-sky-200'
+            ? (lockText(hns.locked[(r - 1) * 3 + (row - 1)])!.mult
+              ? 'bg-rose-500/15 border-rose-500/50 text-rose-200'
+              : 'bg-sky-500/15 border-sky-500/50 text-sky-200')
             : 'bg-neutral-950 border-neutral-800 text-neutral-700'"
         >
-          <template v-if="hns.locked[(r - 1) * 3 + (row - 1)]">
-            <template v-if="isCreditCell(hns.locked[(r - 1) * 3 + (row - 1)]!)">
-              {{ formatCredits((hns.locked[(r - 1) * 3 + (row - 1)]! as { credits: number; label?: 'mini' | 'minor' | 'major' }).credits) }}
-              <span
-                v-if="(hns.locked[(r - 1) * 3 + (row - 1)]! as { credits: number; label?: 'mini' | 'minor' | 'major' }).label"
-                class="ml-1 uppercase text-[9px] text-amber-300"
-              >
-                {{ (hns.locked[(r - 1) * 3 + (row - 1)]! as { credits: number; label?: 'mini' | 'minor' | 'major' }).label }}
-              </span>
-            </template>
-            <template v-else>
-              {{ `x${(hns.locked[(r - 1) * 3 + (row - 1)]! as { mult: number }).mult}` }}
-            </template>
+          <template v-if="lockText(hns.locked[(r - 1) * 3 + (row - 1)])">
+            <span :class="lockText(hns.locked[(r - 1) * 3 + (row - 1)])!.mult ? 'font-bold' : ''">
+              {{ lockText(hns.locked[(r - 1) * 3 + (row - 1)])!.text }}
+            </span>
+            <span
+              v-if="lockText(hns.locked[(r - 1) * 3 + (row - 1)])!.label"
+              class="ml-1 uppercase text-[9px] text-amber-300"
+            >
+              {{ lockText(hns.locked[(r - 1) * 3 + (row - 1)])!.label }}
+            </span>
           </template>
           <span v-else>·</span>
         </div>

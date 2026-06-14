@@ -36,4 +36,27 @@ describe('ReelVideo', () => {
     const { wrapper } = setup()
     expect(wrapper.find('[data-test="overlay"]').exists()).toBe(true)
   })
+
+  it('renders a multiplier gem on the lock board', () => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    const store = useSlotsStore()
+    store.startSession(100000)
+    store.selectMachine('thunder-vault')
+    store.currentState!.videoFeature = {
+      kind: 'holdAndSpin',
+      locked: [{ mult: 2 }, { credits: 25 }, ...new Array(13).fill(null)],
+      respins: 3,
+      coins: 25
+    }
+    const wrapper = mount(ReelVideo, {
+      global: {
+        components: { GameReelColumn },
+        stubs: { UIcon: true, GameProgressiveMeter: true, GameSymbolIcon: IconStub, GamePaylineOverlay: OverlayStub }
+      }
+    })
+    const board = wrapper.find('[data-test="lock-board"]')
+    expect(board.exists()).toBe(true)
+    expect(board.text()).toContain('×2')
+  })
 })
