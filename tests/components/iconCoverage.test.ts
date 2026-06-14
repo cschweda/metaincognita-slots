@@ -19,4 +19,10 @@ describe('icon coverage', () => {
     expect(symbolArt('__proto__')).toBeNull() // no prototype-chain leakage
     expect(symbolArt('hasOwnProperty')).toBeNull()
   })
+
+  it('resolves the Ruby of Gargoyle gem icons', () => {
+    for (const id of ['gargoyle', 'ruby', 'chalice', 'crown', 'gargoyle-eye']) {
+      expect(symbolArt(id), id).not.toBeNull()
+    }
+  })
 })

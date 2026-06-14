@@ -50,6 +50,13 @@ const SYMBOL_ART: Record<string, SymbolArt> = {
   'lightning': { kind: 'svg', body: '<path d="M13 2L4 13h6l-2 9 10-13h-6z" fill="#facc15"/><path d="M13 2L4 13h6z" fill="#fde047"/>' },
   'goldbar': { kind: 'svg', body: '<path d="M4 10h16l1.5 7H2.5z" fill="#fbbf24"/><path d="M4 10h16l-1.3-1.6H5.3z" fill="#fde68a"/><path d="M4 10l-1.5 7M20 10l1.5 7" stroke="#b45309" stroke-width="1" fill="none"/>' },
   'orb': { kind: 'svg', body: '<circle cx="12" cy="12" r="7.5" fill="#7c3aed"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="#c4b5fd" stroke-width="1"/><circle cx="9.5" cy="9.5" r="2.2" fill="#ddd6fe"/><path d="M5 13c3 2 11 2 14 0" stroke="#a78bfa" stroke-width="1" fill="none"/>' }
+  ,
+  // ---- Ruby of Gargoyle ----
+  'gargoyle': { kind: 'svg', body: '<path d="M4 13c-1-5 3-9 8-9s9 4 8 9c-1 4-4 7-8 7s-7-3-8-7z" fill="#64748b"/><path d="M5 5l3 3-3 1zM19 5l-3 3 3 1z" fill="#475569"/><circle cx="9" cy="12" r="1.4" fill="#1e293b"/><circle cx="15" cy="12" r="1.4" fill="#1e293b"/><path d="M8 16c2 2 6 2 8 0l-2-1.4-2 1-2-1z" fill="#334155"/>' },
+  'ruby': { kind: 'svg', body: '<path d="M6 4h12l4 6-10 10L2 10z" fill="#f43f5e"/><path d="M6 4l-4 6h20l-4-6M12 20 8 10h8z" fill="#be123c"/><path d="M9 6l-1.5 4h3z" fill="#fecdd3"/>' },
+  'chalice': { kind: 'svg', body: '<path d="M6.5 4h11c0 5.5-2.2 8.5-5.5 8.5S6.5 9.5 6.5 4z" fill="#fcd34d"/><path d="M8 4h8c0 4-1.6 6.5-4 6.5S8 8 8 4z" fill="#b45309"/><path d="M11 12.5h2V18h-2z" fill="#b45309"/><path d="M7 18h10v2.2H7z" fill="#fbbf24"/>' },
+  'crown': { kind: 'svg', body: '<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z" fill="#fbbf24"/><path d="M5 19h14l.5-3H4.5z" fill="#b45309"/><circle cx="3" cy="8" r="1.4" fill="#fde68a"/><circle cx="21" cy="8" r="1.4" fill="#fde68a"/><circle cx="12" cy="4.5" r="1.4" fill="#fde68a"/>' },
+  'gargoyle-eye': { kind: 'svg', body: '<circle cx="12" cy="12" r="8.5" fill="#7f1d1d"/><ellipse cx="12" cy="12" rx="7.5" ry="4.6" fill="#ef4444"/><circle cx="12" cy="12" r="2.6" fill="#1c0a0a"/><circle cx="10.3" cy="10.3" r="1" fill="#fecaca"/>' }
 }
 
 export function symbolArt(iconId: string | undefined): SymbolArt | null {
