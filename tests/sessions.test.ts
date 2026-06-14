@@ -33,7 +33,9 @@ describe('simulateSession', () => {
       const r = simulateSession(def, opts({ startCredits: 50 }), mulberry32(deriveSeed(7, i)))
       expect(r.endBalance).toBeGreaterThanOrEqual(0)
       expect(r.maxDrawdown).toBeGreaterThanOrEqual(0)
-      expect(r.peak).toBeGreaterThanOrEqual(r.endBalance - r.totalOut) // sanity
+      // peak must be at least the ending balance and at least the starting bankroll (50)
+      expect(r.peak).toBeGreaterThanOrEqual(r.endBalance)
+      expect(r.peak).toBeGreaterThanOrEqual(50)
     }
   })
 
@@ -43,7 +45,8 @@ describe('simulateSession', () => {
     const r = simulateSession(def, opts({ startCredits: 5, spinCap: 100000 }), mulberry32(deriveSeed(2, 0)))
     expect(r.busted).toBe(true)
     expect(r.spinsPlayed).toBeLessThan(100000)
-    expect(r.endBalance).toBeLessThan(def.maxCoins) // can't afford another max-ish bet... at bet=1, < 1
+    // True invariant: busted means it couldn't afford the next paid spin (bet=1, credits are integers → endBalance === 0)
+    expect(r.endBalance).toBeLessThan(1)
   })
 
   it('survives (not busts) when the cap is reached', () => {
@@ -70,5 +73,41 @@ describe('simulateSession', () => {
     expect(on.trajectory.length).toBeGreaterThan(1)
     expect(on.trajectory[0]).toBe(200) // starts at startCredits
     expect(on.trajectory.length).toBeLessThanOrEqual(80) // downsampled
+  })
+
+  it('live progressive mode runs cleanly on a stepper progressive machine', () => {
+    const def = byId('sevens-ablaze')
+    const r = simulateSession(
+      def,
+      opts({ startCredits: 500, bet: def.maxCoins, spinCap: 100, progressiveMode: 'live' }),
+      mulberry32(deriveSeed(10, 0))
+    )
+    expect(typeof r.busted).toBe('boolean')
+    expect(r.endBalance).toBeGreaterThanOrEqual(0)
+    expect(Number.isFinite(r.endBalance)).toBe(true)
+    expect(r.totalIn).toBeGreaterThanOrEqual(0)
+  })
+
+  it('oddsLevel out of range throws for a pachislo machine', () => {
+    const def = byId('stock-rush')
+    const rand = mulberry32(deriveSeed(11, 0))
+    expect(() =>
+      simulateSession(def, opts({ bet: def.maxCoins, oddsLevel: 99 }), rand)
+    ).toThrow()
+    expect(() =>
+      simulateSession(def, opts({ bet: def.maxCoins, oddsLevel: 0 }), mulberry32(deriveSeed(11, 1)))
+    ).toThrow()
+  })
+
+  it('a pachislo session runs and returns a valid result', () => {
+    const def = byId('stock-rush')
+    const r = simulateSession(
+      def,
+      opts({ startCredits: 5000, bet: def.maxCoins, spinCap: 100 }),
+      mulberry32(deriveSeed(12, 0))
+    )
+    expect(r.spinsPlayed).toBeGreaterThanOrEqual(0)
+    expect(r.endBalance).toBeGreaterThanOrEqual(0)
+    expect(Number.isFinite(r.endBalance)).toBe(true)
   })
 })

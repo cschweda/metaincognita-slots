@@ -40,6 +40,7 @@ export function deriveSeed(master: number, index: number): number {
 }
 
 function downsample(arr: number[], maxPts: number): number[] {
+  if (maxPts <= 1) return arr.length ? [arr[arr.length - 1]!] : []
   if (arr.length <= maxPts) return arr.slice()
   const out: number[] = []
   const step = (arr.length - 1) / (maxPts - 1)
@@ -109,6 +110,12 @@ export function simulateSession(
   }
   // The cap-th paid spin may have triggered a free feature — play it out so its
   // payout is collected (mirrors simulateMachine's drain; free, so no cost).
+  //
+  // Deliberate asymmetry: a pachislo `bonus` that is still pending at the spin
+  // cap is NOT force-drained here.  Unlike video free-spins, pachislo bonus
+  // rounds are cost-bearing (nextSpinCost > 0), so force-playing them could
+  // overspend a bankroll that is already at rest.  The abandoned-tail EV is
+  // statistically negligible and matches the spec's stance.
   while (state.videoFeature !== null) applySpin()
 
   return {
@@ -125,6 +132,7 @@ export function simulateSession(
 
 // --- Task 0.2: aggregateSessions ---
 
+/** Slim per-session subset of SessionResult buffered by the aggregator; drops peak/totalIn/totalOut/trajectory. */
 export interface SessionRecord {
   endBalance: number
   maxDrawdown: number
@@ -261,7 +269,7 @@ export function aggregateSessions(
     survival,
     endHistogram: { ...histogram(ends, 0, Math.max(maxEnd, 1), histogramBins), bustCount: bust },
     drawdownHistogram: histogram(dds, 0, Math.max(maxDd, 1), histogramBins),
-    sampleTrajectories: samples.slice(0, 8)
+    sampleTrajectories: samples.slice(0, 8) // defensive cap; driver already supplies ≤ 2×perFate
   }
 }
 
@@ -285,6 +293,7 @@ export interface SimLabRun {
 export function createSimLabRun(def: MachineDef, opts: SimLabOptions): SimLabRun {
   const total = opts.sessions
   const trajCap = opts.trajectorySampleCap ?? 60
+  // Caps busted + survived sample trajectories at perFate each (≤ 2×perFate total).
   const perFate = 4
   const records: SessionRecord[] = []
   const bustedSamples: SampleTrajectory[] = []
