@@ -278,7 +278,7 @@ describe('hold-and-spin', () => {
   })
 })
 
-describe("hold-and-spin multiplier (Gargoyle's Eye)", () => {
+describe('hold-and-spin multiplier (Gargoyle\'s Eye)', () => {
   const MULT_DEF = {
     id: 'test-mult', name: 'Test Mult', family: 'video',
     denominationCents: 1, maxCoins: 5,
@@ -307,10 +307,10 @@ describe("hold-and-spin multiplier (Gargoyle's Eye)", () => {
     history: 'test'
   } as unknown as VideoMachineDef
 
-  const HIT = 0.01   // floor(0.01*24)=0 < 2 -> orb lands
-  const MISS = 0.5   // floor(0.5*24)=12 -> no orb
+  const HIT = 0.01 // floor(0.01*24)=0 < 2 -> orb lands
+  const MISS = 0.5 // floor(0.5*24)=12 -> no orb
   const CREDIT = 0.25 // floor(0.25*2)=0 -> credit entry
-  const MULT = 0.75   // floor(0.75*2)=1 -> multiplier entry
+  const MULT = 0.75 // floor(0.75*2)=1 -> multiplier entry
 
   // reels 1-3 stop at 5 -> windows [AA,OR,OR] -> 6 orbs at cells 1,2,4,5,7,8.
   // values: cells 1,2,4,5,7 credit; cell 8 a x2 multiplier.
@@ -372,9 +372,9 @@ describe("hold-and-spin multiplier (Gargoyle's Eye)", () => {
     def.holdAndSpin!.orbValues = [{ credits: 25, weight: 1 }, { mult: 2, weight: 1 }, { mult: 3, weight: 1 }]
     const state = initMachineState(def)
     // weight total 3: floor(raw*3) -> 0 credit(25), 1 mult x2, 2 mult x3
-    const C = 0.1   // floor(0.1*3)=0 -> credit
-    const M2 = 0.5  // floor(0.5*3)=1 -> mult x2
-    const M3 = 0.8  // floor(0.8*3)=2 -> mult x3
+    const C = 0.1 // floor(0.1*3)=0 -> credit
+    const M2 = 0.5 // floor(0.5*3)=1 -> mult x2
+    const M3 = 0.8 // floor(0.8*3)=2 -> mult x3
     // 6 orbs at cells 1,2,4,5,7,8 (ascending cell order); cells 1,2,4,5 credit; 7 -> x2; 8 -> x3
     const draws = [at(5, 6), at(5, 6), at(5, 6), at(2, 6), at(2, 6), C, C, C, C, M2, M3]
     const out = spinVideo(def, state, 5, scripted(draws))

@@ -130,7 +130,11 @@ describe('videoExactRtp — hold-and-spin multiplier orbs', () => {
     history: 'test'
   } as unknown as VideoMachineDef
 
-  const choose = (n: number, k: number) => { let c = 1; for (let i = 0; i < k; i++) c = c * (n - i) / (i + 1); return c }
+  const choose = (n: number, k: number) => {
+    let c = 1
+    for (let i = 0; i < k; i++) c = c * (n - i) / (i + 1)
+    return c
+  }
 
   it('matches an independent combinatorial reference (additive multiplier, k=9 fixed)', () => {
     const r = videoExactRtp(MULT_RTP_DEF, {})

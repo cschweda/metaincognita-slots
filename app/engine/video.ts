@@ -12,7 +12,6 @@ interface DrawnOrb {
   mult?: number
 }
 
-
 function lockedCell(o: DrawnOrb): LockedCell {
   return o.mult !== undefined ? { mult: o.mult } : { credits: o.credits!, label: o.label }
 }
@@ -218,8 +217,13 @@ function holdAndSpinRespin(
     if (value < cfg.respinOrbNumer) {
       const orb = drawOrbValue(def, rand, draws, cell)
       feature.locked[cell] = lockedCell(orb)
-      if (orb.mult !== undefined) { newMultCells.push(cell); newMults.push(orb.mult) }
-      else { newCreditCells.push(cell); newCredits.push(orb.credits!) }
+      if (orb.mult !== undefined) {
+        newMultCells.push(cell)
+        newMults.push(orb.mult)
+      } else {
+        newCreditCells.push(cell)
+        newCredits.push(orb.credits!)
+      }
     }
   }
 

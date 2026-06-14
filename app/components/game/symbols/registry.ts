@@ -49,8 +49,7 @@ const SYMBOL_ART: Record<string, SymbolArt> = {
   'vault': { kind: 'svg', body: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="#475569"/><circle cx="12" cy="12" r="4.5" fill="#94a3b8"/><circle cx="12" cy="12" r="1.6" fill="#1e293b"/><g stroke="#1e293b" stroke-width="1.2"><path d="M12 6v2M12 16v2M6 12h2M16 12h2"/></g>' },
   'lightning': { kind: 'svg', body: '<path d="M13 2L4 13h6l-2 9 10-13h-6z" fill="#facc15"/><path d="M13 2L4 13h6z" fill="#fde047"/>' },
   'goldbar': { kind: 'svg', body: '<path d="M4 10h16l1.5 7H2.5z" fill="#fbbf24"/><path d="M4 10h16l-1.3-1.6H5.3z" fill="#fde68a"/><path d="M4 10l-1.5 7M20 10l1.5 7" stroke="#b45309" stroke-width="1" fill="none"/>' },
-  'orb': { kind: 'svg', body: '<circle cx="12" cy="12" r="7.5" fill="#7c3aed"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="#c4b5fd" stroke-width="1"/><circle cx="9.5" cy="9.5" r="2.2" fill="#ddd6fe"/><path d="M5 13c3 2 11 2 14 0" stroke="#a78bfa" stroke-width="1" fill="none"/>' }
-  ,
+  'orb': { kind: 'svg', body: '<circle cx="12" cy="12" r="7.5" fill="#7c3aed"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="#c4b5fd" stroke-width="1"/><circle cx="9.5" cy="9.5" r="2.2" fill="#ddd6fe"/><path d="M5 13c3 2 11 2 14 0" stroke="#a78bfa" stroke-width="1" fill="none"/>' },
   // ---- Ruby of Gargoyle ----
   'gargoyle': { kind: 'svg', body: '<path d="M4 13c-1-5 3-9 8-9s9 4 8 9c-1 4-4 7-8 7s-7-3-8-7z" fill="#64748b"/><path d="M5 5l3 3-3 1zM19 5l-3 3 3 1z" fill="#475569"/><circle cx="9" cy="12" r="1.4" fill="#1e293b"/><circle cx="15" cy="12" r="1.4" fill="#1e293b"/><path d="M8 16c2 2 6 2 8 0l-2-1.4-2 1-2-1z" fill="#334155"/>' },
   'ruby': { kind: 'svg', body: '<path d="M6 4h12l4 6-10 10L2 10z" fill="#f43f5e"/><path d="M6 4l-4 6h20l-4-6M12 20 8 10h8z" fill="#be123c"/><path d="M9 6l-1.5 4h3z" fill="#fecdd3"/>' },
