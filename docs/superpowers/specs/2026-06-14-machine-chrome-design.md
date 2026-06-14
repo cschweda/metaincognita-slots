@@ -28,7 +28,7 @@ The motivation is a real product insight: in a play-money sim the thrill of the 
 | 2 | Aesthetic | **Gaudy, flashy, kitschy, "weird Vegas"** — pushed deliberately over-the-top; visuals are the product |
 | 3 | Coverage | **All nine machines** get bespoke chrome + a **registry & default fallback** so future games get chrome |
 | 4 | Implementation medium | **Hand-built CSS/SVG only** (no external images) → CSP-clean, light bundle |
-| 5 | Motion | **Ambient animation** (glow pulse, neon flicker, blinking bulbs, bobbing creatures), **gated by `prefers-reduced-motion`** |
+| 5 | Motion | **Subtle, restrained ambient animation** (gentle glow pulse, soft neon, slow bobs — low amplitude, no strobing or harsh blinking), **gated by `prefers-reduced-motion`** |
 | 6 | Accessibility | Chrome is **decorative** (`aria-hidden`, `pointer-events:none`) so the working controls and the 100/100 a11y score are unaffected |
 
 ## Architecture
@@ -62,7 +62,7 @@ The `DefaultChrome` fallback is a tasteful accent-framed surround using the mach
 ## Constraints
 
 - **CSP / assets:** SVG + CSS only, no external fetches. Vue SFC `<style>` is bundled (not an inline `<script>`), so this adds **no new CSP hashes** and keeps the strict policy intact.
-- **Reduced motion:** all ambient animation lives behind `@media (prefers-reduced-motion: reduce)` (or the existing `useReducedMotion` composable) and goes fully static when requested.
+- **Reduced motion & subtlety:** all ambient animation lives behind `@media (prefers-reduced-motion: reduce)` and goes fully static when requested. Even with motion on it stays **subtle** — low amplitude, slow (≈3–6s) easing, soft glow, no strobing/rapid blinking (also satisfies WCAG 2.3.1's flash limit of < 3/s).
 - **Accessibility:** chrome layers are `aria-hidden="true"` + `pointer-events:none`; the reel-window and control DOM/semantics/contrast are unchanged; the a11y audit must stay **100/100**.
 - **Performance:** animate only `transform`/`opacity` (GPU-friendly, no layout thrash); lazy-load per-machine modules; cap the number of animated elements per frame.
 - **Responsive:** the chrome scales with the reel window and **degrades gracefully on narrow viewports** (ornaments shrink/hide) so the playable area is never crowded or broken; the reel window keeps priority.
