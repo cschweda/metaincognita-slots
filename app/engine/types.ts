@@ -65,6 +65,9 @@ export interface OrbMultiplierEntry {
 
 export type OrbValueEntry = OrbCreditEntry | OrbMultiplierEntry
 
+/** A locked hold-and-spin perch: a credit gem or a Gargoyle's-Eye multiplier gem. */
+export type LockedCell = { credits: number, label?: 'mini' | 'minor' | 'major' } | { mult: number }
+
 /**
  * Hold-and-spin (orb) feature configuration.
  * Filling all 15 cells pays the percent progressive (the Grand).
@@ -271,7 +274,7 @@ export type VideoFeatureState
   | {
     kind: 'holdAndSpin'
     /** 15 cells (cell = reel*3 + row); null = unlocked. A cell is a credit gem or a multiplier gem. */
-    locked: ({ credits: number, label?: 'mini' | 'minor' | 'major' } | { mult: number } | null)[]
+    locked: (LockedCell | null)[]
     respins: number
     coins: number
   }

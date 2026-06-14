@@ -277,3 +277,113 @@ describe('hold-and-spin', () => {
     expect(state.videoFeature).toBeNull()
   })
 })
+
+describe("hold-and-spin multiplier (Gargoyle's Eye)", () => {
+  const MULT_DEF = {
+    id: 'test-mult', name: 'Test Mult', family: 'video',
+    denominationCents: 1, maxCoins: 5,
+    symbols: { AA: { label: 'Ace' }, OR: { label: 'Orb' }, EM: { label: 'Empty' } },
+    strips: [
+      ['OR', 'OR', 'AA', 'AA', 'AA', 'AA'],
+      ['OR', 'OR', 'AA', 'AA', 'AA', 'AA'],
+      ['OR', 'OR', 'AA', 'AA', 'AA', 'AA'],
+      ['AA', 'AA', 'AA', 'AA', 'AA', 'AA'],
+      ['AA', 'AA', 'AA', 'AA', 'AA', 'AA']
+    ],
+    betMode: {
+      kind: 'lines',
+      lines: [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2], [0, 1, 2, 1, 0], [2, 1, 0, 1, 2]]
+    },
+    fixedBet: true, wildSymbol: null, scatter: null, freeSpins: null,
+    holdAndSpin: {
+      orbSymbol: 'OR', triggerCount: 6, respins: 3,
+      respinOrbNumer: 2, respinOrbDenom: 24,
+      // weight total 2: raw<0.5 -> credits(25), raw>=0.5 -> mult x2
+      orbValues: [{ credits: 25, weight: 1 }, { mult: 2, weight: 1 }],
+      emptySymbol: 'EM'
+    },
+    paytable: [],
+    progressive: { kind: 'percent', reset: 5000, max: 50000, feedRate: 0.01 },
+    history: 'test'
+  } as unknown as VideoMachineDef
+
+  const HIT = 0.01   // floor(0.01*24)=0 < 2 -> orb lands
+  const MISS = 0.5   // floor(0.5*24)=12 -> no orb
+  const CREDIT = 0.25 // floor(0.25*2)=0 -> credit entry
+  const MULT = 0.75   // floor(0.75*2)=1 -> multiplier entry
+
+  // reels 1-3 stop at 5 -> windows [AA,OR,OR] -> 6 orbs at cells 1,2,4,5,7,8.
+  // values: cells 1,2,4,5,7 credit; cell 8 a x2 multiplier.
+  const trigger5c1m = () => {
+    const state = initMachineState(MULT_DEF)
+    const draws = [at(5, 6), at(5, 6), at(5, 6), at(2, 6), at(2, 6),
+      CREDIT, CREDIT, CREDIT, CREDIT, CREDIT, MULT]
+    const out = spinVideo(MULT_DEF, state, 5, scripted(draws))
+    expect(out.featureEvents).toContainEqual({ type: 'orbs-locked', cells: [1, 2, 4, 5, 7], credits: [25, 25, 25, 25, 25] })
+    expect(out.featureEvents).toContainEqual({ type: 'mult-orbs-locked', cells: [8], mults: [2] })
+    return state
+  }
+
+  it('additively multiplies the collected credits at collect (x2 of 5 gems)', () => {
+    const state = trigger5c1m()
+    let out
+    for (let r = 0; r < 3; r++) out = spinVideo(MULT_DEF, state, 5, scripted(new Array(9).fill(MISS)))
+    // creditSum = 5*25 = 125; multiplier = 2; collected = 250
+    expect(out!.featureEvents).toContainEqual({ type: 'hold-and-spin-ended', totalCredits: 250, filled: false })
+    expect(out!.totalPayout).toBe(250)
+    expect(state.videoFeature).toBeNull()
+  })
+
+  it('leaves the total unmultiplied (x1) when no multiplier gem is present', () => {
+    const state = initMachineState(MULT_DEF)
+    // all six triggering orbs are credits
+    const draws = [at(5, 6), at(5, 6), at(5, 6), at(2, 6), at(2, 6),
+      CREDIT, CREDIT, CREDIT, CREDIT, CREDIT, CREDIT]
+    spinVideo(MULT_DEF, state, 5, scripted(draws))
+    let out
+    for (let r = 0; r < 3; r++) out = spinVideo(MULT_DEF, state, 5, scripted(new Array(9).fill(MISS)))
+    expect(out!.featureEvents).toContainEqual({ type: 'hold-and-spin-ended', totalCredits: 150, filled: false })
+  })
+
+  it('a multiplier gem landing on a respin resets the counter', () => {
+    const state = trigger5c1m()
+    // cell 0 lands a multiplier; others miss
+    const out = spinVideo(MULT_DEF, state, 5, scripted([HIT, MULT, ...new Array(8).fill(MISS)]))
+    expect(out.featureEvents).toContainEqual({ type: 'mult-orbs-locked', cells: [0], mults: [2] })
+    expect(out.featureEvents).toContainEqual({ type: 'respins-reset', respins: 3 })
+  })
+
+  it('a filled board multiplies the credits and pays a clean Grand', () => {
+    const state = trigger5c1m()
+    state.progressive = { kind: 'percent', value: 5000 }
+    // fill all 9 remaining cells with credit orbs
+    const draws: number[] = []
+    for (let i = 0; i < 9; i++) draws.push(HIT, CREDIT)
+    const out = spinVideo(MULT_DEF, state, 5, scripted(draws))
+    // credit cells = 5 + 9 = 14 -> creditSum 350; mult 2 -> collected 700; Grand 5000 clean
+    expect(out.featureEvents).toContainEqual({ type: 'hold-and-spin-ended', totalCredits: 700, filled: true })
+    expect(out.wins.find(w => w.entryId === 'hold-and-spin')!.payCredits).toBe(700)
+    expect(out.wins.find(w => w.entryId === 'grand')!.payCredits).toBe(5000)
+    expect(out.totalPayout).toBe(700 + 5000)
+  })
+
+  it('adds multiplier faces (x2 + x3 = x5, not x6) at collect', () => {
+    const def = JSON.parse(JSON.stringify(MULT_DEF)) as VideoMachineDef
+    def.holdAndSpin!.orbValues = [{ credits: 25, weight: 1 }, { mult: 2, weight: 1 }, { mult: 3, weight: 1 }]
+    const state = initMachineState(def)
+    // weight total 3: floor(raw*3) -> 0 credit(25), 1 mult x2, 2 mult x3
+    const C = 0.1   // floor(0.1*3)=0 -> credit
+    const M2 = 0.5  // floor(0.5*3)=1 -> mult x2
+    const M3 = 0.8  // floor(0.8*3)=2 -> mult x3
+    // 6 orbs at cells 1,2,4,5,7,8 (ascending cell order); cells 1,2,4,5 credit; 7 -> x2; 8 -> x3
+    const draws = [at(5, 6), at(5, 6), at(5, 6), at(2, 6), at(2, 6), C, C, C, C, M2, M3]
+    const out = spinVideo(def, state, 5, scripted(draws))
+    expect(out.featureEvents).toContainEqual({ type: 'orbs-locked', cells: [1, 2, 4, 5], credits: [25, 25, 25, 25] })
+    expect(out.featureEvents).toContainEqual({ type: 'mult-orbs-locked', cells: [7, 8], mults: [2, 3] })
+    let end
+    for (let r = 0; r < 3; r++) end = spinVideo(def, state, 5, scripted(new Array(9).fill(0.5)))
+    // creditSum = 4*25 = 100; additive multiplier = 2+3 = 5 -> 500 (NOT 100*6 = 600)
+    expect(end!.featureEvents).toContainEqual({ type: 'hold-and-spin-ended', totalCredits: 500, filled: false })
+    expect(end!.totalPayout).toBe(500)
+  })
+})

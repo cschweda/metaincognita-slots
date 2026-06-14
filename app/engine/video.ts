@@ -1,13 +1,21 @@
 import type {
-  FeatureEvent, LineWin, MachineSessionState, ProgressiveEvent, RngDraw,
+  FeatureEvent, LineWin, LockedCell, MachineSessionState, ProgressiveEvent, RngDraw,
   SpinOutcome, SymbolId, VideoFeatureState, VideoMachineDef
 } from './types'
 import type { RandomFn } from './rng'
 import { cellAt, evalLine, evalWays, orbCells, scatterVisibleCount } from './videoAwards'
 
-type DrawnOrb =
-  | { cell: number; credits: number; label?: 'mini' | 'minor' | 'major' }
-  | { cell: number; mult: number }
+interface DrawnOrb {
+  cell: number
+  credits?: number
+  label?: 'mini' | 'minor' | 'major'
+  mult?: number
+}
+
+
+function lockedCell(o: DrawnOrb): LockedCell {
+  return o.mult !== undefined ? { mult: o.mult } : { credits: o.credits!, label: o.label }
+}
 
 /** Weighted orb-value draw; one RNG draw per orb, traced per cell. */
 function drawOrbValue(def: VideoMachineDef, rand: RandomFn, draws: RngDraw[], cell: number): DrawnOrb {
@@ -19,14 +27,10 @@ function drawOrbValue(def: VideoMachineDef, rand: RandomFn, draws: RngDraw[], ce
   let acc = 0
   for (const e of table) {
     acc += e.weight
-    if (pick < acc) return 'mult' in e
-      ? { cell, credits: 0, label: undefined, mult: e.mult }
-      : { cell, credits: e.credits, label: e.label }
+    if (pick < acc) return 'mult' in e ? { cell, mult: e.mult } : { cell, credits: e.credits, label: e.label }
   }
   const last = table[table.length - 1]!
-  return 'mult' in last
-    ? { cell, credits: 0, label: undefined, mult: last.mult }
-    : { cell, credits: last.credits, label: last.label }
+  return 'mult' in last ? { cell, mult: last.mult } : { cell, credits: last.credits, label: last.label }
 }
 
 interface VideoSpinEval {
@@ -124,16 +128,17 @@ function videoBaseSpin(
       type: 'free-spins-triggered', count: def.freeSpins.count, multiplier: def.freeSpins.multiplier
     })
   } else if (def.holdAndSpin !== null && ev.orbs.length >= def.holdAndSpin.triggerCount) {
-    const locked: ({ credits: number, label?: 'mini' | 'minor' | 'major' } | { mult: number } | null)[]
-      = new Array(15).fill(null)
-    for (const o of ev.orbs) {
-      locked[o.cell] = 'mult' in o ? { mult: o.mult } : { credits: o.credits, label: o.label }
-    }
+    const locked: (LockedCell | null)[] = new Array(15).fill(null)
+    for (const o of ev.orbs) locked[o.cell] = lockedCell(o)
     state.videoFeature = { kind: 'holdAndSpin', locked, respins: def.holdAndSpin.respins, coins }
-    const creditOrbs = ev.orbs.filter((o): o is { cell: number; credits: number; label?: 'mini' | 'minor' | 'major' } => 'credits' in o)
-    featureEvents.push({
-      type: 'orbs-locked', cells: creditOrbs.map(o => o.cell), credits: creditOrbs.map(o => o.credits)
-    })
+    const creditOrbs = ev.orbs.filter(o => o.mult === undefined)
+    const multOrbs = ev.orbs.filter(o => o.mult !== undefined)
+    if (creditOrbs.length > 0) {
+      featureEvents.push({ type: 'orbs-locked', cells: creditOrbs.map(o => o.cell), credits: creditOrbs.map(o => o.credits!) })
+    }
+    if (multOrbs.length > 0) {
+      featureEvents.push({ type: 'mult-orbs-locked', cells: multOrbs.map(o => o.cell), mults: multOrbs.map(o => o.mult!) })
+    }
   }
 
   return {
@@ -200,8 +205,10 @@ function holdAndSpinRespin(
   const cfg = def.holdAndSpin!
   const draws: RngDraw[] = []
   const featureEvents: FeatureEvent[] = []
-  const newCells: number[] = []
+  const newCreditCells: number[] = []
   const newCredits: number[] = []
+  const newMultCells: number[] = []
+  const newMults: number[] = []
 
   for (let cell = 0; cell < 15; cell++) {
     if (feature.locked[cell] !== null) continue
@@ -210,22 +217,19 @@ function holdAndSpinRespin(
     draws.push({ label: `cell${cell}-respin`, raw, value, range: cfg.respinOrbDenom })
     if (value < cfg.respinOrbNumer) {
       const orb = drawOrbValue(def, rand, draws, cell)
-      if ('mult' in orb) {
-        feature.locked[cell] = { mult: orb.mult }
-        newCredits.push(0)
-      } else {
-        feature.locked[cell] = { credits: orb.credits, label: orb.label }
-        newCredits.push(orb.credits)
-      }
-      newCells.push(cell)
+      feature.locked[cell] = lockedCell(orb)
+      if (orb.mult !== undefined) { newMultCells.push(cell); newMults.push(orb.mult) }
+      else { newCreditCells.push(cell); newCredits.push(orb.credits!) }
     }
   }
 
   const lockedCount = feature.locked.filter(c => c !== null).length
+  const landed = newCreditCells.length + newMultCells.length
   let ended = false
-  if (newCells.length > 0) {
+  if (landed > 0) {
     feature.respins = cfg.respins
-    featureEvents.push({ type: 'orbs-locked', cells: newCells, credits: newCredits })
+    if (newCreditCells.length > 0) featureEvents.push({ type: 'orbs-locked', cells: newCreditCells, credits: newCredits })
+    if (newMultCells.length > 0) featureEvents.push({ type: 'mult-orbs-locked', cells: newMultCells, mults: newMults })
     featureEvents.push({ type: 'respins-reset', respins: cfg.respins })
     if (lockedCount === 15) ended = true
   } else {
@@ -237,7 +241,15 @@ function holdAndSpinRespin(
   const wins: LineWin[] = []
   const progressiveEvents: ProgressiveEvent[] = []
   if (ended) {
-    const totalCredits = feature.locked.reduce((s, c) => s + (c !== null && 'credits' in c ? c.credits : 0), 0)
+    let creditSum = 0
+    let multSum = 0
+    for (const c of feature.locked) {
+      if (c === null) continue
+      if ('mult' in c) multSum += c.mult
+      else creditSum += c.credits
+    }
+    const multiplier = multSum > 0 ? multSum : 1
+    const totalCredits = creditSum * multiplier
     const filled = lockedCount === 15
     wins.push({
       line: 'hold-and-spin', entryId: 'hold-and-spin', symbols: [],
