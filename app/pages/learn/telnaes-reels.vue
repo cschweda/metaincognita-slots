@@ -44,11 +44,15 @@ const reel1Rows = computed(() => {
   }).sort((a, b) => b.virtCount - a.virtCount)
 })
 
-// Headline: DW virtual odds on reel 1 vs physical odds on reel 1
+// Per-reel convenience for the intuition text
 const r1 = computed(() => reelRows.value[0]!)
 const physOdds = computed(() => formatOdds(r1.value.physProb))
 const virtOdds = computed(() => formatOdds(r1.value.virtProb))
-const headline = computed(() => `${virtOdds.value} virtual vs ${physOdds.value} physical (reel 1)`)
+
+// Combined 3-reel jackpot odds (product across all reels)
+const physJackpot = computed(() => reelRows.value.reduce((acc, r) => acc * r.physProb, 1))
+const virtJackpot = computed(() => reelRows.value.reduce((acc, r) => acc * r.virtProb, 1))
+const headline = computed(() => `${formatOdds(virtJackpot.value)} virtual vs ${formatOdds(physJackpot.value)} physical`)
 </script>
 
 <template>
@@ -65,7 +69,7 @@ const headline = computed(() => `${virtOdds.value} virtual vs ${physOdds.value} 
     <LearnSection
       title="The patent that changed everything"
       :headline="headline"
-      headline-label="Diamond Wild jackpot symbol odds — virtual vs physical (reel 1)"
+      headline-label="Three-Diamond-Wild jackpot — virtual vs physical odds (all 3 reels)"
     >
       <template #intuition>
         <p>
@@ -84,6 +88,12 @@ const headline = computed(() => `${virtOdds.value} virtual vs ${physOdds.value} 
           (physical odds: {{ physOdds }} per reel), but the virtual map assigns it only
           {{ r1.virtCount }} out of {{ r1.virtStops }} virtual slots (virtual odds: {{ virtOdds }}).
           The X-ray panel shows this mapping live during play.
+        </p>
+        <p>
+          Across all three reels the squeeze compounds: the three-Diamond-Wild jackpot pays at
+          roughly {{ formatOdds(virtJackpot) }} on the virtual reels versus
+          {{ formatOdds(physJackpot) }} on the physical strips — about three times rarer than
+          the visible reels imply.
         </p>
       </template>
 
