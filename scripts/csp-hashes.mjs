@@ -92,6 +92,7 @@ if (inlineEventHandlers > 0) {
 //      form-action 'self'
 //      object-src 'none'            ← hardening addition
 //      script-src 'self' + hashes  ← no unsafe-inline
+//      worker-src 'self'           ← Sim Lab Monte-Carlo module worker
 // ---------------------------------------------------------------------------
 const quotedHashes = hashes.map(h => `'${h.hash}'`)
 const scriptSrc = [`'self'`, ...quotedHashes].join(' ')
@@ -99,6 +100,9 @@ const scriptSrc = [`'self'`, ...quotedHashes].join(' ')
 const csp = [
   `default-src 'self'`,
   `script-src ${scriptSrc}`,
+  // The Sim Lab Monte-Carlo runs in a Vite module worker bundled to a
+  // same-origin file under /_nuxt, so 'self' covers it (made explicit here).
+  `worker-src 'self'`,
   `style-src 'self' 'unsafe-inline'`,
   `img-src 'self' data:`,
   `font-src 'self' data:`,
