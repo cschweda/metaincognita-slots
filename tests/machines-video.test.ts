@@ -4,6 +4,39 @@ import { validateMachineDef } from '../app/engine/validate'
 import { CANAL_ROYALE } from '../app/machines/canal-royale'
 import { DRAGONS_HOARD } from '../app/machines/dragons-hoard'
 import { THUNDER_VAULT } from '../app/machines/thunder-vault'
+import { RUBY_OF_GARGOYLE } from '../app/machines/ruby-of-gargoyle'
+
+describe('ruby-of-gargoyle — frozen calibration', () => {
+  it('is a valid machine', () => {
+    expect(() => validateMachineDef(RUBY_OF_GARGOYLE)).not.toThrow()
+  })
+
+  it('RTP sits in the ~90% band with a clean Grand split', () => {
+    const r = exactRtp(RUBY_OF_GARGOYLE)
+    expect(r.rtpPerCoin).toBeGreaterThan(0.895)
+    expect(r.rtpPerCoin).toBeLessThan(0.905)
+    const hns = r.breakdown.find(b => b.entryId === 'hold-and-spin')!
+    const grand = r.breakdown.find(b => b.entryId === 'grand')!
+    expect(hns).toBeTruthy()
+    expect(grand).toBeTruthy()
+    const sum = r.breakdown.reduce((s, b) => s + b.contribution, 0)
+    expect(sum).toBeCloseTo(r.rtpPerCoin, 9)
+  })
+
+  it('FROZEN: exact figures (calibrated 2026-06-14)', () => {
+    const r = exactRtp(RUBY_OF_GARGOYLE)
+    expect(r.rtpPerCoin).toBeCloseTo(0.900802220736255, 6)
+    expect(r.hitFrequency).toBeCloseTo(0.41289906442901236, 6)
+    expect(r.variancePerCoin).toBeCloseTo(34.479037403702755, 4)
+  })
+
+  it('a higher Grand meter raises RTP by P(fill) * dMeter / bet', () => {
+    const atReset = exactRtp(RUBY_OF_GARGOYLE)
+    const grown = exactRtp(RUBY_OF_GARGOYLE, { progressiveValues: { meter: 30000 } })
+    const pFill = atReset.breakdown.find(b => b.entryId === 'grand')!.probability
+    expect(grown.rtpPerCoin - atReset.rtpPerCoin).toBeCloseTo(pFill * 25000 / 25, 8)
+  })
+})
 
 function counts(strip: string[]): Record<string, number> {
   const c: Record<string, number> = {}
