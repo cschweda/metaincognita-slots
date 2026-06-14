@@ -62,6 +62,24 @@ for (const file of htmlFiles) {
   }
 }
 
+// Inline scripts injected at RUNTIME by framework client code. These are NOT in
+// the static HTML above, so the scan can't see them — yet a strict CSP still
+// blocks them, so we pin them here by content. @nuxt/ui injects this one on
+// hydration to remove its FOUC color placeholder ([data-nuxt-ui-colors]); the
+// string is buildId-independent, so its hash is stable across builds. If a
+// dependency upgrade changes an injected script, the production CSP smoke will
+// surface a new blocked-inline-script error — re-capture and update this list.
+const RUNTIME_INJECTED = [
+  `document.head.removeChild(document.querySelector('[data-nuxt-ui-colors]'))`
+]
+for (const text of RUNTIME_INJECTED) {
+  const hash = 'sha256-' + createHash('sha256').update(text, 'utf8').digest('base64')
+  if (!seen.has(hash)) {
+    seen.add(hash)
+    hashes.push({ hash, preview: text.slice(0, 60).replace(/\n/g, '↵') + ' [runtime-injected]' })
+  }
+}
+
 if (hashes.length === 0) {
   console.warn('WARNING: No inline scripts found — removing unsafe-inline without pins is unsafe.')
   process.exit(1)
