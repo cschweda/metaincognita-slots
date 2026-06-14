@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import MachineChrome from '../../app/components/game/MachineChrome.vue'
 import DefaultChrome from '../../app/components/game/chrome/DefaultChrome.vue'
-import { chromeFor } from '../../app/components/game/chrome/registry'
+import * as registry from '../../app/components/game/chrome/registry'
 import { chromeTheme } from '../../app/components/game/chrome/theme'
 import { useSlotsStore } from '../../app/stores/slots'
+import MachineChrome from '../../app/components/game/MachineChrome.vue'
 
 describe('chromeTheme', () => {
   it('returns a per-machine palette and a fallback for unknown ids', () => {
@@ -19,11 +19,13 @@ describe('chromeTheme', () => {
 
 describe('chromeFor', () => {
   it('falls back to DefaultChrome for an unknown machine', () => {
-    expect(chromeFor('does-not-exist')).toBe(DefaultChrome)
+    expect(registry.chromeFor('does-not-exist')).toBe(DefaultChrome)
   })
   it('returns a component (not the default) for a registered machine', () => {
-    // ruby is registered in Task 2; until then this asserts the registry shape.
-    expect(chromeFor('ruby-of-gargoyle')).toBeTruthy()
+    // ruby is registered in Task 2; it now returns a defineAsyncComponent wrapper.
+    const comp = registry.chromeFor('ruby-of-gargoyle')
+    expect(comp).toBeTruthy()
+    expect(comp).not.toBe(DefaultChrome)
   })
 })
 
@@ -34,6 +36,9 @@ describe('GameMachineChrome', () => {
     const store = useSlotsStore()
     store.startSession(1_000_000)
     store.selectMachine(machineId)
+    // Return DefaultChrome synchronously so the render test works in happy-dom
+    // (defineAsyncComponent's dynamic import never resolves in that env).
+    vi.spyOn(registry, 'chromeFor').mockReturnValue(DefaultChrome)
     return mount(MachineChrome, {
       slots: { default: '<div data-test="reels">REELS</div>' }
     })
@@ -45,5 +50,6 @@ describe('GameMachineChrome', () => {
     expect(frame.exists()).toBe(true)
     expect(frame.attributes('aria-hidden')).toBe('true')
     expect(w.find('.chrome-stage').attributes('style')).toContain('--chrome-accent')
+    vi.restoreAllMocks()
   })
 })
