@@ -415,8 +415,8 @@ export function videoExactRtp(def: VideoMachineDef, opts: ExactRtpOptions): Exac
   if (def.holdAndSpin !== null) {
     const cfg = def.holdAndSpin
     const wsum = cfg.orbValues.reduce((s, e) => s + e.weight, 0)
-    const muV = cfg.orbValues.reduce((s, e) => s + e.credits * e.weight, 0) / wsum
-    const m2V = cfg.orbValues.reduce((s, e) => s + e.credits * e.credits * e.weight, 0) / wsum
+    const muV = cfg.orbValues.reduce((s, e) => s + ('mult' in e ? 0 : e.credits) * e.weight, 0) / wsum
+    const m2V = cfg.orbValues.reduce((s, e) => { const c = 'mult' in e ? 0 : e.credits; return s + c * c * e.weight }, 0) / wsum
     const varV = m2V - muV * muV
     let featEV = 0
     let pTrigger = 0

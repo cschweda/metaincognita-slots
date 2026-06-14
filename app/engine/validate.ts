@@ -146,9 +146,17 @@ export function validateMachineDef(def: MachineDef): void {
           errors.push('holdAndSpin respin probability must be a proper fraction')
         }
         if (h.orbValues.length === 0) errors.push('holdAndSpin.orbValues must not be empty')
+        let creditEntryCount = 0
         h.orbValues.forEach((v, i) => {
-          if (v.credits <= 0 || v.weight <= 0) errors.push(`holdAndSpin.orbValues[${i}]: credits and weight must be > 0`)
+          if ('mult' in v) {
+            if (v.mult < 2) errors.push(`holdAndSpin.orbValues[${i}]: multiplier mult must be >= 2`)
+            if (v.weight <= 0) errors.push(`holdAndSpin.orbValues[${i}]: weight must be > 0`)
+          } else {
+            creditEntryCount++
+            if (v.credits <= 0 || v.weight <= 0) errors.push(`holdAndSpin.orbValues[${i}]: credits and weight must be > 0`)
+          }
         })
+        if (creditEntryCount === 0) errors.push('holdAndSpin.orbValues must contain at least one credit entry')
         if (def.strips.some(s => s.includes(h.emptySymbol))) {
           errors.push('holdAndSpin.emptySymbol must not appear on strips')
         }

@@ -161,6 +161,24 @@ describe('video validation', () => {
     expect(() => validateMachineDef(def)).toThrow(/percent progressive/i)
   })
 
+  it('accepts hold-and-spin multiplier orb entries', () => {
+    const def = JSON.parse(JSON.stringify(THUNDER_VAULT)) as typeof THUNDER_VAULT
+    def.holdAndSpin!.orbValues.push({ mult: 3, weight: 2 })
+    expect(() => validateMachineDef(def)).not.toThrow()
+  })
+
+  it('rejects a multiplier orb below x2', () => {
+    const def = JSON.parse(JSON.stringify(THUNDER_VAULT)) as typeof THUNDER_VAULT
+    def.holdAndSpin!.orbValues.push({ mult: 1, weight: 2 })
+    expect(() => validateMachineDef(def)).toThrow(/multiplier/i)
+  })
+
+  it('rejects orbValues with no credit entry', () => {
+    const def = JSON.parse(JSON.stringify(THUNDER_VAULT)) as typeof THUNDER_VAULT
+    def.holdAndSpin!.orbValues = [{ mult: 2, weight: 1 }]
+    expect(() => validateMachineDef(def)).toThrow(/at least one credit/i)
+  })
+
   it('rejects a scatter that doubles as the wild', () => {
     const def = base()
     ;(def.scatter as NonNullable<typeof def.scatter>).symbol = 'WD'

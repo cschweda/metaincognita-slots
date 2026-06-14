@@ -48,12 +48,22 @@ export interface FreeSpinsConfig {
   retrigger: boolean
 }
 
-export interface OrbValueEntry {
+/** A credit gem: sticks a credit value to its cell. */
+export interface OrbCreditEntry {
   /** credits at maxCoins bet */
   credits: number
   weight: number
   label?: 'mini' | 'minor' | 'major'
 }
+
+/** A Gargoyle's-Eye-style gem: carries an additive multiplier face, no credits. */
+export interface OrbMultiplierEntry {
+  /** additive multiplier face (>= 2); collected faces sum and scale the credit total */
+  mult: number
+  weight: number
+}
+
+export type OrbValueEntry = OrbCreditEntry | OrbMultiplierEntry
 
 /**
  * Hold-and-spin (orb) feature configuration.
@@ -260,8 +270,8 @@ export type VideoFeatureState
   }
   | {
     kind: 'holdAndSpin'
-    /** 15 cells (cell = reel*3 + row); null = unlocked */
-    locked: ({ credits: number, label?: 'mini' | 'minor' | 'major' } | null)[]
+    /** 15 cells (cell = reel*3 + row); null = unlocked. A cell is a credit gem or a multiplier gem. */
+    locked: ({ credits: number, label?: 'mini' | 'minor' | 'major' } | { mult: number } | null)[]
     respins: number
     coins: number
   }
@@ -354,6 +364,7 @@ export type FeatureEvent
     | { type: 'free-spins-retriggered', added: number, remaining: number }
     | { type: 'free-spin-consumed', remaining: number }
     | { type: 'orbs-locked', cells: number[], credits: number[] }
+    | { type: 'mult-orbs-locked', cells: number[], mults: number[] }
     | { type: 'respins-reset', respins: number }
     | { type: 'respin-missed', remaining: number }
     | { type: 'hold-and-spin-ended', totalCredits: number, filled: boolean }
