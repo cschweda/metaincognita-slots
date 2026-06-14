@@ -18,6 +18,8 @@ watch(() => store.liveAnnouncement, (msg) => {
 })
 
 const navItems = [
+  { to: '/sim-lab', icon: 'i-lucide-flask-conical', label: 'Sim Lab' },
+  { to: '/learn', icon: 'i-lucide-book-open', label: 'Learn' },
   { to: '/history', icon: 'i-lucide-scroll-text', label: 'History' }
 ]
 </script>
