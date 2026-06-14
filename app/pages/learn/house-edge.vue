@@ -16,6 +16,12 @@ const avgEdge = computed(() => rows.value.reduce((a, r) => a + r.houseEdge, 0) /
 
 <template>
   <div class="px-4 py-8 max-w-[760px] mx-auto space-y-8">
+    <nav class="text-xs text-neutral-400">
+      <NuxtLink
+        to="/learn"
+        class="hover:text-amber-400"
+      >← Learn</NuxtLink>
+    </nav>
     <h1 class="text-3xl font-bold">
       House edge
     </h1>

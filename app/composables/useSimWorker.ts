@@ -1,6 +1,7 @@
 // app/composables/useSimWorker.ts
 import { ref, shallowRef, onScopeDispose } from 'vue'
 import type { SimLabOptions, SimLabResult } from '~/engine/sessions'
+import type { SimWorkerOutgoing } from '~/workers/sim-worker-protocol'
 
 export type SimRunParams = Omit<SimLabOptions, 'machineId'> & { machineId: string }
 
@@ -30,7 +31,7 @@ export function useSimWorker() {
     running.value = true
 
     worker = new Worker(new URL('../workers/sim.worker.ts', import.meta.url), { type: 'module' })
-    worker.onmessage = (e: MessageEvent): void => {
+    worker.onmessage = (e: MessageEvent<SimWorkerOutgoing>): void => {
       const m = e.data
       if (m.type === 'progress') {
         completed.value = m.completed

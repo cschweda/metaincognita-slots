@@ -22,7 +22,10 @@ const bars = computed(() => {
     y: Y1 - (c / max) * (Y1 - Y0),
     w: Math.max(1, bw - 2),
     h: (c / max) * (Y1 - Y0),
-    bust: i === 0 // lowest bin holds the busted bankrolls
+    // i === 0 is the bust bin: the engine builds endHistogram over [0, maxEnd] and busted
+    // sessions end at ~0 credits, so they always fall into the lowest bin.
+    // endHistogram.bustCount is the canonical count of busted sessions.
+    bust: i === 0
   }))
 })
 const summary = computed(() =>

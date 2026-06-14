@@ -1,7 +1,6 @@
 <!-- app/pages/sim-lab.vue -->
 <script setup lang="ts">
 import { useSimWorker } from '~/composables/useSimWorker'
-import type { SimRunParams } from '~/composables/useSimWorker'
 import LabForm from '~/components/lab/LabForm.vue'
 import LabProgress from '~/components/lab/LabProgress.vue'
 import LabStatCards from '~/components/lab/LabStatCards.vue'
@@ -11,7 +10,6 @@ import SampleCurves from '~/components/lab/SampleCurves.vue'
 import DrawdownHistogram from '~/components/lab/DrawdownHistogram.vue'
 
 const { running, progress, completed, total, result, error, run, cancel } = useSimWorker()
-const onRun = (params: SimRunParams): void => run(params)
 </script>
 
 <template>
@@ -28,7 +26,7 @@ const onRun = (params: SimRunParams): void => run(params)
 
     <LabForm
       :running="running"
-      @run="onRun"
+      @run="run"
     />
     <LabProgress
       v-if="running"
