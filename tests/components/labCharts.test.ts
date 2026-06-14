@@ -4,6 +4,8 @@ import { mount } from '@vue/test-utils'
 import ChartFrame from '../../app/components/lab/ChartFrame.vue'
 import LabStatCards from '../../app/components/lab/LabStatCards.vue'
 import SurvivalCurve from '../../app/components/lab/SurvivalCurve.vue'
+import EndHistogram from '../../app/components/lab/EndHistogram.vue'
+import DrawdownHistogram from '../../app/components/lab/DrawdownHistogram.vue'
 import type { SimLabResult } from '../../app/engine/sessions'
 
 const result: SimLabResult = {
@@ -45,5 +47,20 @@ describe('SurvivalCurve', () => {
     const pts = w.find('polyline').attributes('points')!.trim().split(/\s+/)
     expect(pts.length).toBe(result.survival.length) // one point per survival sample
     expect(w.find('svg').attributes('aria-label')).toMatch(/survival/i)
+  })
+})
+
+describe('EndHistogram', () => {
+  it('draws one rect per bin and notes the bust count', () => {
+    const w = mount(EndHistogram, { props: { result } })
+    expect(w.findAll('rect').length).toBe(result.endHistogram.counts.length)
+    expect(w.find('svg').attributes('aria-label')).toMatch(/620/) // bustCount surfaced in summary
+  })
+})
+
+describe('DrawdownHistogram', () => {
+  it('draws one rect per bin', () => {
+    const w = mount(DrawdownHistogram, { props: { result } })
+    expect(w.findAll('rect').length).toBe(result.drawdownHistogram.counts.length)
   })
 })
