@@ -1,0 +1,74 @@
+// tests/sessions.test.ts
+import { describe, expect, it } from 'vitest'
+import { mulberry32 } from '../app/engine'
+import { FLOOR } from '../app/machines'
+import { deriveSeed, simulateSession } from '../app/engine/sessions'
+import type { SessionOptions } from '../app/engine/sessions'
+
+const byId = (id: string) => FLOOR.find(m => m.id === id)!
+
+function opts(over: Partial<SessionOptions> = {}): SessionOptions {
+  return { startCredits: 200, bet: 1, spinCap: 200, progressiveMode: 'static', ...over }
+}
+
+describe('deriveSeed', () => {
+  it('is deterministic and decorrelates adjacent indices', () => {
+    expect(deriveSeed(123, 5)).toBe(deriveSeed(123, 5))
+    expect(deriveSeed(123, 5)).not.toBe(deriveSeed(123, 6))
+    expect(deriveSeed(123, 5)).not.toBe(deriveSeed(124, 5))
+  })
+})
+
+describe('simulateSession', () => {
+  it('is reproducible for the same seed', () => {
+    const def = byId('diamond-doubler')
+    const a = simulateSession(def, opts(), mulberry32(deriveSeed(1, 0)))
+    const b = simulateSession(def, opts(), mulberry32(deriveSeed(1, 0)))
+    expect(a).toEqual(b)
+  })
+
+  it('never lets the balance go negative and reports a non-negative drawdown', () => {
+    const def = byId('diamond-doubler')
+    for (let i = 0; i < 50; i++) {
+      const r = simulateSession(def, opts({ startCredits: 50 }), mulberry32(deriveSeed(7, i)))
+      expect(r.endBalance).toBeGreaterThanOrEqual(0)
+      expect(r.maxDrawdown).toBeGreaterThanOrEqual(0)
+      expect(r.peak).toBeGreaterThanOrEqual(r.endBalance - r.totalOut) // sanity
+    }
+  })
+
+  it('busts (not survives) when it runs out before the cap', () => {
+    // Tiny bankroll, huge cap: on a negative-EV game it must bust.
+    const def = byId('diamond-doubler')
+    const r = simulateSession(def, opts({ startCredits: 5, spinCap: 100000 }), mulberry32(deriveSeed(2, 0)))
+    expect(r.busted).toBe(true)
+    expect(r.spinsPlayed).toBeLessThan(100000)
+    expect(r.endBalance).toBeLessThan(def.maxCoins) // can't afford another max-ish bet... at bet=1, < 1
+  })
+
+  it('survives (not busts) when the cap is reached', () => {
+    // Huge bankroll, small cap: cannot bust in so few spins.
+    const def = byId('diamond-doubler')
+    const r = simulateSession(def, opts({ startCredits: 1_000_000, spinCap: 10 }), mulberry32(deriveSeed(3, 0)))
+    expect(r.busted).toBe(false)
+    expect(r.spinsPlayed).toBe(10)
+  })
+
+  it('counts only paid spins toward the cap (free video features are free)', () => {
+    // Canal Royale has free spins; a survived session plays exactly spinCap PAID spins.
+    const def = byId('canal-royale')
+    const r = simulateSession(def, opts({ startCredits: 1_000_000, bet: 25, spinCap: 40 }), mulberry32(deriveSeed(9, 0)))
+    expect(r.busted).toBe(false)
+    expect(r.spinsPlayed).toBe(40)
+  })
+
+  it('records a trajectory only when asked', () => {
+    const def = byId('diamond-doubler')
+    const off = simulateSession(def, opts(), mulberry32(deriveSeed(4, 0)), false)
+    const on = simulateSession(def, opts(), mulberry32(deriveSeed(4, 0)), true)
+    expect(off.trajectory).toEqual([])
+    expect(on.trajectory.length).toBeGreaterThan(1)
+    expect(on.trajectory[0]).toBe(200) // starts at startCredits
+    expect(on.trajectory.length).toBeLessThanOrEqual(80) // downsampled
+  })
+})
