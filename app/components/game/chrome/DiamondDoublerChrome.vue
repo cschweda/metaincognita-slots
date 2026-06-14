@@ -114,7 +114,6 @@
     transparent 100%
   );
   animation: dd-gleam 6s ease-in-out infinite;
-  pointer-events: none;
 }
 
 /* Title plate */

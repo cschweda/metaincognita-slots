@@ -10,7 +10,7 @@
 </template>
 
 <style scoped>
-.default-chrome { position: absolute; inset: 0; }
+.default-chrome { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
 .ring {
   position: absolute;
   inset: 0;

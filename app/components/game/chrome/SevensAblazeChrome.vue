@@ -77,7 +77,6 @@
   left: 0;
   right: 0;
   height: 60px;
-  pointer-events: none;
 }
 
 /* Back flame — gentle height/opacity flicker */

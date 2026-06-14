@@ -16,7 +16,7 @@
     <!-- Bell finial centered on top -->
     <span class="bell">🔔</span>
     <!-- Title plate -->
-    <span class="plate">SERIES E</span>
+    <span class="plate">SERIES E · 3-LINE</span>
   </div>
 </template>
 

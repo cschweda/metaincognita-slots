@@ -9,11 +9,12 @@
       class="arches"
       viewBox="0 0 200 44"
       preserveAspectRatio="none"
+      aria-hidden="true"
     >
       <path
         d="M28 44 Q28 8 48 8 Q68 8 68 44 M132 44 Q132 8 152 8 Q172 8 172 44"
         fill="none"
-        :stroke="'var(--chrome-secondary)'"
+        stroke="var(--chrome-secondary)"
         stroke-width="3"
         opacity="0.45"
       />
