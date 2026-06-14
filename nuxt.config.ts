@@ -45,7 +45,20 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
 
   nitro: {
-    preset: 'netlify_static'
+    preset: 'netlify_static',
+    // Belt-and-suspenders: these routes are also linked from the nav/index so
+    // the crawler finds them, but list them explicitly so each prerenders to
+    // its own HTML (and the CSP-hash script covers them).
+    prerender: {
+      routes: [
+        '/sim-lab',
+        '/learn',
+        '/learn/house-edge',
+        '/learn/telnaes-reels',
+        '/learn/hold-and-spin',
+        '/learn/gargoyles-eye'
+      ]
+    }
   },
 
   eslint: {
