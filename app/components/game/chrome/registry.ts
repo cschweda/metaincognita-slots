@@ -4,7 +4,11 @@ import DefaultChrome from './DefaultChrome.vue'
 // Bespoke modules are added here as they are built (Task 2 onward).
 const MODULES: Record<string, () => Promise<{ default: Component }>> = {
   'ruby-of-gargoyle': () => import('./RubyOfGargoyleChrome.vue'),
-  'stock-rush': () => import('./StockRushChrome.vue')
+  'stock-rush': () => import('./StockRushChrome.vue'),
+  'canal-royale': () => import('./CanalRoyaleChrome.vue'),
+  'dragons-hoard': () => import('./DragonsHoardChrome.vue'),
+  'thunder-vault': () => import('./ThunderVaultChrome.vue'),
+  'diamond-doubler': () => import('./DiamondDoublerChrome.vue')
 }
 
 const cache: Record<string, Component> = {}
