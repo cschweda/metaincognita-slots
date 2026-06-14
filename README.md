@@ -10,7 +10,7 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: playable UI milestone.** The floor is open: eight machines, full game
+**Status: playable UI milestone.** The floor is open: nine machines, full game
 surfaces, X-ray mode, PAR sheets, and session history. The Sim Lab and
 learn pages land in a subsequent milestone.
 
@@ -47,11 +47,28 @@ This is an educational simulator. No real money is involved.
 | Canal Royale | Video (lines) | 5 reels x 24 stops, 25-line, free spins | 92.4559% |
 | Dragon's Hoard | Video (ways) | 5 reels x 24 stops, 243-ways, free spins w/ retriggers | 93.9950% |
 | Thunder Vault | Video (lines) | 5 reels x 24 stops, 25-line, Grand progressive | 90.2948% @ Grand reset |
+| Ruby of Gargoyle | Video (lines) | 5 reels x 24 stops, 25-line, hold & spin, Gargoyle's Eye ×N multiplier, Grand progressive | 90.0802% @ Grand reset |
 | Stock Rush | Pachislo (skill-stop) | 3 reels x 21 stops, flag lottery, stock queue | 66.0012%–120.0028% by operator level (L4 default 91.5013%) |
 
 Every RTP shown is **computed** from the machine definition by exact
 enumeration (`exactRtp`) — never asserted — and verified by seeded
 multi-million-spin simulation.
+
+## Future variants
+
+Planned machines (see `docs/superpowers/specs/2026-06-14-future-games-roadmap.md`):
+
+- **Five Card Charlie** *(working title; also "Hit Me")* — a press-your-luck
+  blackjack on five reels. Spin a card per reel; stand or hit again; bust over
+  21 and lose the hand. Multiplier/bonus cards tempt you to hit even on a strong
+  total, and surviving all five reels is the five-card Charlie bonus. A new
+  family: sequential reveal + player stop-decisions + hand evaluation, with RTP
+  computed under optimal stopping strategy (video-poker-style).
+- **Crash / cash-out** — a stop-or-bust machine (the flameout-family mechanic):
+  each stop banks credits, a bad stop forfeits the lot. Distinct from pachislo
+  skill-stop, where wins are protected.
+- **Authentic 4-tier progressives** — Mini/Minor/Major/Grand as scaling pools,
+  generalizing the single-meter progressive system.
 
 ## Stepper (Telnaes virtual-reel)
 
@@ -90,7 +107,7 @@ pnpm test          # unit + frozen-calibration + convergence suites
 pnpm verify        # headless floor verification report (5M cycles/machine)
 ```
 
-`pnpm verify` now covers 8 machines and prints a jackpot-column footnote
+`pnpm verify` now covers 9 machines and prints a jackpot-column footnote
 distinguishing progressive meter hits (Bally, Thunder Vault Grand) from
 pachislo bonus flags. Convergence tests include video cycle-SE cases and
 pachislo block-SE at levels 1/4/6.
@@ -106,11 +123,12 @@ machine               coins   exact RTP    sim RTP      Δ           HF exact   
 canal-royale           25     92.4559%    92.3114%     0.1446%    55.5343%    55.5288%         0  PASS
 dragons-hoard          25     93.9950%    93.8912%     0.1038%    53.5534%    53.5202%         0  PASS
 thunder-vault          25     90.2948%    90.2476%     0.0471%    41.2899%    41.3153%       947  PASS
-diamond-doubler         3     94.7442%    94.3475%     0.3967%    14.6675%    14.6593%         0  PASS
-sevens-ablaze           2     94.4881%    94.8581%     0.3700%    15.7193%    15.7259%       369  PASS
-series-e-3line          1     89.0351%    89.0187%     0.0164%    11.8144%    11.8206%         0  PASS
-series-e-multiplier     3     89.1264%    89.7747%     0.6483%    14.2559%    14.2505%       214  PASS
-stock-rush              3     91.5013%    91.1733%     0.3280%    21.2341%    21.2506%         0  PASS
+ruby-of-gargoyle       25     90.0802%    90.3199%     0.2397%    41.2899%    41.2930%      1007  PASS
+diamond-doubler         3     94.7442%    94.6399%     0.1044%    14.6675%    14.6918%         0  PASS
+sevens-ablaze           2     94.4881%    94.7558%     0.2677%    15.7193%    15.7390%       366  PASS
+series-e-3line          1     89.0351%    89.1345%     0.0994%    11.8144%    11.8181%         2  PASS
+series-e-multiplier     3     89.1264%    89.1293%     0.0029%    14.2559%    14.2621%       204  PASS
+stock-rush              3     91.5013%    92.3172%     0.8159%    21.2341%    21.2290%         0  PASS
 ```
 
 ## Tech

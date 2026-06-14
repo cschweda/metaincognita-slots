@@ -3,7 +3,27 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.5.0] - 2026-06-14
+
+### Added
+- Ruby of Gargoyle: a gothic hold-and-spin jewel machine (video family, ninth on
+  the floor) with the Gargoyle's Eye multiplier gem — ×2/×3 faces that ADD and
+  scale the collected ruby credits at collect; the Grand pays clean.
+- Engine: orb values may be credit gems or multiplier gems; the exact-RTP feature
+  moments condition on the multiplier-cell count and provably reduce to the
+  credit-only closed form (Thunder Vault's frozen math is unchanged).
+- Docs: future-games roadmap (blackjack-reel "Five Card Charlie", crash/cash-out,
+  4-tier progressives) and a README "Future variants" section.
+
+### Changed
+- og-image, README, and social meta now read "nine machines"; `pnpm verify`
+  covers 9 machines.
+- Content-security policy hardened: inline scripts hash-pinned, no
+  `unsafe-inline`, `object-src 'none'`.
+- Restore is explicitly prototype-pollution-guarded; stepper virtual maps must
+  cover every physical stop; reel count is tracked reactively.
+- Reel surfaces share a `GameReelColumn` component + `useReelSymbols`
+  composable (deduplication, no behaviour change).
 
 ### Fixed
 - Win display: stepper "count" wins (e.g. cherries) no longer count a wild on
@@ -16,14 +36,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   stray "0" chip and scatter wins glow their real grid cells.
 - Dual progressive payouts are floored, preserving the integer-cents wallet
   invariant even for a corrupt restored meter.
-
-### Changed
-- Content-security policy hardened: inline scripts hash-pinned, no
-  `unsafe-inline`, `object-src 'none'`.
-- Restore is explicitly prototype-pollution-guarded; stepper virtual maps must
-  cover every physical stop; reel count is tracked reactively.
-- Reel surfaces share a `GameReelColumn` component + `useReelSymbols`
-  composable (deduplication, no behaviour change).
 
 ## [0.4.0] - 2026-06-13
 
