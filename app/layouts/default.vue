@@ -44,7 +44,7 @@ const navItems = [
           v-else
           class="text-xs text-neutral-400"
         >
-          <span class="text-amber-500/60">Slots</span> Simulator
+          <span class="text-amber-500/80">Slots</span> Simulator
         </span>
       </div>
       <div
