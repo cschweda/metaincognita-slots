@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import LabForm from '../../app/components/lab/LabForm.vue'
+import { FLOOR } from '../../app/machines'
 
 const stubs = { UButton: { template: '<button v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>' }, UIcon: true }
 
@@ -25,5 +26,16 @@ describe('LabForm', () => {
     await w.find('[data-test="sessions"]').setValue('80000')
     expect(w.text().toLowerCase()).toMatch(/slow|while|large/)
     expect(w.find('[data-test="run"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('clamps bet to the new machine maxCoins when the machine changes', async () => {
+    const w = mount(LabForm, { props: { running: false }, global: { stubs } })
+    await w.find('[data-test="bet"]').setValue('999')
+    await w.find('[data-test="machine"]').setValue('diamond-doubler')
+    await w.find('[data-test="run"]').trigger('click')
+    const payload = w.emitted('run')![0]![0] as Record<string, number>
+    const maxCoins = FLOOR.find(m => m.id === 'diamond-doubler')!.maxCoins
+    expect(payload.bet).toBeLessThanOrEqual(maxCoins)
+    expect(payload.bet).toBeGreaterThanOrEqual(1)
   })
 })

@@ -63,6 +63,14 @@ const summary = computed(() =>
       100%
     </text>
     <text
+      :x="X0"
+      :y="Y1 + 10"
+      fill="#737373"
+      font-size="8"
+    >
+      0%
+    </text>
+    <text
       :x="X1"
       :y="Y1 + 12"
       fill="#737373"

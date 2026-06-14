@@ -21,6 +21,7 @@ defineEmits<{ cancel: [] }>()
     <div
       class="h-2 rounded bg-neutral-800 overflow-hidden"
       role="progressbar"
+      aria-label="Simulation progress"
       :aria-valuenow="Math.round(progress * 100)"
       aria-valuemin="0"
       aria-valuemax="100"

@@ -27,7 +27,7 @@ const bars = computed(() => {
 })
 const summary = computed(() =>
   `Distribution of ending bankrolls across ${props.result.sessions} sessions; `
-  + `${props.result.endHistogram.bustCount} busted (lowest bar). Start was ${formatCents(Math.round(props.result.startCredits * denom.value))}.`
+  + `${props.result.endHistogram.bustCount} busted (leftmost bar (near-zero balance)). Start was ${formatCents(Math.round(props.result.startCredits * denom.value))}.`
 )
 </script>
 
