@@ -5,6 +5,8 @@ import { mulberry32 } from './rng'
 import { spin, nextSpinCost, initMachineState } from './index'
 import { addCoinToProgressive } from './progressive'
 import { exactRtp } from './exactRtp'
+import { dealHand, hitCard, standHand } from './blackjackReel'
+import { optimalAction } from './blackjackReelRtp'
 
 export interface SessionOptions {
   /** starting bankroll in CREDITS (1 credit = 1 coin = denominationCents) */
@@ -98,25 +100,66 @@ export function simulateSession(
     }
   }
 
-  // Free video features have cost 0, so they replay inside this loop without
-  // touching the affordability check or the paid-spin counter.
-  while (paidSpins < opts.spinCap) {
-    const cost = nextSpinCost(def, state, opts.bet)
-    if (cost > 0 && balance < cost) {
-      busted = true
-      break
+  if (def.family === 'blackjack-reel') {
+    // ── blackjack-reel: each hand is one paid spin (ante = bet) ────────────
+    // Play optimal hands until the player can't afford the ante or hits the cap.
+    while (paidSpins < opts.spinCap) {
+      // ante = bet; check affordability before each hand
+      if (balance < opts.bet) {
+        busted = true
+        break
+      }
+
+      // deal charges the ante
+      const dealOut = dealHand(def, state, opts.bet, rand)
+      balance -= dealOut.coinsIn // charge ante from balance (dealHand doesn't do this)
+      totalIn += dealOut.coinsIn
+
+      // hit-loop under the optimal policy until resolved
+      let handPayout = dealOut.totalPayout
+      const bj = state.blackjackReel!
+      while (bj.phase === 'dealt') {
+        if (optimalAction(def, bj) === 'hit') {
+          const out = hitCard(def, state, rand)
+          handPayout += out.totalPayout
+        } else {
+          const out = standHand(def, state)
+          handPayout += out.totalPayout
+        }
+      }
+
+      // credit payout to balance
+      balance += handPayout
+      totalOut += handPayout
+
+      if (balance > peak) peak = balance
+      if (peak - balance > maxDrawdown) maxDrawdown = peak - balance
+
+      paidSpins++
+      if (recordTrajectory) traj.push(balance)
     }
-    applySpin()
+  } else {
+    // ── all other families ─────────────────────────────────────────────────
+    // Free video features have cost 0, so they replay inside this loop without
+    // touching the affordability check or the paid-spin counter.
+    while (paidSpins < opts.spinCap) {
+      const cost = nextSpinCost(def, state, opts.bet)
+      if (cost > 0 && balance < cost) {
+        busted = true
+        break
+      }
+      applySpin()
+    }
+    // The cap-th paid spin may have triggered a free feature — play it out so its
+    // payout is collected (mirrors simulateMachine's drain; free, so no cost).
+    //
+    // Deliberate asymmetry: a pachislo `bonus` that is still pending at the spin
+    // cap is NOT force-drained here.  Unlike video free-spins, pachislo bonus
+    // rounds are cost-bearing (nextSpinCost > 0), so force-playing them could
+    // overspend a bankroll that is already at rest.  The abandoned-tail EV is
+    // statistically negligible and matches the spec's stance.
+    while (state.videoFeature !== null) applySpin()
   }
-  // The cap-th paid spin may have triggered a free feature — play it out so its
-  // payout is collected (mirrors simulateMachine's drain; free, so no cost).
-  //
-  // Deliberate asymmetry: a pachislo `bonus` that is still pending at the spin
-  // cap is NOT force-drained here.  Unlike video free-spins, pachislo bonus
-  // rounds are cost-bearing (nextSpinCost > 0), so force-playing them could
-  // overspend a bankroll that is already at rest.  The abandoned-tail EV is
-  // statistically negligible and matches the spec's stance.
-  while (state.videoFeature !== null) applySpin()
 
   return {
     busted,

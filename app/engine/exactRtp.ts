@@ -2,6 +2,7 @@ import type { BallyEmMachineDef, MachineDef, StepperMachineDef, SymbolId } from 
 import { ballyAwardForLine, bestStepperAward } from './awards'
 import { videoExactRtp } from './videoRtp'
 import { pachisloExactRtp } from './pachisloRtp'
+import { blackjackReelExactRtp } from './blackjackReelRtp'
 
 export interface ExactRtpOptions {
   /** coin level for multiplier/progressive-at-max machines (default: maxCoins) */
@@ -156,7 +157,7 @@ function ballyLinesJoint(
 export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpReport {
   if (def.family === 'video') return videoExactRtp(def, opts)
   if (def.family === 'pachislo') return pachisloExactRtp(def, opts)
-  if (def.family === 'blackjack-reel') throw new Error('blackjack-reel exact RTP not implemented (Task 5)')
+  if (def.family === 'blackjack-reel') return blackjackReelExactRtp(def, opts)
   const coins = opts.coins ?? def.maxCoins
   if (coins < 1 || coins > def.maxCoins) {
     throw new Error(`${def.id}: coins ${coins} out of range 1..${def.maxCoins}`)
