@@ -3,10 +3,8 @@ import { computed, ref, watch } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { exactRtp } from '~/engine'
 import { pachisloBonusValues } from '~/engine/pachisloRtp'
-import { optimalAction, strategyMatrixCell } from '~/engine/blackjackReelRtp'
 import { formatOdds, formatPercent } from '~/utils/format'
 import type { ExactRtpReport, MachineDef } from '~/engine'
-import type { BlackjackReelSessionState } from '~/engine/types'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
@@ -74,89 +72,6 @@ const bonusValues = computed(() => {
 // For pachislo the breakdown's avgPayPerCoin is each flag's renewal value ÷ tokens
 // in (out/IN), not credits paid — so don't mislabel it "Avg pay/coin".
 const payColLabel = computed(() => def.value?.family === 'pachislo' ? 'Value ÷ IN' : 'Avg pay/coin')
-
-/**
- * Optimal strategy matrix for the blackjack-reel PAR sheet.
- *
- * Cells are derived entirely from `strategyMatrixCell` (which calls the DP
- * solver directly) so this table can never contradict the live X-ray panel —
- * both call the same DP. Rows = hard totals 12–21; columns = 2/3/4 cards held.
- *
- * Additional notes for soft hands, Bust-Save, and multiplier are also DP-derived.
- */
-const bjStrategy = computed(() => {
-  const d = def.value
-  if (d === null || d.family !== 'blackjack-reel') return null
-
-  // Hard-total matrix rows. Totals 2–11 always HIT (no payable entry, any draw is safe
-  // or improves toward 18+); 22+ is busted. We show only payable-range totals 12–21.
-  const TOTALS = [12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
-  // "2 cards" column excludes total=21 (not reachable with hard non-ace 2-card deal from this deck).
-  const CARD_COUNTS: (2 | 3 | 4)[] = [2, 3, 4]
-
-  interface MatrixRow {
-    total: number
-    cells: Array<{ numCards: 2 | 3 | 4, action: 'hit' | 'stand' | null }>
-  }
-  const matrix: MatrixRow[] = TOTALS.map(total => ({
-    total,
-    cells: CARD_COUNTS.map((numCards) => {
-      // Hard 21 at 2 cards is not reachable without an ace (max value-card sum = 10+10 = 20).
-      if (total === 21 && numCards === 2) return { numCards, action: null }
-      return { numCards, action: strategyMatrixCell(d, total, numCards) }
-    })
-  }))
-
-  // Soft-17 note: query the DP via optimalAction with a placeholder state (Lucky 21 DP lands in a later task).
-  // Lucky 21 Task 1: state shape updated to new fields; DP stub throws, strategyMatrixCell also throws.
-  const soft17State: BlackjackReelSessionState = {
-    phase: 'spinning', reelStrips: [], landed: ['CA', 'C6', null, null, null],
-    idx: 2, hand: ['CA', 'C6'], hard: 7, aces: 1, multSum: 0,
-    bestTotal: 17, natural: false, busted: false, bustBySymbol: false, charlie: false, ante: 1
-  }
-  const soft17Action = optimalAction(d, soft17State)
-
-  // Bust-Save note: find the save-held threshold at 2 cards.
-  // The threshold is the lowest hard total where standing with a save is optimal.
-  let saveThreshold: number | null = null
-  for (let t = 12; t <= 21; t++) {
-    if (strategyMatrixCell(d, t, 2, { saveHeld: true }) === 'stand') {
-      saveThreshold = t
-      break
-    }
-  }
-
-  // Multiplier note: find the multiplier threshold at 2 cards (multSum=2 = ×2 card).
-  let multThreshold: number | null = null
-  for (let t = 12; t <= 21; t++) {
-    if (strategyMatrixCell(d, t, 2, { multSum: 2 }) === 'stand') {
-      multThreshold = t
-      break
-    }
-  }
-  // Derive the base threshold (no save, no mult) for comparison.
-  let baseThreshold: number | null = null
-  for (let t = 12; t <= 21; t++) {
-    if (strategyMatrixCell(d, t, 2) === 'stand') {
-      baseThreshold = t
-      break
-    }
-  }
-
-  return {
-    matrix,
-    soft17Action,
-    saveThreshold,
-    multThreshold,
-    baseThreshold,
-    multChangesThreshold: multThreshold !== null && baseThreshold !== null && multThreshold !== baseThreshold,
-    // A held Bust-Save removes the downside of hitting (a bust is voided in place and the
-    // run continues), so the optimal line is to HIT every made total — no total in 12–21
-    // keeps standing optimal, leaving saveThreshold null. That null is the strongest
-    // "strategy changed" signal, not its absence, so derive the note from it directly.
-    saveHitsAll: saveThreshold === null
-  }
-})
 
 /** Human-readable label for a breakdown entry ID (e.g. "total-20" → "Total 20"). */
 function breakdownLabel(entryId: string): string {
@@ -468,99 +383,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
               RTP-share column sums to the exact RTP. Every figure derives from the machine definition at render time.
             </p>
 
-            <!-- Blackjack-reel: card-count-aware optimal strategy matrix derived from the DP -->
-            <template v-if="def.family === 'blackjack-reel' && bjStrategy">
-              <div class="text-[10px] uppercase tracking-widest text-neutral-400 pt-1">
-                Optimal strategy (DP-derived — matches the live X-ray exactly)
-              </div>
-              <table
-                class="w-full text-xs font-mono"
-                data-test="bj-strategy-table"
-              >
-                <thead>
-                  <tr class="text-neutral-400 text-left">
-                    <th
-                      scope="col"
-                      class="py-1 pr-2"
-                    >
-                      Hard total
-                    </th>
-                    <th
-                      scope="col"
-                      class="py-1 pr-1 text-center"
-                    >
-                      2 cards
-                    </th>
-                    <th
-                      scope="col"
-                      class="py-1 pr-1 text-center"
-                    >
-                      3 cards
-                    </th>
-                    <th
-                      scope="col"
-                      class="py-1 text-center"
-                    >
-                      4 cards
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-neutral-800/60">
-                  <tr
-                    v-for="row in bjStrategy.matrix"
-                    :key="row.total"
-                  >
-                    <td class="py-1 pr-2 text-neutral-300">
-                      {{ row.total }}
-                    </td>
-                    <td
-                      v-for="cell in row.cells"
-                      :key="cell.numCards"
-                      class="py-1 pr-1 text-center font-bold"
-                      :class="cell.action === 'hit' ? 'text-amber-300' : cell.action === 'stand' ? 'text-emerald-400' : 'text-neutral-600'"
-                      :data-test="`bj-matrix-cell-${row.total}-${cell.numCards}`"
-                    >
-                      {{ cell.action !== null ? cell.action.toUpperCase() : '—' }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <!-- Derived notes for dimensions not in the grid -->
-              <div class="text-[10px] text-neutral-400 space-y-0.5 mt-1">
-                <p>
-                  <span class="text-neutral-300">Soft hands (Ace counted as 11):</span>
-                  Soft 17 →
-                  <span
-                    class="font-bold"
-                    :class="bjStrategy.soft17Action === 'hit' ? 'text-amber-300' : 'text-emerald-400'"
-                  >{{ bjStrategy.soft17Action.toUpperCase() }}</span>
-                  — the Ace cushion means standing on soft 17–19 forfeits the chance to reach a higher total or Charlie.
-                </p>
-                <p v-if="bjStrategy.saveHitsAll">
-                  <span class="text-neutral-300">With Bust Save held:</span>
-                  HIT on all hard totals (save voids one bust; every made total is worth chasing the Five-Card Charlie
-                  from the reel-4 position).
-                </p>
-                <p v-else>
-                  <span class="text-neutral-300">With Bust Save held:</span>
-                  Same threshold as base — save does not shift the break-even point.
-                </p>
-                <p v-if="bjStrategy.multChangesThreshold">
-                  <span class="text-neutral-300">With multiplier held (×2/×3):</span>
-                  Stand threshold rises to {{ bjStrategy.multThreshold }}
-                  (multiplier amplifies the payoff at current total, raising the cost of busting).
-                </p>
-                <p v-else>
-                  <span class="text-neutral-300">With multiplier held (×2/×3):</span>
-                  Same threshold as base — the multiplier scales both stand EV and hit EV equally at this deck.
-                </p>
-              </div>
-              <p class="text-[10px] text-neutral-400">
-                Strategy assumes no prior knowledge of upcoming cards (each reel is independent).
-                Bust rate {{ formatPercent(1 - report.hitFrequency, 2) }} · Five-Card Charlie rate
-                {{ formatPercent(report.breakdown.find(b => b.entryId === 'charlie')?.probability ?? 0, 2) }}.
-              </p>
-            </template>
+            <!-- Lucky 21 strategy matrix: rebuilt in Task 12 -->
           </template>
         </div>
       </div>

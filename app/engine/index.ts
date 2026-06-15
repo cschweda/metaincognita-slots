@@ -98,7 +98,7 @@ export function spin(
     case 'pachislo':
       return spinPachislo(def, state, coins, rand)
     case 'blackjack-reel':
-      throw new Error('blackjack-reel is interactive; use dealHand/hitCard/standHand')
+      throw new Error('blackjack-reel is interactive; use dealReels/stopReel/cashOut')
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

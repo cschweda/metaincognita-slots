@@ -15,13 +15,6 @@ export function optimalStop(): never {
   throw new Error('optimalStop: not implemented — later task')
 }
 
-export function optimalAction(
-  _def: BlackjackReelMachineDef,
-  _partialState: BlackjackReelSessionState
-): 'hit' | 'stand' {
-  throw new Error('optimalAction: not implemented — later task')
-}
-
 export function decisionEvs(
   _def: BlackjackReelMachineDef,
   _partialState: BlackjackReelSessionState
@@ -33,7 +26,7 @@ export function strategyMatrixCell(
   _def: BlackjackReelMachineDef,
   _hardTotal: number,
   _numCards: number,
-  _opts: { saveHeld?: boolean, multSum?: number } = {}
+  _opts: { multSum?: number } = {}
 ): 'hit' | 'stand' {
   throw new Error('strategyMatrixCell: not implemented — later task')
 }
