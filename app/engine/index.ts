@@ -6,7 +6,8 @@ import { spinBallyEm } from './ballyEm'
 import { spinVideo } from './video'
 import { spinPachislo } from './pachislo'
 import { initProgressiveState, addCoinToProgressive } from './progressive'
-import { freshBlackjackState } from './blackjackReel'
+import { freshBlackjackState, dealReels, stopReel, cashOut } from './blackjackReel'
+import { makeOptimalStopFn } from './blackjackReelRtp'
 
 export * from './types'
 export { mulberry32, cryptoSeed } from './rng'
@@ -129,9 +130,63 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
   const rand = mulberry32(opts.seed)
   const state = initMachineState(def)
 
-  // ── blackjack-reel (Lucky 21): implemented in a later task ─────────────────
+  // ── blackjack-reel (Lucky 21): optimal-policy Monte-Carlo ──────────────────
+  // Each cycle = one hand. dealReels charges the ante once (coinsIn = opts.coins);
+  // stopReel and cashOut are free. The optimal stop/continue decision is driven
+  // by a solver built once for def, not rebuilt per decision (performance).
+  // jackpotHits is always 0 (blackjack-reel has no progressive; progressive: null).
   if (def.family === 'blackjack-reel') {
-    throw new Error('lucky-21 simulate: implemented in a later task')
+    const optStop = makeOptimalStopFn(def)
+    let totalIn = 0
+    let totalOut = 0
+    let hits = 0
+    let cycles = 0
+    let net = 0
+    let peak = 0
+    let maxDrawdown = 0
+    const byEntry: Record<string, number> = {}
+
+    while (cycles < opts.spins) {
+      // Deal charges the ante; stopReel / cashOut are free.
+      const dealOut = dealReels(def, state, opts.coins, rand)
+      totalIn += dealOut.coinsIn // = opts.coins
+
+      // Play the hand under the optimal cash/continue policy.
+      let handPay = dealOut.totalPayout
+      for (const w of dealOut.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
+      const bj = state.blackjackReel!
+
+      while (bj.phase === 'spinning') {
+        let out: SpinOutcome
+        if (optStop(bj) === 'cash') {
+          out = cashOut(def, state)
+        } else {
+          out = stopReel(def, state, rand)
+        }
+        handPay += out.totalPayout
+        for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
+      }
+
+      totalOut += handPay
+      net += handPay - opts.coins
+      if (net > peak) peak = net
+      if (peak - net > maxDrawdown) maxDrawdown = peak - net
+      if (handPay > 0) hits++
+      cycles++
+    }
+
+    return {
+      machineId: def.id,
+      spins: opts.spins,
+      coins: opts.coins,
+      totalIn,
+      totalOut,
+      rtp: totalIn > 0 ? totalOut / totalIn : 0,
+      hitFrequency: hits / opts.spins,
+      jackpotHits: 0,
+      maxDrawdown,
+      byEntry
+    }
   }
 
   // ── all other families ──────────────────────────────────────────────────────

@@ -454,6 +454,21 @@ export function optimalStop(
 }
 
 /**
+ * Build the optimal-stopping policy once for a given def and return a
+ * lightweight per-decision function. Use this when calling the policy in a
+ * tight loop (e.g. simulation) so the DP memo table is built exactly once
+ * rather than rebuilt on every call to optimalStop.
+ *
+ * The returned function behaves identically to optimalStop(def, bj).
+ */
+export function makeOptimalStopFn(
+  def: BlackjackReelMachineDef
+): (bj: BlackjackReelSessionState) => 'cash' | 'continue' {
+  const { solve } = makeSolver(def)
+  return (bj: BlackjackReelSessionState) => solve(summarize(def, bj)).action
+}
+
+/**
  * EV of continuing vs. cashing at the current decision point, plus the optimal
  * action — the live X-ray surface ("the casino never shows you this").
  *
