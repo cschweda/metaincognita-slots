@@ -411,6 +411,13 @@ export type FeatureEvent
     | { type: 'interlude-started', index: 1 | 2 }
     | { type: 'interlude-ended', index: 1 | 2, bells: number }
     | { type: 'bonus-ended', bonus: 'reg' | 'big' }
+    // blackjack-reel interactive hand events
+    | { type: 'cards-dealt', cards: SymbolId[] }
+    | { type: 'hit', card: SymbolId }
+    | { type: 'bust' }
+    | { type: 'bust-saved', voidedCard: SymbolId }
+    | { type: 'charlie', cards: SymbolId[] }
+    | { type: 'stand', total: number, payout: number }
 
 export interface SpinOutcome {
   machineId: string
