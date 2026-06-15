@@ -36,7 +36,10 @@ const totalDisplay = computed(() => {
 const multiplierDisplay = computed(() => {
   const state = bj.value
   if (state === null || state.multSum <= 0) return null
-  return `×${state.multSum + 1}`
+  // The payout multiplier is max(1, multSum) (additive faces: ×2 card ⇒ multSum 2 ⇒ pays ×2;
+  // ×2 + ×3 ⇒ multSum 5 ⇒ ×5). Display multSum directly so the badge matches the payout — NOT
+  // multSum + 1, which overstated the multiplier by one (showed ×3 while paying ×2).
+  return `×${Math.max(1, state.multSum)}`
 })
 </script>
 

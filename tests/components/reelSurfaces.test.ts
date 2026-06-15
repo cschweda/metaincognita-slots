@@ -62,4 +62,28 @@ describe('Reel surfaces', () => {
     expect(wrapper.text()).toContain('FIVE-CARD CHARLIE')
     expect(wrapper.text()).toContain('Five-Card Charlie — Total 20')
   })
+
+  // The payout multiplier is max(1, multSum) (additive faces). The badge must show the SAME
+  // number, not multSum + 1 — which overstated it (badge ×3 while the hand paid ×2).
+  it('blackjack-reel multiplier badge matches the payout multiplier (max(1, multSum), not +1)', () => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    const store = useSlotsStore()
+    store.startSession(100000)
+    store.selectMachine('hit-or-bust')
+    const bj = store.currentState!.blackjackReel!
+    bj.phase = 'dealt'
+    bj.cards = ['MX2', 'CA', 'CK'] // a ×2 card + A + K → multSum 2, total 21
+    bj.total = 21
+    bj.isSoft = true
+    bj.multSum = 2
+    bj.saveHeld = false
+    bj.busted = false
+    bj.charlie = false
+    const wrapper = mount(ReelBlackjackReel, {
+      global: { stubs: { UIcon: true, GameSymbolIcon: IconStub } }
+    })
+    expect(wrapper.find('[data-test="multiplier-badge"]').text()).toContain('×2')
+    expect(wrapper.text()).not.toContain('×3')
+  })
 })
