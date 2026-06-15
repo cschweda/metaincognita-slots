@@ -33,8 +33,10 @@
 //
 // ── Transitions (mirror stopReel / applySymbol EXACTLY) ─────────────────────
 //   • bustSymbol         → terminal payout 0
-//   • multiplier face m  → multSum += m, advance reel (total unchanged)
-//   • minus n            → hard = max(0, hard − n), advance reel (can't bust)
+//   • multiplier face m  → multSum += m, advance reel (hard/aces/bestTotal unchanged)
+//   • minus n            → hard = max(0, hard − n), then recompute + ratchet bestTotal
+//                          (a minus can re-enable a soft-ace promotion and raise
+//                          bestTotal — mirrors stopReel's recompute-whole-hand path)
 //   • card value v       → ace: aces++,hard+=1; else hard+=v. total = bestTotal.
 //                          if total>21 → terminal 0; else ratchet bestTotal,
 //                          set natural if reel===1 && total===21, decrement
@@ -228,18 +230,24 @@ function makeSolver(def: BlackjackReelMachineDef) {
   /**
    * State reached after applying a SPECIAL at reel s.reel (no decision yet):
    *  null  → the bust symbol (terminal payout 0)
-   *  state → the advanced state (multiplier raised multSum, or minus lowered
-   *          hard; bestTotal/natural/deck unchanged — specials never bust and
-   *          never deplete the deck).
+   *  state → the advanced state (multiplier raised multSum; minus lowered hard
+   *          and then recomputed+ratcheted bestTotal — a minus can re-enable a
+   *          soft-ace promotion and raise bestTotal, mirroring stopReel's
+   *          recompute-whole-hand path; natural/deck unchanged for all specials).
    */
   const afterSpecial = (s: DpState, o: SpecialOutcome): DpState | null => {
     if (o.kind === 'bust') return null
+    // Minus can re-enable a soft-ace promotion → recompute + ratchet bestTotal,
+    // mirroring stopReel. Multiplier leaves hard/aces unchanged so the recompute
+    // is a no-op for it (total === current, ratchet no-op), but apply uniformly.
+    const hard = o.kind === 'minus' ? Math.max(0, s.hard - o.amount) : s.hard
+    const { total } = bestTotal(hard, s.aces)
     const next: DpState = {
       reel: s.reel + 1,
-      hard: o.kind === 'minus' ? Math.max(0, s.hard - o.amount) : s.hard,
+      hard,
       aces: s.aces,
       multSum: o.kind === 'mult' ? s.multSum + o.amount : s.multSum,
-      bestTotal: s.bestTotal,
+      bestTotal: Math.max(s.bestTotal, total),
       natural: s.natural,
       deck: s.deck
     }

@@ -76,7 +76,7 @@ const internals = computed(() => {
 })
 
 /**
- * Live EV(hit) vs EV(stand) for blackjack-reel hands in the 'spinning' phase.
+ * Live EV(cash) vs EV(continue) for blackjack-reel hands in the 'spinning' phase.
  * Returns null when not applicable (other families or idle/resolved state).
  */
 const bjEv = computed(() => {
