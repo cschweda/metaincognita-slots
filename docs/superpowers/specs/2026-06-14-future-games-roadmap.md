@@ -51,9 +51,9 @@ skill-stop, whose wins are protected and never lost. **Largely subsumed by the
 blackjack-reel idea above** if that gets built — revisit only if a pure,
 card-less crash variant is still wanted. **(2026-06-14: now wanted — see Galactic Flameout below.)**
 
-### 2a. Galactic Flameout — pure crash variant (user-requested 2026-06-14; needs its own brainstorm → spec → plan)
+### 2a. Galactic Crash — pure crash variant (working title; was "Galactic Flameout"; user-requested + refined 2026-06-14; needs its own brainstorm → spec → plan)
 
-Space/rocket theme. Five reels, **two buttons: Spin and Cash Out**. Each spin reveals a reel: "still flying" ratchets a climbing **multiplier** and can drop bonuses; a **flameout** spin ends the run with nothing. The whole tension: keep going for bigger multipliers/bonuses, or cash out before the flameout. Capped at 5 reels = a **bounded crash**.
+Space theme. **Two buttons: Spin and Cash Out.** Structure: **four "climb" reels + a separate fifth multiplier reel.** Each spin either survives ("still flying") and grows the running payout, or **crashes** and ends the run with **nothing** — and your winnings stay **fully at risk until you cash out** (cash out anytime to bank what you've climbed and end the run). Push through all four climb reels and you can go for the **fifth = multiplier reel**, the big score (it multiplies the haul) — but reel 5 still carries crash risk. So **cashing out before reel 5 banks a smaller, safer amount**; the deep multiplier payouts are bigger but the odds of reaching them are slim. A **bounded crash** (max 5 steps).
 
 Open design notes for its brainstorm:
 - **Flameout must be RANDOM per spin** (you never know which reel flames out) — not a fixed flameout reel, or it's deterministic.
