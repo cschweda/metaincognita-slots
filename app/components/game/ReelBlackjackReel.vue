@@ -81,11 +81,13 @@ const multiplierDisplay = computed(() => {
     <!-- Card slots row -->
     <div
       class="flex gap-2 justify-center"
+      role="group"
       aria-label="Hand cards"
     >
       <div
         v-for="(card, i) in slots"
         :key="i"
+        role="img"
         class="h-20 w-16 rounded-lg border flex items-center justify-center"
         :class="[
           card === null

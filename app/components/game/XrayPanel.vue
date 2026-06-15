@@ -336,7 +336,7 @@ const bjOdds = computed(() => {
           </tr>
         </tbody>
       </table>
-      <p class="text-[10px] text-neutral-500">
+      <p class="text-[10px] text-neutral-400">
         EV per coin wagered under this machine's optimal policy. Optimal action:
         <span
           class="font-bold"
