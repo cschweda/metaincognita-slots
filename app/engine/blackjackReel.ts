@@ -21,7 +21,67 @@ export interface HandEval {
  * Narrow config for evaluateHand — accepts the full def or a test fixture with
  * just the four fields needed.
  */
-type EvalCfg = Pick<BlackjackReelMachineDef, 'cardValues' | 'aceSymbol' | 'multiplierSymbols' | 'bustSaveSymbol'>
+export type EvalCfg = Pick<BlackjackReelMachineDef, 'cardValues' | 'aceSymbol' | 'multiplierSymbols' | 'bustSaveSymbol'>
+
+/**
+ * The Markovian sufficient statistic of a hand, accumulated card-by-card.
+ *
+ *  - `hard`     : sum of value cards plus 1 per ace (every ace counts hard 1).
+ *  - `aces`     : number of aces held (so exactly one may be promoted to 11).
+ *  - `multSum`  : additive multiplier face sum (0 ⇒ pays ×1).
+ *  - `saveCount`: number of unspent bust-save symbols held.
+ *
+ * This is the EXACT state both `evaluateHand` (live engine) and the
+ * optimal-stopping DP derive their answers from, so the two code paths cannot
+ * diverge.
+ */
+export interface HandAcc {
+  hard: number
+  aces: number
+  multSum: number
+  saveCount: number
+}
+
+export function freshAcc(): HandAcc {
+  return { hard: 0, aces: 0, multSum: 0, saveCount: 0 }
+}
+
+/**
+ * Fold a single drawn symbol into the accumulator (the one shared primitive for
+ * the live engine and the DP). Multiplier symbols and the bust-save symbol
+ * contribute ZERO to the hand total — only value cards and aces can raise the
+ * total and therefore can cause a bust.
+ */
+export function applyCard(acc: HandAcc, def: EvalCfg, card: SymbolId): HandAcc {
+  if (card === def.aceSymbol) {
+    acc.aces++
+    acc.hard += 1
+    return acc
+  }
+  if (card in def.multiplierSymbols) {
+    acc.multSum += def.multiplierSymbols[card]!
+    return acc
+  }
+  if (def.bustSaveSymbol !== null && card === def.bustSaveSymbol) {
+    acc.saveCount++
+    return acc
+  }
+  acc.hard += def.cardValues[card] ?? 0
+  return acc
+}
+
+/**
+ * Best blackjack total for a given hard sum + ace count.
+ *
+ * Each ace already contributes hard 1; if promoting exactly one ace to 11 keeps
+ * the total <= 21 we do so (soft hand). At most one ace is ever promoted
+ * (standard blackjack rule — two soft aces would be 22). Returns the busting
+ * minimum total when even the all-hard sum exceeds 21.
+ */
+export function bestTotal(hard: number, aces: number): { total: number, isSoft: boolean } {
+  if (aces > 0 && hard + 10 <= 21) return { total: hard + 10, isSoft: true }
+  return { total: hard, isSoft: false }
+}
 
 /**
  * Evaluate a blackjack hand.
@@ -30,39 +90,14 @@ type EvalCfg = Pick<BlackjackReelMachineDef, 'cardValues' | 'aceSymbol' | 'multi
  * total (they are special cards, not value cards) — only value cards and aces
  * can raise the total and therefore can cause a bust.
  *
- * Ace logic: each ace always contributes hard 1; if promoting exactly one ace
- * to 11 keeps the total <= 21 we do so (soft hand). At most one ace is ever
- * promoted (standard blackjack rule).
+ * Built on the same `applyCard` + `bestTotal` primitives the DP uses so the two
+ * are guaranteed to agree.
  */
 export function evaluateHand(def: EvalCfg, cards: readonly SymbolId[]): HandEval {
-  let hard = 0
-  let aces = 0
-  let multSum = 0
-  let saveSeen = false
-  for (const c of cards) {
-    if (c === def.aceSymbol) {
-      aces++
-      hard += 1
-      continue
-    }
-    if (c in def.multiplierSymbols) {
-      multSum += def.multiplierSymbols[c]!
-      continue
-    }
-    if (def.bustSaveSymbol !== null && c === def.bustSaveSymbol) {
-      saveSeen = true
-      continue
-    }
-    hard += def.cardValues[c] ?? 0
-  }
-  // promote one ace to 11 if it fits (adds 10 on top of the already-counted hard 1)
-  let total = hard
-  let isSoft = false
-  if (aces > 0 && hard + 10 <= 21) {
-    total = hard + 10
-    isSoft = true
-  }
-  return { total, isSoft, busted: total > 21, multSum, saveSeen }
+  const acc = freshAcc()
+  for (const c of cards) applyCard(acc, def, c)
+  const { total, isSoft } = bestTotal(acc.hard, acc.aces)
+  return { total, isSoft, busted: total > 21, multSum: acc.multSum, saveSeen: acc.saveCount > 0 }
 }
 
 // ---------- fresh state ----------
