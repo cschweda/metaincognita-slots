@@ -49,7 +49,19 @@ Player stops the reels; each stop banks money; a bad stop busts and loses it all
 cash out anytime. A new family. NOTE: distinct from the existing pachislo
 skill-stop, whose wins are protected and never lost. **Largely subsumed by the
 blackjack-reel idea above** if that gets built — revisit only if a pure,
-card-less crash variant is still wanted.
+card-less crash variant is still wanted. **(2026-06-14: now wanted — see Galactic Flameout below.)**
+
+### 2a. Galactic Flameout — pure crash variant (user-requested 2026-06-14; needs its own brainstorm → spec → plan)
+
+Space/rocket theme. Five reels, **two buttons: Spin and Cash Out**. Each spin reveals a reel: "still flying" ratchets a climbing **multiplier** and can drop bonuses; a **flameout** spin ends the run with nothing. The whole tension: keep going for bigger multipliers/bonuses, or cash out before the flameout. Capped at 5 reels = a **bounded crash**.
+
+Open design notes for its brainstorm:
+- **Flameout must be RANDOM per spin** (you never know which reel flames out) — not a fixed flameout reel, or it's deterministic.
+- **RTP** = per-spin flameout odds + the multiplier ladder under **optimal cash-out timing** — the same optimal-stopping / exact-EV machinery as Hit or Bust (tractable).
+- **Distinct from pachislo skill-stop**, whose banked wins are never lost — here *everything* is at risk until you cash out.
+- **Naming:** the metaincognita family already has a sibling game called *flameout* — decide whether "Galactic Flameout" is a deliberate slots-floor homage/tie-in or needs a distinct name.
+- **Differentiate from Hit or Bust** (both are press-your-luck): this one is card-less / pure multiplier-ladder, simpler and faster — make sure they don't feel like two skins of one idea.
+- Gets bespoke cabinet chrome via the v0.7.0 chrome system (space/neon — a natural for gaudy flair).
 
 ## 3. Authentic 4-tier progressives (Mini / Minor / Major / Grand)
 
