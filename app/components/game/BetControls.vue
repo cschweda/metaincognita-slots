@@ -45,7 +45,7 @@ function spin() {
 <template>
   <div
     v-if="def"
-    class="flex items-center justify-between rounded-xl bg-neutral-900 border border-neutral-800 px-4 py-3 gap-4"
+    class="flex flex-wrap items-center justify-between rounded-xl bg-neutral-900 border border-neutral-800 px-4 py-3 gap-4"
   >
     <div class="flex items-center gap-2">
       <template v-if="fixedReason === null">

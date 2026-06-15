@@ -23,7 +23,7 @@ const anteDisplay = computed(() => {
 <template>
   <div
     v-if="def"
-    class="flex items-center gap-2"
+    class="flex flex-wrap items-center justify-end gap-2"
   >
     <span class="font-mono text-xs text-neutral-400 mr-1">{{ anteDisplay }}</span>
 
