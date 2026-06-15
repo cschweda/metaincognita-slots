@@ -67,7 +67,7 @@ const PACHISLO_FLAGS: PachisloFlag[] = [
 ]
 
 /** The only gameKind values the engine emits — anything else loads as 'base'. */
-const GAME_KINDS = new Set(['base', 'normal', 'free-spin', 'respin', 'jac', 'interlude'])
+const GAME_KINDS = new Set(['base', 'normal', 'free-spin', 'respin', 'jac', 'interlude', 'deal'])
 
 /** Coerce a persisted machine state to a VALID one for this def, else fresh. */
 function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionState {
@@ -632,7 +632,7 @@ export const useSlotsStore = defineStore('slots', {
      * Charges the ante up-front via bookOutcome (coinsIn = currentBet, payout = 0),
      * updates wagered stats, saves, and sets the spinning gate.
      */
-    dealHand(): void {
+    deal(): void {
       const def = this.currentDef
       const state = this.currentState
       if (
@@ -667,7 +667,7 @@ export const useSlotsStore = defineStore('slots', {
      * phase === 'spinning'. Free (coinsIn = 0). If the stop resolves the hand
      * (bust or Five-Card Charlie) the payout is booked immediately.
      */
-    hitCard(): void {
+    stop(): void {
       const def = this.currentDef
       const state = this.currentState
       if (
@@ -696,7 +696,7 @@ export const useSlotsStore = defineStore('slots', {
      * Cash out: resolve the hand at its current best total. Only fires when
      * phase === 'spinning'. Free (coinsIn = 0). Books the payout.
      */
-    standHand(): void {
+    cashOut(): void {
       const def = this.currentDef
       const state = this.currentState
       if (

@@ -466,18 +466,18 @@ describe('describeOutcome — spoken net parity', () => {
 })
 
 // ---------------------------------------------------------------------------
-// blackjack-reel store actions: dealHand / hitCard / standHand (Lucky 21)
+// blackjack-reel store actions: deal / stop / cashOut (Lucky 21)
 // ---------------------------------------------------------------------------
 
 describe('blackjack-reel interactive actions — Lucky 21', () => {
-  it('dealHand charges the ante, sets phase to spinning, books deal record', () => {
+  it('deal charges the ante, sets phase to spinning, books deal record', () => {
     setLiveRand(mulberry32(42))
     const store = freshStore()
     store.startSession(100_000) // 100_000 cents = 4000 credits at 25¢
     store.selectMachine('lucky-21')
     store.setBet(2) // 2-coin ante
     const before = store.bankrollCents
-    store.dealHand()
+    store.deal()
 
     // spinning gate should be raised
     expect(store.spinning).toBe(true)
@@ -502,7 +502,7 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
     expect(saved.bankrollCents).toBe(store.bankrollCents)
   })
 
-  it('hitCard stops the next reel; on non-resolve keeps gate high, no new history', () => {
+  it('stop stops the next reel; on non-resolve keeps gate high, no new history', () => {
     // dealReels builds strips and sets idx=0 (phase='spinning'); it does NOT stop
     // any reel — every reel stop requires an explicit hitCard call.
     setLiveRand(mulberry32(7))
@@ -510,14 +510,14 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
     store.startSession(100_000)
     store.selectMachine('lucky-21')
     store.setBet(1)
-    store.dealHand()
+    store.deal()
     const bj = store.machineStates['lucky-21']!.blackjackReel!
     expect(bj.phase).toBe('spinning')
     expect(bj.idx).toBe(0) // no reels stopped yet after deal
     store.revealDone()
 
     // Stop reel 0 (always a CARD on Lucky 21, can't bust)
-    store.hitCard()
+    store.stop()
     expect(bj.idx).toBe(1)
     expect(bj.phase).toBe('spinning') // reel 0 = pure card, never resolves
     expect(store.spinning).toBe(true)
@@ -525,7 +525,7 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
     store.revealDone()
 
     // Stop reel 1 (also a CARD, can't bust)
-    store.hitCard()
+    store.stop()
     expect(bj.idx).toBe(2)
     expect(bj.phase).toBe('spinning')
     expect(store.history).toHaveLength(histAfterReel0) // no new record yet
@@ -533,7 +533,7 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
 
     // Stop reel 2 (BUST-heavy: 8 BUST + MX2 + MX3 + MM3)
     const histBefore = store.history.length
-    store.hitCard()
+    store.stop()
     // Either still spinning (non-bust) or resolved (bust): both are valid
     if (bj.phase === 'spinning') {
       expect(bj.idx).toBe(3)
@@ -545,13 +545,13 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
     expect(store.spinning).toBe(true)
   })
 
-  it('standHand (cashOut) books payout and sets phase to resolved', () => {
+  it('cashOut books payout and sets phase to resolved', () => {
     setLiveRand(mulberry32(99))
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('lucky-21')
     store.setBet(3)
-    store.dealHand()
+    store.deal()
     store.revealDone()
 
     const bj = store.machineStates['lucky-21']!.blackjackReel!
@@ -559,7 +559,7 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
 
     const bankBefore = store.bankrollCents
     const histBefore = store.history.length
-    store.standHand()
+    store.cashOut()
 
     expect(bj.phase).toBe('resolved')
     expect(store.spinning).toBe(true)
@@ -571,27 +571,27 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
     expect(store.bankrollCents).toBe(bankBefore + lastRec.payoutCents)
   })
 
-  it('dealHand is a no-op while spinning or broke', () => {
+  it('deal is a no-op while spinning or broke', () => {
     setLiveRand(mulberry32(1))
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('lucky-21')
-    store.dealHand()
+    store.deal()
     expect(store.spinning).toBe(true) // gate is up
 
     // calling again while spinning does nothing
-    store.dealHand()
+    store.deal()
     expect(store.history).toHaveLength(1)
 
     // lower gate, cash out, lower gate again
     store.revealDone()
-    store.standHand()
+    store.cashOut()
     store.revealDone()
     expect(store.history).toHaveLength(2) // deal + cashOut records
 
     // drain bankroll to below 1 coin (25¢) and try to deal
     store.bankrollCents = 10 // 10¢ < 25¢
-    store.dealHand()
+    store.deal()
     expect(store.history).toHaveLength(2) // no new deal record
     expect(store.liveAnnouncement).toMatch(/out of credits/i)
   })
@@ -612,9 +612,9 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
     store.startSession(100_000)
     store.selectMachine('lucky-21')
     store.setBet(1)
-    store.dealHand()
+    store.deal()
     store.revealDone()
-    store.standHand()
+    store.cashOut()
     store.revealDone()
 
     // save and reload
@@ -632,10 +632,10 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
     store.selectMachine('lucky-21')
     store.setBet(1) // ante = 1 coin = 25¢
     const start = store.bankrollCents
-    store.dealHand()
+    store.deal()
     store.revealDone()
     // Immediately cash out (stand after 2 cards)
-    store.standHand()
+    store.cashOut()
     store.revealDone()
     const dealRec = store.history[0]!
     const payRec = store.history[1]!
@@ -659,6 +659,19 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
     expect(store.currentBet).toBe(3)
     store.setBet(99) // over max → clamped
     expect(store.currentBet).toBe(LUCKY_21.maxCoins)
+  })
+
+  it('one deal+cashOut hand increments spins by exactly 1', () => {
+    const store = freshStore()
+    setLiveRand(mulberry32(999))
+    store.startSession(1_000_000)
+    store.selectMachine('lucky-21')
+    const before = store.stats.spins
+    store.deal()
+    store.revealDone()
+    store.cashOut()
+    store.revealDone()
+    expect(store.stats.spins).toBe(before + 1)
   })
 })
 

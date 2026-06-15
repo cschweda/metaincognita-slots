@@ -4,6 +4,7 @@ import type {
   BlackjackReelMachineDef,
   BlackjackReelSessionState,
   FeatureEvent,
+  GameKind,
   MachineSessionState,
   SpinOutcome,
   SymbolId
@@ -148,13 +149,14 @@ function outcome(
   coins: number,
   coinsIn: number,
   featureEvents: FeatureEvent[],
-  payout = 0
+  payout = 0,
+  gameKind: GameKind = 'base'
 ): SpinOutcome {
   return {
     machineId: def.id,
     family: 'blackjack-reel',
     coins,
-    gameKind: 'base',
+    gameKind,
     coinsIn,
     stops: [],
     grid: bj.landed.map(s => (s !== null ? [s] : [])),
@@ -195,7 +197,7 @@ export function dealReels(
   bj.reelStrips = def.reels.map(slots =>
     slots.map(tok => (tok === 'CARD' ? deck[di++]! : tok)))
   state.blackjackReel = bj
-  return outcome(def, bj, coins, coins, [{ type: 'cards-dealt', strips: bj.reelStrips.map(s => [...s]) }])
+  return outcome(def, bj, coins, coins, [{ type: 'cards-dealt', strips: bj.reelStrips.map(s => [...s]) }], 0, 'deal')
 }
 
 /**

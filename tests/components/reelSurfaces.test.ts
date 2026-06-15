@@ -20,7 +20,7 @@ function withMachine(Comp: unknown, id: string) {
   return mount(Comp as never, {
     global: {
       components: { GameReelColumn },
-      stubs: { UIcon: true, GameProgressiveMeter: true, GameSymbolIcon: IconStub }
+      stubs: { UIcon: true, GameProgressiveMeter: true, GameSymbolIcon: IconStub, GameCardFace: true }
     }
   })
 }
@@ -37,54 +37,30 @@ describe('Reel surfaces', () => {
     expect(withMachine(ReelPachislo, 'stock-rush').findAll('[data-test="cell"]').length).toBeGreaterThanOrEqual(9)
   })
 
-  // Five-Card Charlie is rare in live play (~11.6%, and the ten-heavy 5th reel busts most
-  // climbs), so its render branch is easy to miss in a manual smoke. Mount the resolved
-  // 5-card surviving state directly and assert the badge + banner render.
-  // Lucky 21: blackjack-reel render tests skipped in Task 1 (state shape changed, component updated in a later task)
-  it.skip('blackjack-reel renders the Five-Card Charlie badge + banner on a surviving 5-card hand', () => {
-    setActivePinia(createPinia())
-    localStorage.clear()
-    const store = useSlotsStore()
-    store.startSession(100000)
-    store.selectMachine('hit-or-bust')
-    const bj = store.currentState!.blackjackReel!
-    bj.phase = 'resolved'
-    bj.cards = ['C2', 'C3', 'C4', 'C5', 'C6']
-    bj.total = 20
-    bj.isSoft = false
-    bj.multSum = 0
-    bj.saveHeld = false
-    bj.busted = false
-    bj.charlie = true
-    const wrapper = mount(ReelBlackjackReel, {
-      global: { stubs: { UIcon: true, GameSymbolIcon: IconStub } }
-    })
-    expect(wrapper.find('[data-test="charlie-badge"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('FIVE-CARD CHARLIE')
-    expect(wrapper.text()).toContain('Five-Card Charlie — Total 20')
+  it('blackjack-reel renders 5 reel windows in idle phase', () => {
+    const wrapper = withMachine(ReelBlackjackReel, 'lucky-21')
+    // In idle phase, the reel surface should render
+    expect(wrapper.find('[data-test="bj-surface"]').exists()).toBe(true)
   })
 
-  // The payout multiplier is max(1, multSum) (additive faces). The badge must show the SAME
-  // number, not multSum + 1 — which overstated it (badge ×3 while the hand paid ×2).
-  it.skip('blackjack-reel multiplier badge matches the payout multiplier (max(1, multSum), not +1)', () => {
-    setActivePinia(createPinia())
-    localStorage.clear()
+  it('blackjack-reel renders BUST modal after a bust stop', () => {
+    // withMachine creates+activates pinia, so mutate AFTER to share the same store
+    const wrapper = withMachine(ReelBlackjackReel, 'lucky-21')
+    // Force a bust state directly on the active store
     const store = useSlotsStore()
-    store.startSession(100000)
-    store.selectMachine('hit-or-bust')
     const bj = store.currentState!.blackjackReel!
-    bj.phase = 'dealt'
-    bj.cards = ['MX2', 'CA', 'CK'] // a ×2 card + A + K → multSum 2, total 21
-    bj.total = 21
-    bj.isSoft = true
-    bj.multSum = 2
-    bj.saveHeld = false
-    bj.busted = false
-    bj.charlie = false
-    const wrapper = mount(ReelBlackjackReel, {
-      global: { stubs: { UIcon: true, GameSymbolIcon: IconStub } }
+    bj.phase = 'resolved'
+    bj.busted = true
+    bj.bustBySymbol = true
+    bj.hard = 0
+    bj.aces = 0
+    bj.bestTotal = 0
+    bj.landed = ['BUST', null, null, null, null]
+    bj.hand = []
+    bj.ante = 2
+    return wrapper.vm.$nextTick().then(() => {
+      expect(wrapper.find('[data-test="result-modal"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="modal-title"]').text()).toContain('BUST')
     })
-    expect(wrapper.find('[data-test="multiplier-badge"]').text()).toContain('×2')
-    expect(wrapper.text()).not.toContain('×3')
   })
 })

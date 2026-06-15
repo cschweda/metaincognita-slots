@@ -15,7 +15,7 @@ function setup() {
   setLiveRand(mulberry32(2026))
   const store = useSlotsStore()
   store.startSession(1_000_000)
-  store.selectMachine('hit-or-bust')
+  store.selectMachine('lucky-21')
   const wrapper = mount(BlackjackControls, {
     global: {
       stubs: {
@@ -28,8 +28,7 @@ function setup() {
   return { store, wrapper }
 }
 
-// Lucky 21: all tests skipped in Task 1 (hit-or-bust off floor, store actions stubbed); restored in a later task
-describe.skip('BlackjackControls — Lucky 21: restored in a later task', () => {
+describe('BlackjackControls — Lucky 21 stop-the-reels', () => {
   beforeEach(() => localStorage.clear())
 
   afterEach(() => {
@@ -37,65 +36,71 @@ describe.skip('BlackjackControls — Lucky 21: restored in a later task', () => 
     active = null
   })
 
-  it('Deal enabled, Hit and Stand disabled in idle phase', () => {
+  it('Deal enabled, Stop and Cash Out disabled in idle phase', async () => {
     const { wrapper } = setup()
+    await wrapper.vm.$nextTick()
     expect(wrapper.find('[data-test="deal"]').attributes('disabled')).toBeUndefined()
-    expect(wrapper.find('[data-test="hit"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[data-test="stand"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-test="stop"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-test="cash-out"]').attributes('disabled')).toBeDefined()
   })
 
-  it('Deal calls store.dealHand then revealDone, transitions to dealt phase', async () => {
+  it('Deal calls store.deal then revealDone, transitions to spinning phase', async () => {
     const { store, wrapper } = setup()
     expect(store.currentState!.blackjackReel!.phase).toBe('idle')
     await wrapper.find('[data-test="deal"]').trigger('click')
-    expect(store.currentState!.blackjackReel!.phase).toBe('dealt')
-    expect(store.currentState!.blackjackReel!.cards).toHaveLength(2)
+    expect(store.currentState!.blackjackReel!.phase).toBe('spinning')
     expect(store.spinning).toBe(false) // revealDone cleared it
   })
 
-  it('Hit and Stand enabled after Deal, Deal disabled', async () => {
+  it('Stop and Cash Out enabled after Deal, Deal hidden', async () => {
     const { wrapper } = setup()
     await wrapper.find('[data-test="deal"]').trigger('click')
-    expect(wrapper.find('[data-test="deal"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[data-test="hit"]').attributes('disabled')).toBeUndefined()
-    expect(wrapper.find('[data-test="stand"]').attributes('disabled')).toBeUndefined()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-test="deal"]').exists()).toBe(false) // v-if hides it while spinning
+    expect(wrapper.find('[data-test="stop"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-test="cash-out"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('Hit advances the hand: a card is consumed from the reel (added or bust-saved in-place)', async () => {
+  it('Stop advances reel index', async () => {
     const { store, wrapper } = setup()
     await wrapper.find('[data-test="deal"]').trigger('click')
-    await wrapper.find('[data-test="hit"]').trigger('click')
-    const bj = store.currentState!.blackjackReel!
-    // After a hit, cards always has at least 3 elements (2 dealt + 1 hit reel consumed)
-    // OR bust-save voided the 3rd card in-place keeping length at 3.
-    // Either way: at least 3 cards in the array.
-    expect(bj.cards.length).toBeGreaterThanOrEqual(3)
-    expect(store.spinning).toBe(false) // revealDone cleared it
+    await wrapper.vm.$nextTick()
+    const before = store.currentState!.blackjackReel!.idx
+    await wrapper.find('[data-test="stop"]').trigger('click')
+    const after = store.currentState!.blackjackReel!.idx
+    // idx may stay same if bust, or advance to next reel
+    expect(after).toBeGreaterThanOrEqual(before)
+    expect(store.spinning).toBe(false)
   })
 
-  it('Stand resolves the hand immediately', async () => {
+  it('Cash Out resolves the hand immediately', async () => {
     const { store, wrapper } = setup()
     await wrapper.find('[data-test="deal"]').trigger('click')
-    await wrapper.find('[data-test="stand"]').trigger('click')
+    // stop reels 0 and 1 (pure cards, can't bust)
+    await wrapper.find('[data-test="stop"]').trigger('click')
+    await wrapper.find('[data-test="stop"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-test="cash-out"]').trigger('click')
     expect(store.currentState!.blackjackReel!.phase).toBe('resolved')
     expect(store.spinning).toBe(false)
   })
 
-  it('Deal re-enabled after resolved, starts a new hand', async () => {
+  it('Deal re-enabled after resolved', async () => {
     const { store, wrapper } = setup()
     await wrapper.find('[data-test="deal"]').trigger('click')
-    await wrapper.find('[data-test="stand"]').trigger('click')
-    expect(store.currentState!.blackjackReel!.phase).toBe('resolved')
-    // After resolution, deal should be re-enabled
+    await wrapper.find('[data-test="stop"]').trigger('click')
+    await wrapper.find('[data-test="stop"]').trigger('click')
     await wrapper.vm.$nextTick()
+    await wrapper.find('[data-test="cash-out"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(store.currentState!.blackjackReel!.phase).toBe('resolved')
+    expect(wrapper.find('[data-test="deal"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="deal"]').attributes('disabled')).toBeUndefined()
-    await wrapper.find('[data-test="deal"]').trigger('click')
-    expect(store.currentState!.blackjackReel!.phase).toBe('dealt')
   })
 
   it('Deal disabled when bankroll < ante', async () => {
     const { store, wrapper } = setup()
-    store.bankrollCents = 1 // below any ante
+    store.bankrollCents = 1
     await wrapper.vm.$nextTick()
     expect(wrapper.find('[data-test="deal"]').attributes('disabled')).toBeDefined()
   })

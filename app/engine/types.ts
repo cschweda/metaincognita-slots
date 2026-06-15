@@ -403,7 +403,7 @@ export interface ProgressiveEvent {
  * pachislo bonus games. Steppers/bally are always 'base'. Simulation counts
  * cycles over base/normal games only.
  */
-export type GameKind = 'base' | 'free-spin' | 'respin' | 'normal' | 'jac' | 'interlude'
+export type GameKind = 'base' | 'free-spin' | 'respin' | 'normal' | 'jac' | 'interlude' | 'deal'
 
 export type FeatureEvent
   = | { type: 'free-spins-triggered', count: number, multiplier: number }
