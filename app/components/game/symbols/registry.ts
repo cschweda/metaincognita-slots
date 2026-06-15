@@ -26,10 +26,14 @@ const SYMBOL_ART: Record<string, SymbolArt> = {
   'pip-7': { kind: 'text', text: '7', variant: 'royal' },
   'pip-8': { kind: 'text', text: '8', variant: 'royal' },
   'pip-9': { kind: 'text', text: '9', variant: 'royal' },
-  // ---- hit-or-bust specials ----
+  // ---- blackjack-reel multiplier / minus / bust specials ----
   'mult-x2': { kind: 'svg', body: '<rect x="3" y="3" width="18" height="18" rx="3" fill="#7c3aed"/><text x="12" y="16.5" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="10" fill="#e9d5ff">×2</text>' },
   'mult-x3': { kind: 'svg', body: '<rect x="3" y="3" width="18" height="18" rx="3" fill="#4f46e5"/><text x="12" y="16.5" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="10" fill="#e0e7ff">×3</text>' },
-  'bust-save': { kind: 'svg', body: '<path d="M12 2l2.7 5.6 6.2.9-4.5 4.4 1.1 6.2L12 16.4l-5.5 2.7 1.1-6.2L3.1 8.5l6.2-.9z" fill="#22c55e"/><path d="M12 4.5l2 4.2 4.6.7-3.3 3.2.8 4.7L12 15l-4.1 2.3.8-4.7L5.4 9.4l4.6-.7z" fill="#bbf7d0"/>' },
+  'mult-x5': { kind: 'svg', body: '<rect x="3" y="3" width="18" height="18" rx="3" fill="#c026d3"/><text x="12" y="16.5" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="10" fill="#fae8ff">×5</text>' },
+  'mult-x10': { kind: 'svg', body: '<rect x="2.5" y="3" width="19" height="18" rx="3" fill="#db2777"/><text x="12" y="16.5" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="9" fill="#fce7f3">×10</text>' },
+  'minus-2': { kind: 'svg', body: '<rect x="3" y="3" width="18" height="18" rx="3" fill="#0f766e"/><text x="12" y="16.5" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="10" fill="#ccfbf1">−2</text>' },
+  'minus-3': { kind: 'svg', body: '<rect x="3" y="3" width="18" height="18" rx="3" fill="#155e75"/><text x="12" y="16.5" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="10" fill="#cffafe">−3</text>' },
+  'bust': { kind: 'svg', body: '<circle cx="12" cy="12" r="9" fill="#b91c1c"/><circle cx="12" cy="12" r="9" fill="none" stroke="#7f1d1d" stroke-width="1.5"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="#fee2e2" stroke-width="2.4" stroke-linecap="round"/>' },
   'seven': { kind: 'text', text: '7', variant: 'seven', color: '#f59e0b' },
   'seven-red': { kind: 'text', text: '7', variant: 'seven', color: '#ef4444' },
   'seven-flame': { kind: 'text', text: '7', variant: 'seven', color: '#fb923c' },

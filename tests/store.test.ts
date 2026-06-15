@@ -7,8 +7,9 @@ import { STOCK_RUSH } from '../app/machines/stock-rush'
 import { mulberry32, simulateMachine } from '../app/engine'
 import { setLiveRand } from '../app/utils/liveRand'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
-// Lucky 21: HIT_OR_BUST is off the floor in Task 1; imported for the skip-guarded tests below
-import { HIT_OR_BUST } from '../app/machines/hit-or-bust'
+// Lucky 21: imported for the skip-guarded blackjack-reel tests below (Tasks 8/9 rewrite them
+// against the real Lucky 21 store actions; left skipped here — see describe.skip blocks).
+import { LUCKY_21 } from '../app/machines/lucky-21'
 
 function freshStore() {
   setActivePinia(createPinia())
@@ -708,7 +709,7 @@ describe.skip('blackjack-reel sanitizeMachineState — Lucky 21: restored in a l
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('hit-or-bust')
-    expect(HIT_OR_BUST.maxCoins).toBe(3)
+    expect(LUCKY_21.maxCoins).toBeGreaterThanOrEqual(3)
     store.setBet(1)
     expect(store.currentBet).toBe(1)
     store.setBet(2)

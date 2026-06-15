@@ -252,11 +252,17 @@ export function validateMachineDef(def: MachineDef): void {
       break
     }
     case 'blackjack-reel': {
-      // Lucky 21 minimal validation (Task 1); expanded in a later task.
+      // Lucky 21 (blackjack-reel) full validation.
       if (def.reels.length !== 5) errors.push(`blackjack-reel needs 5 reels, got ${def.reels.length}`)
-      if (def.paytable.length === 0) errors.push('blackjack-reel paytable must not be empty')
       if (!known.has(def.bustSymbol)) errors.push(`bustSymbol "${def.bustSymbol}" not declared in symbols`)
-      // Every non-CARD token in reels must be in multiplierSymbols, minusSymbols, or equal bustSymbol.
+      // Reels 1 and 2 are the deal reels and must be ALL 'CARD' (two dealt cards).
+      ;[0, 1].forEach((r) => {
+        const reel = def.reels[r]
+        if (reel && reel.some(s => s !== 'CARD')) {
+          errors.push(`reels[${r}]: deal reel must be all 'CARD' tokens`)
+        }
+      })
+      // Every non-CARD token in any reel must be in multiplierSymbols, minusSymbols, or equal bustSymbol.
       def.reels.forEach((reel, r) => {
         reel.forEach((s) => {
           if (s === 'CARD') return
@@ -271,6 +277,32 @@ export function validateMachineDef(def: MachineDef): void {
           }
         })
       })
+      // Paytable: non-empty; every pay a positive integer; every total in [qualifyMin, 21];
+      // strictly ascending by total.
+      if (def.paytable.length === 0) errors.push('blackjack-reel paytable must not be empty')
+      let prevTotal = -Infinity
+      def.paytable.forEach((e, i) => {
+        if (!Number.isInteger(e.pay) || e.pay <= 0) {
+          errors.push(`paytable[${i}] (total ${e.total}): pay must be a positive integer`)
+        }
+        if (e.total < def.qualifyMin || e.total > 21) {
+          errors.push(`paytable[${i}]: total ${e.total} out of range [${def.qualifyMin}, 21]`)
+        }
+        if (e.total <= prevTotal) {
+          errors.push(`paytable[${i}]: totals must be strictly ascending (got ${e.total} after ${prevTotal})`)
+        }
+        prevTotal = e.total
+      })
+      // qualifyMin: integer in (0, 21]; naturalPay: positive integer; charlieMultiplier: integer >= 1.
+      if (!Number.isInteger(def.qualifyMin) || def.qualifyMin <= 0 || def.qualifyMin > 21) {
+        errors.push(`qualifyMin must be an integer in (0, 21], got ${def.qualifyMin}`)
+      }
+      if (!Number.isInteger(def.naturalPay) || def.naturalPay <= 0) {
+        errors.push(`naturalPay must be a positive integer, got ${def.naturalPay}`)
+      }
+      if (!Number.isInteger(def.charlieMultiplier) || def.charlieMultiplier < 1) {
+        errors.push(`charlieMultiplier must be an integer >= 1, got ${def.charlieMultiplier}`)
+      }
       break
     }
     default: {

@@ -19,13 +19,15 @@ describe('stock-rush — machine integrity', () => {
     expect(counts[1]).toEqual({ BE: 5, RP: 5, WM: 3, R7: 3, BB: 2, BL: 3 })
     expect(counts[2]).toEqual({ BE: 5, RP: 5, WM: 3, R7: 3, BB: 4, BL: 1 })
   })
-  it('the floor is complete: 9 machines (Lucky 21 added in a later task), all valid, ids unique', () => {
-    // Lucky 21: blackjack-reel machine temporarily off the floor (Task 1); restored in a later task
-    expect(FLOOR).toHaveLength(9)
-    expect(new Set(FLOOR.map(m => m.id)).size).toBe(9)
+  it('the floor is complete: 10 machines, all valid, ids unique', () => {
+    expect(FLOOR).toHaveLength(10)
+    expect(new Set(FLOOR.map(m => m.id)).size).toBe(10)
     for (const def of FLOOR) expect(() => validateMachineDef(def)).not.toThrow()
     expect(FLOOR.map(m => m.family)).toEqual([
-      'video', 'video', 'video', 'video', 'stepper', 'stepper', 'bally-em', 'bally-em', 'pachislo'
+      'video', 'video', 'video', 'video', 'stepper', 'stepper', 'bally-em', 'bally-em', 'pachislo', 'blackjack-reel'
     ])
+    // Lucky 21 (blackjack-reel) is back on the floor in the last slot.
+    expect(FLOOR.at(-1)!.id).toBe('lucky-21')
+    expect(FLOOR.at(-1)!.name).toBe('Lucky 21')
   })
 })
