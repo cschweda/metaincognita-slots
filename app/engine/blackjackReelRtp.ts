@@ -10,10 +10,10 @@ import { applyCard, bestTotal, freshAcc, payEntry } from './blackjackReel'
  *
  * ── Why the state is what it is ────────────────────────────────────────────
  * The live engine (`hitCard` in blackjackReel.ts) draws the next card from
- * `strips[cards.length]` and, on a bust-save, removes BOTH the busting card and
- * one save symbol from the hand — so `cards.length` can DECREASE and the next
- * draw re-reads an earlier reel. To agree with that engine exactly (the Task 5
- * convergence cross-check simulates under this very policy), the DP tracks:
+ * `strips[cards.length]` and, on a bust-save, replaces the busting card IN PLACE
+ * with a VOID sentinel — so `cards.length` INCREASES by 1 (as with any hit) and
+ * the reel index always advances monotonically. The DP mirrors this exactly: on a
+ * saved bust, handSize increments (the slot is consumed) while saveCount decrements.
  *
  *   handSize  = number of symbols currently in hand = the next reel index
  *   hard      = sum of value cards + 1 per ace
@@ -32,8 +32,8 @@ import { applyCard, bestTotal, freshAcc, payEntry } from './blackjackReel'
  *   value(s)    = handSize < 5 ? max(standEV, hitEV) : charlieEV
  *
  *   valueAfterDraw(s, c): fold c in.
- *     • busts, save held → consume one save + void the card (handSize−1,
- *       saveCount−1, value/ace contribution reverted); recurse.
+ *     • busts, save held → void the card in-place (handSize+1, saveCount−1,
+ *       value/ace contribution reverted to pre-draw); recurse.
  *     • busts, no save   → 0.
  *     • otherwise        → recurse on the grown state.
  *
@@ -107,7 +107,8 @@ function makeSolver(def: BlackjackReelMachineDef) {
    * State reached after drawing `card` into `s` (no decision yet):
    *  null  → the draw busts with no save (terminal payout 0)
    *  state → the (non-busted) state to recurse on; on a save-consume this is
-   *          the post-save state (busting card + one save removed)
+   *          the post-void state: the slot is consumed (handSize+1) but the
+   *          busting card's value/ace contribution is reverted, saveCount−1.
    */
   const afterDraw = (s: DpState, card: SymbolId): DpState | null => {
     const acc = { hard: s.hard, aces: s.aces, multSum: s.multSum, saveCount: s.saveCount }
@@ -115,11 +116,11 @@ function makeSolver(def: BlackjackReelMachineDef) {
     const { total } = bestTotal(acc.hard, acc.aces)
     if (total > 21) {
       if (s.saveCount > 0) {
-        // Consume one save AND void the busting card: revert to the pre-draw
-        // value/ace state (specials can't bust, so only a value card got us
-        // here and multSum is unchanged), handSize−1, saveCount−1.
+        // Bust-Save void-in-place: the slot is consumed (handSize advances) but
+        // the busting card's value/ace contribution is reverted. multSum is
+        // unchanged (only value cards can bust). saveCount decrements.
         return {
-          handSize: s.handSize - 1,
+          handSize: s.handSize + 1,
           hard: s.hard,
           aces: s.aces,
           multSum: s.multSum,
@@ -197,7 +198,14 @@ function makeSolver(def: BlackjackReelMachineDef) {
   return { solve, dist, afterDraw, probsFor }
 }
 
-/** Map a live session state onto the DP's summary state via shared primitives. */
+/**
+ * Map a live session state onto the DP's summary state via shared primitives.
+ *
+ * saveCount is taken from bj.saveHeld (the explicit state flag) rather than
+ * re-derived from the cards array. After a bust-save void-in-place the SAVE
+ * card remains in bj.cards but saveHeld is false (save consumed), so counting
+ * cards would give saveCount=1 incorrectly.
+ */
 function summarize(def: BlackjackReelMachineDef, bj: BlackjackReelSessionState): DpState {
   const acc = freshAcc()
   for (const c of bj.cards) applyCard(acc, def, c)
@@ -206,7 +214,9 @@ function summarize(def: BlackjackReelMachineDef, bj: BlackjackReelSessionState):
     hard: acc.hard,
     aces: acc.aces,
     multSum: acc.multSum,
-    saveCount: acc.saveCount
+    // Use the explicit saveHeld flag, not acc.saveCount derived from cards.
+    // A SAVE card left in cards after consumption must not re-grant the mechanic.
+    saveCount: bj.saveHeld ? 1 : 0
   }
 }
 

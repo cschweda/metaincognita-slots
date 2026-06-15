@@ -7,6 +7,15 @@ import type {
 } from './types'
 import type { RandomFn } from './rng'
 
+// ---------- VOID sentinel ----------
+
+/**
+ * Sentinel SymbolId placed in the cards array when a bust-save fires.
+ * It occupies the reel slot (so cards.length advances monotonically) but
+ * contributes 0 to the hand total, multiplier sum, and save count.
+ */
+export const VOID_CARD: SymbolId = 'VOID'
+
 // ---------- hand evaluation ----------
 
 export interface HandEval {
@@ -48,11 +57,13 @@ export function freshAcc(): HandAcc {
 
 /**
  * Fold a single drawn symbol into the accumulator (the one shared primitive for
- * the live engine and the DP). Multiplier symbols and the bust-save symbol
- * contribute ZERO to the hand total — only value cards and aces can raise the
- * total and therefore can cause a bust.
+ * the live engine and the DP). Multiplier symbols, the bust-save symbol, and the
+ * VOID sentinel all contribute ZERO to the hand total — only value cards and aces
+ * can raise the total and therefore can cause a bust.
  */
 export function applyCard(acc: HandAcc, def: EvalCfg, card: SymbolId): HandAcc {
+  // VOID sentinel: occupies a reel slot but contributes nothing
+  if (card === VOID_CARD) return acc
   if (card === def.aceSymbol) {
     acc.aces++
     acc.hard += 1
@@ -142,18 +153,19 @@ function resolvePayout(def: BlackjackReelMachineDef, bj: BlackjackReelSessionSta
 
 /**
  * Apply an eval result back to the session state.
- * saveHeld is set to true if a save symbol is present AND the save has not
- * already been consumed this hand. We track this by checking saveSeen each
- * time: once consumed the card is removed from bj.cards so saveSeen returns
- * false on subsequent evaluations.
+ *
+ * saveHeld is managed as EXPLICIT state — this function does NOT touch it.
+ * It is set to true when a SAVE symbol is first drawn (in dealHand or hitCard),
+ * and set to false when the save is consumed (in hitCard's bust-save path).
+ * A SAVE card left in bj.cards after consumption must NOT re-grant the save,
+ * so we must never re-derive saveHeld from saveSeen here.
  */
 function applyEval(bj: BlackjackReelSessionState, ev: HandEval): void {
   bj.total = ev.total
   bj.isSoft = ev.isSoft
   bj.busted = ev.busted
   bj.multSum = ev.multSum
-  // saveHeld reflects whether an unspent save is visible in the current cards
-  bj.saveHeld = ev.saveSeen
+  // saveHeld is intentionally NOT updated here — see comment above.
 }
 
 /**
@@ -187,6 +199,10 @@ export function dealHand(
 
   const ev = evaluateHand(def, bj.cards)
   applyEval(bj, ev)
+  // Set saveHeld explicitly from the initial deal evaluation.
+  // After this point saveHeld is only updated explicitly (set true on SAVE draw,
+  // false on save consume) — never re-derived from evaluateHand.
+  bj.saveHeld = ev.saveSeen
 
   // grid: one row of dealt symbols (cards are the visible positions)
   const grid: SymbolId[][] = bj.cards.map(c => [c])
@@ -211,13 +227,18 @@ export function dealHand(
  * Hit: draw one card from strips[cards.length] (the next reel).
  *
  * Cases:
- *  - Busted + saveHeld: void the busting card (pop it), re-evaluate, consume
- *    the save (saveHeld → false since the save card remains but saveSeen will
- *    be false after removal of the busting card; to avoid re-granting, we
- *    explicitly set saveHeld = false after consume). Phase stays 'dealt'.
+ *  - Busted + saveHeld: void the busting card IN PLACE (replace cards[last]
+ *    with VOID_CARD so cards.length stays the same — the slot is consumed but
+ *    contributes 0). Set saveHeld = false explicitly. Phase stays 'dealt'. The
+ *    next hit draws from the NEXT reel (monotonically advancing reel index).
  *  - Busted + no save: busted = true, phase = 'resolved', payout 0.
- *  - 5 cards drawn without bust: charlie = true, auto-resolve.
+ *  - 5 cards reached without bust: charlie = true, auto-resolve.
  *  - Otherwise: stay 'dealt'.
+ *
+ * saveHeld is managed as EXPLICIT state — this function sets it true when a
+ * SAVE card is drawn (so subsequent bust triggers it) and false on consume.
+ * It is never re-derived from evaluateHand so a SAVE left in bj.cards after
+ * consumption cannot re-grant the mechanic.
  *
  * coinsIn is always 0 (hits are free).
  */
@@ -236,6 +257,11 @@ export function hitCard(
   const drawnCard = strip[idx]!
   bj.cards.push(drawnCard)
 
+  // Set saveHeld explicitly when a SAVE symbol is drawn.
+  if (def.bustSaveSymbol !== null && drawnCard === def.bustSaveSymbol) {
+    bj.saveHeld = true
+  }
+
   const ev = evaluateHand(def, bj.cards)
   applyEval(bj, ev)
 
@@ -244,21 +270,44 @@ export function hitCard(
   // --- bust handling ---
   if (bj.busted) {
     if (bj.saveHeld) {
-      // consume the save: void the busting card (pop it) AND remove the SAVE
-      // symbol from bj.cards so subsequent evaluateHand calls return saveSeen=false
-      // (save is truly spent).
-      const voidedCard = bj.cards.pop()!
-      // Remove the save card from the hand record so it cannot re-trigger
-      const saveIdx = def.bustSaveSymbol !== null
-        ? bj.cards.indexOf(def.bustSaveSymbol)
-        : -1
-      if (saveIdx !== -1) bj.cards.splice(saveIdx, 1)
-      const evAfter = evaluateHand(def, bj.cards)
-      applyEval(bj, evAfter)
-      // saveHeld is now false because saveSeen is false (card removed)
+      // Bust-Save: void the busting card IN PLACE so the reel index advances
+      // monotonically. cards.length stays the same (the slot is consumed with 0
+      // contribution). saveHeld is set false via explicit state — the SAVE card
+      // remains in bj.cards but must NOT re-grant on future evaluations.
+      const voidedCard = drawnCard
+      bj.cards[bj.cards.length - 1] = VOID_CARD
       bj.saveHeld = false
 
+      // Re-evaluate with VOID in place so total/busted are correct.
+      const evAfter = evaluateHand(def, bj.cards)
+      applyEval(bj, evAfter)
+
       const gridAfter: SymbolId[][] = bj.cards.map(c => [c])
+
+      // If the voided card was the 5th reel slot, the hand survives all 5 reels
+      // via the save: trigger Five-Card Charlie immediately.
+      if (bj.cards.length === 5) {
+        bj.charlie = true
+        bj.phase = 'resolved'
+        const payout = resolvePayout(def, bj)
+        return {
+          machineId: def.id,
+          family: 'blackjack-reel',
+          coins: bj.ante,
+          gameKind: 'base',
+          coinsIn: 0,
+          stops: [idx],
+          grid: gridAfter,
+          wins: payout > 0
+            ? [{ line: 'charlie', entryId: 'charlie', symbols: [...bj.cards], payCredits: payout, wildCount: 0, progressive: false }]
+            : [],
+          totalPayout: payout,
+          progressiveEvents: [],
+          featureEvents: [{ type: 'bust-saved', voidedCard }, { type: 'charlie', cards: [...bj.cards] }],
+          trace: { draws: [] }
+        }
+      }
+
       return {
         machineId: def.id,
         family: 'blackjack-reel',

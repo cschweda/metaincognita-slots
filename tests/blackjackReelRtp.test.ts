@@ -195,12 +195,14 @@ describe('optimalAction — accepts the live session state shape', () => {
 })
 
 // ---------------------------------------------------------------------------
-// DP ↔ live-engine agreement. The Task 5 convergence check formalises this,
-// but the save-consume reel-index behaviour (the live engine re-reads an
-// EARLIER reel after a save) is subtle enough to verify here: drive the real
-// dealHand/hitCard/standHand step functions under the DP's optimal policy and
-// confirm the empirical RTP lands within a tight statistical band of the exact
-// figure on a fixture that actually exercises multipliers and bust-saves.
+// DP ↔ live-engine agreement. The bust-save void-in-place behaviour is subtle:
+// the live engine voids the busting card IN PLACE (replaces it with a VOID
+// sentinel) so cards.length grows monotonically — the next draw always uses the
+// next reel. The DP mirrors this: on a saved bust handSize increments (not
+// decrements). Drive the real dealHand/hitCard/standHand step functions under
+// the DP's optimal policy and confirm the empirical RTP lands within a tight
+// statistical band of the exact figure on a fixture that exercises multipliers,
+// bust-saves, and five-card charlies.
 // ---------------------------------------------------------------------------
 
 function playOptimalHand(def: BlackjackReelMachineDef, rand: () => number): number {
@@ -221,6 +223,75 @@ function playOptimalHand(def: BlackjackReelMachineDef, rand: () => number): numb
   }
   return total
 }
+
+describe('DP afterDraw bust-save semantics: handSize increments (void-in-place)', () => {
+  it('DP computes RTP using the reel AFTER the voided slot (not the one before)', () => {
+    // Fixture designed so the correct vs wrong reel-index-after-save give very
+    // different RTPs, letting us catch if the DP still decrements handSize.
+    //
+    // Setup:
+    //   reel 0: ['CT']         → always 10
+    //   reel 1: ['SAVE']       → always SAVE (deal always gives a save)
+    //   reel 2: ['CT']         → always 10: hitting would bust 10+10=20 → save fires
+    //   reel 3: ['CT']         → another 10 → VOID consumed reel 2 slot (handSize 3→4)
+    //                            next hit is reel 3: 10 → busts 10+10=20... hmm
+    //
+    // Better fixture: after deal (CT, SAVE), total = 10, saveHeld=true.
+    // reel 2: all tens → hit gets 20 (safe, no bust) → stay dealt at total 20.
+    //   Actually CT(10)+SAVE(0)=10; hitting CT→20, no bust yet.
+    //   We need to FORCE a bust on reel 2 to trigger the save. We need > 21.
+    //   Reel 0 should deal something high. Let reel 0='CT'(10), reel1='SAVE'.
+    //   After deal: total=10 (CT+SAVE=10), saveHeld=true.
+    //   reel 2='CT': hit → 20, no bust. Still dealt. Let's try:
+    //   reel 0=['CT','CT']×5, reel 1=['CT','SAVE'], reel 2=['CT'] (always 10).
+    //   After deal CT+CT: total=20, saveHeld=false. Hit reel2 CT → 30 bust, no save → 0.
+    // Try: reel0=['CA'], reel1=['CT']: total=21 → optimal stand always pays 5. Not useful.
+    //
+    // Simplest: two value cards in deal. Save dealt on reel 2 (a hit).
+    //   reel0=['CT'], reel1=['C7'], total=17, saveHeld=false.
+    //   reel2=['SAVE']: hit → total still 17, saveHeld=true.
+    //   reel3=['CT']: hit → 27 bust, save fires → VOID reel3 slot → handSize goes 3→4.
+    //   reel4=['C2']: OLD reel-index bug would use reel2 (SAVE) again → handSize would be 2→3.
+    //     Correct: reel4=['C2'] → C2=2 → total 19, 5 cards, charlie EV=(2+10)=12.
+    //     Wrong (old): reel2=['SAVE'] → SAVE=0 → total 17, then reel3=['CT'] → bust again...
+    //   So: correct DP gives high RTP (charlie+paytable); wrong DP gives much lower value.
+    //
+    // To make the difference quantifiable, we'll compare to a manually computed value.
+    // Under correct semantics:
+    //   deal always (CT,C7)=17, saveHeld=false.
+    //   optimal: hit reel2 (SAVE) → total=17, saveHeld=true → always beneficial to keep hitting.
+    //   hit reel3 (CT) → 27 bust, save fires → VOID slot 3, handSize=4.
+    //   hit reel4 (C2) → total=19, 5 cards, charlie = pay(19)+charlieBonus = 2+10=12.
+    //   RTP = 12 (always, deterministic).
+    //
+    // Under wrong semantics (handSize decrements to 2 after save):
+    //   After save fires, handSize=2. Next hit draws reel2=['SAVE'] → saveHeld=true again!
+    //   Then hits reel3=['CT'] again, bust, save fires, handSize=2 again → infinite loop or
+    //   eventually handSize reaches 5 via a different path. Either way RTP differs.
+    const def = makeDef({
+      strips: [
+        ['CT'], // reel 0: always 10
+        ['C7'], // reel 1: always 7 → deal total=17
+        ['SAVE'], // reel 2: always SAVE → saveHeld=true after hit
+        ['CT'], // reel 3: always 10 → bust (17+10=27), save fires → VOID slot 3
+        ['C2'] // reel 4: always 2 → total=19, 5 cards → charlie
+      ],
+      paytable: [
+        { total: 17, pay: 1 },
+        { total: 19, pay: 2 }
+      ],
+      charlieBonus: 10,
+      bustSaveSymbol: 'SAVE'
+    })
+
+    const r = blackjackReelExactRtp(def)
+    // Under correct semantics (void-in-place, reel index monotonic):
+    //   Always deal 17, hit SAVE (reel2), hit CT bust→VOID (reel3), hit C2→19 charlie (reel4).
+    //   Final: pay(19)+charlieBonus=2+10=12, mult=1. RTP = 12.
+    expect(r.rtpPerCoin).toBeCloseTo(12, 8)
+    expect(r.hitFrequency).toBeCloseTo(1, 8) // always pays > 0
+  })
+})
 
 describe('DP ↔ live step-function agreement (incl. bust-saves + multipliers)', () => {
   it('empirical RTP under the optimal policy matches blackjackReelExactRtp', () => {

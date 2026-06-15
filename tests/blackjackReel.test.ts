@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { BlackjackReelMachineDef, BlackjackReelSessionState, MachineSessionState } from '../app/engine/types'
 import { evaluateHand, dealHand, hitCard, standHand } from '../app/engine/blackjackReel'
 import { mulberry32 } from '../app/engine/rng'
+// VOID sentinel used by void-in-place bust-save mechanic
+const VOID_SYMBOL = 'VOID'
 
 // ---------- Task 1: type smoke tests ----------
 
@@ -100,6 +102,21 @@ describe('evaluateHand', () => {
     const r = evaluateHand(fix, ['CA', 'CK'])
     expect(r.total).toBe(21)
     expect(r.isSoft).toBe(true)
+  })
+
+  it('VOID sentinel contributes 0 to hand total and does not bust', () => {
+    // ['CK', 'SAVE', 'C7', 'VOID']: CK=10, SAVE=0, C7=7, VOID=0 → total=17, no bust
+    const r = evaluateHand(fix, ['CK', 'SAVE', 'C7', VOID_SYMBOL])
+    expect(r.total).toBe(17)
+    expect(r.busted).toBe(false)
+    expect(r.saveSeen).toBe(true) // SAVE still in hand
+  })
+
+  it('VOID sentinel does not affect multiplier sum', () => {
+    const r = evaluateHand(fix, ['CK', 'MX2', VOID_SYMBOL])
+    expect(r.total).toBe(10)
+    expect(r.multSum).toBe(2)
+    expect(r.busted).toBe(false)
   })
 })
 
@@ -258,14 +275,18 @@ describe('hitCard', () => {
     expect(bj.busted).toBe(true)
   })
 
-  it('bust with save held → voided busting card popped + save card removed, phase stays dealt', () => {
-    // Engine removes both the busting card AND the SAVE card from bj.cards on consume,
-    // so subsequent evaluateHand calls cannot re-grant the save.
+  it('bust with save held → busting card replaced with VOID in-place, reel index advances, phase stays dealt', () => {
+    // NEW semantics (void-in-place): when a hit busts and saveHeld is true,
+    // the drawn busting card is replaced with VOID in the cards array — the slot
+    // is consumed but contributes 0. cards.length stays the same (increases by 1
+    // vs before the draw), reel index keeps advancing monotonically. saveHeld is
+    // set false via explicit state (not re-derived from saveSeen).
     //
     // Initial manual state: CK(10)+SAVE+C7(7) = total 17, saveHeld=true, 3 cards.
-    // Hit from strips[3]=['C2','CK'] with raw=0.75 → idx=Math.floor(0.75*2)=1 → CK.
-    // CK(10) + CK(10) + C7(7) = 27 (bust). Save is held → void drawn CK + remove SAVE.
-    // Resulting cards: ['CK','C7'], total=17, saveHeld=false, phase='dealt'.
+    // Hit from strips[3]=['C2','CK'] (cards.length=3 → reel 3).
+    // raw=0.75 → idx=Math.floor(0.75*2)=1 → CK.
+    // CK would give total 27 (bust). Save is held → VOID the drawn slot in-place.
+    // Result: ['CK','SAVE','C7','VOID'], length=4, total=17, saveHeld=false, phase='dealt'.
     const state = freshState()
     state.blackjackReel = {
       phase: 'dealt',
@@ -289,27 +310,153 @@ describe('hitCard', () => {
     const bj = state.blackjackReel!
     expect(bj.phase).toBe('dealt') // not resolved — save kept us in play
     expect(bj.busted).toBe(false)
-    expect(bj.saveHeld).toBe(false) // save consumed
-    // Both the busting card and the SAVE card are removed from the hand record.
-    // Started with ['CK','SAVE','C7'] (3), drew 1 CK, voided drawn CK + removed SAVE.
-    // Net: ['CK','C7'] = 2 cards.
-    expect(bj.cards).toHaveLength(2)
-    expect(bj.cards).not.toContain('SAVE') // save card consumed
-    expect(bj.total).toBe(17) // CK(10)+C7(7)=17
+    expect(bj.saveHeld).toBe(false) // save consumed via explicit state
+
+    // Void-in-place: the drawn slot is now VOID_SYMBOL, SAVE still in hand record
+    // (but saveHeld=false ensures it can't re-grant). Length advances from 3→4.
+    expect(bj.cards).toHaveLength(4) // reel index is now 4 (monotonic)
+    expect(bj.cards[3]).toBe(VOID_SYMBOL) // busting card voided in-place
+    expect(bj.total).toBe(17) // CK(10)+SAVE(0)+C7(7)+VOID(0)=17
   })
 
-  it('bust save is spent: second bust on same hand resolves to bust', () => {
-    // After a save is consumed (save card and busting card removed), cards=['CK','C7'].
-    // A subsequent hit that busts has no save available → phase='resolved'.
-    //
-    // State after save consume: 2 cards ['CK','C7'], total=17, saveHeld=false.
-    // Hit from strips[2]=['C2','CK','C7'] with raw=0.75 → idx=Math.floor(0.75*3)=2 → 'C7'.
-    // 17+7=24 bust, no save → resolved.
+  it('reel index is strictly monotonic — a saved bust never re-reads an earlier reel', () => {
+    // After a bust-save, cards.length is 4 (not 2 as in old behavior).
+    // The next hit must draw from strips[4], not strips[2].
+    // Start: 3 cards ['CK','SAVE','C7'], saveHeld=true.
+    // Hit strips[3] → CK → bust → VOID in-place → cards length=4.
+    // Second hit draws from strips[4]=['C2'] (always safe).
+    // If reel index were wrong (rewound to 2), it would draw from strips[2] and
+    // the test would be reading the wrong card. strips[4]=['C2']=2, total=19.
     const state = freshState()
     state.blackjackReel = {
       phase: 'dealt',
-      cards: ['CK', 'C7'], // post-save-consume state (2 cards, SAVE already removed)
+      cards: ['CK', 'SAVE', 'C7'],
       total: 17,
+      isSoft: false,
+      multSum: 0,
+      saveHeld: true,
+      busted: false,
+      charlie: false,
+      ante: 1
+    }
+    // First hit: draw from reel 3, bust, save triggers VOID
+    hitCard(fixDef, state, () => 0.75) // idx=1 → CK, bust, void
+
+    const bj = state.blackjackReel!
+    // Now cards.length must be 4; next hit must use strips[4]=['C2']
+    expect(bj.cards).toHaveLength(4)
+
+    // Second hit: strips[4]=['C2'], always idx=0 → C2=2. Total becomes 17+2=19.
+    const out2 = hitCard(fixDef, state, () => 0.1)
+    // If reel index rewound to 2, we'd draw from strips[2]=['C2','CK','C7'] — also could be CK=bust.
+    // But with idx=0 (raw=0.1 → floor(0.1*1)=0 for a len-1 strip), strips[4][0]='C2'.
+    // Confirm cards now has 5 entries (charlie or resolved at 5).
+    expect(state.blackjackReel!.cards).toHaveLength(5)
+    // With ['CK','SAVE','C7','VOID','C2']: CK(10)+SAVE(0)+C7(7)+VOID(0)+C2(2)=19; 5 cards → charlie
+    expect(out2.featureEvents[0]!.type).toBe('charlie')
+    expect(state.blackjackReel!.charlie).toBe(true)
+  })
+
+  it('hand never exceeds 5 cards even with a save-voided slot', () => {
+    // Build a 4-card hand including a VOID (from a prior bust-save), then hit the 5th.
+    // cards=['CK','SAVE','C7','VOID'], saveHeld=false, length=4, total=17.
+    // strips[4]=['C2'] → C2(2) → total=19, 5 cards → charlie.
+    const state = freshState()
+    state.blackjackReel = {
+      phase: 'dealt',
+      cards: ['CK', 'SAVE', 'C7', VOID_SYMBOL],
+      total: 17,
+      isSoft: false,
+      multSum: 0,
+      saveHeld: false,
+      busted: false,
+      charlie: false,
+      ante: 2
+    }
+    // strips[4]=['C2'] (cards.length=4 → reel 4); always C2
+    const out = hitCard(fixDef, state, () => 0.1)
+    const bj = state.blackjackReel!
+    expect(bj.cards).toHaveLength(5) // exactly 5 — never 6
+    expect(bj.phase).toBe('resolved') // charlie auto-resolves
+    expect(bj.charlie).toBe(true)
+    expect(out.featureEvents[0]!.type).toBe('charlie')
+    // payout: total=19, pay=2; charlieBonus=10; mult=1; ante=2 → (2+10)×1×2=24
+    expect(out.totalPayout).toBe(24)
+  })
+
+  it('SAVE left in cards does not re-grant saveHeld after save is consumed', () => {
+    // After void-in-place: cards=['CK','SAVE','C7','VOID'], saveHeld=false.
+    // The SAVE card is still visible in cards, but saveHeld must stay false — it
+    // must NOT be re-derived from saveSeen on the next hitCard call.
+    // Draw strips[4]=['C2'] → C2(2) → total=19, 5 cards, no bust → charlie.
+    // (This is safe regardless, but confirms SAVE does not re-grant before charlie.)
+    const state = freshState()
+    state.blackjackReel = {
+      phase: 'dealt',
+      cards: ['CK', 'SAVE', 'C7', VOID_SYMBOL],
+      total: 17,
+      isSoft: false,
+      multSum: 0,
+      saveHeld: false, // explicitly false — SAVE in cards must not re-grant
+      busted: false,
+      charlie: false,
+      ante: 1
+    }
+    hitCard(fixDef, state, () => 0.1) // draws strips[4]=['C2'] → C2, charlie
+    // After the hit, saveHeld must still be false (not re-granted by SAVE in cards)
+    expect(state.blackjackReel!.saveHeld).toBe(false)
+  })
+
+  it('bust-save on the 5th reel slot fires charlie immediately (survive-all-five)', () => {
+    // When the busting card is the 5th reel slot AND a save is held, voiding it
+    // in-place fills all 5 slots → charlie must trigger immediately (not leave
+    // the hand in phase=dealt for the caller to stand manually).
+    //
+    // State: 4 cards ['CK','SAVE','CK','MX2'], total=20, saveHeld=true.
+    // fixDef strips[4]=['C2']. C2(2) → 20+2=22 bust → save fires → VOID slot 4.
+    // cards=['CK','SAVE','CK','MX2','VOID'], length=5 → charlie.
+    // payout: total=20, pay=3; charlieBonus=10; multSum=2→mult=2; ante=1 → (3+10)×2=26.
+    const state = freshState()
+    state.blackjackReel = {
+      phase: 'dealt',
+      cards: ['CK', 'SAVE', 'CK', 'MX2'],
+      total: 20,
+      isSoft: false,
+      multSum: 2,
+      saveHeld: true,
+      busted: false,
+      charlie: false,
+      ante: 1
+    }
+    // strips[4]=['C2'] always → idx=0 with any raw; C2(2) + 20 = 22 bust → save → VOID
+    const out = hitCard(fixDef, state, () => 0.1)
+    const bj = state.blackjackReel!
+    expect(bj.cards).toHaveLength(5)
+    expect(bj.cards[4]).toBe(VOID_SYMBOL)
+    expect(bj.charlie).toBe(true)
+    expect(bj.phase).toBe('resolved')
+    expect(bj.saveHeld).toBe(false)
+    // Must emit bust-saved AND charlie events
+    expect(out.featureEvents[0]!.type).toBe('bust-saved')
+    expect(out.featureEvents[1]!.type).toBe('charlie')
+    // payout: (3+10)×2×1 = 26
+    expect(out.totalPayout).toBe(26)
+  })
+
+  it('bust save is spent: second bust on same hand resolves to bust', () => {
+    // After a save is consumed (void-in-place), cards=['CK','SAVE','C7','VOID'] (4 cards).
+    // A subsequent hit from strips[4] that busts has no save available → phase='resolved'.
+    //
+    // New state: 4 cards with VOID, saveHeld=false.
+    // strips[4] only has 'C2'=2 → total becomes 19, not a bust.
+    // So we use a different state that can still bust: 4 cards summing to 20.
+    // ['CK','CK','VOID','VOID'] = 20, saveHeld=false.
+    // strips[4]=['C2'] = 2 → total=22 bust, no save → resolved.
+    const state = freshState()
+    state.blackjackReel = {
+      phase: 'dealt',
+      cards: ['CK', 'CK', VOID_SYMBOL, VOID_SYMBOL],
+      total: 20,
       isSoft: false,
       multSum: 0,
       saveHeld: false, // already spent
@@ -317,9 +464,8 @@ describe('hitCard', () => {
       charlie: false,
       ante: 1
     }
-    // strips[2]=['C2','CK','C7'] (cards.length=2 → reel 2); raw=0.75 → idx=2 → 'C7'
-    const raw = 0.75
-    const out = hitCard(fixDef, state, () => raw)
+    // fixDef strips[4]=['C2'] len=1, raw=0.1 → idx=0 → 'C2', 20+2=22 bust, no save
+    const out = hitCard(fixDef, state, () => 0.1)
     expect(out.featureEvents[0]!.type).toBe('bust')
     expect(state.blackjackReel!.phase).toBe('resolved')
     expect(state.blackjackReel!.busted).toBe(true)
