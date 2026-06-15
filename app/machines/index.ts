@@ -8,6 +8,7 @@ import { SEVENS_ABLAZE } from './sevens-ablaze'
 import { SERIES_E_3LINE } from './series-e-3line'
 import { SERIES_E_MULTIPLIER } from './series-e-multiplier'
 import { STOCK_RUSH } from './stock-rush'
+import { HIT_OR_BUST } from './hit-or-bust'
 
 export const FLOOR: MachineDef[] = [
   CANAL_ROYALE,
@@ -18,5 +19,6 @@ export const FLOOR: MachineDef[] = [
   SEVENS_ABLAZE,
   SERIES_E_3LINE,
   SERIES_E_MULTIPLIER,
-  STOCK_RUSH
+  STOCK_RUSH,
+  HIT_OR_BUST
 ]

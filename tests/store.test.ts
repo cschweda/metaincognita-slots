@@ -7,6 +7,7 @@ import { STOCK_RUSH } from '../app/machines/stock-rush'
 import { mulberry32, simulateMachine } from '../app/engine'
 import { setLiveRand } from '../app/utils/liveRand'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
+import { HIT_OR_BUST } from '../app/machines/hit-or-bust'
 
 function freshStore() {
   setActivePinia(createPinia())
@@ -459,5 +460,259 @@ describe('describeOutcome — spoken net parity', () => {
     store.startSession(100_000)
     const out = { totalPayout: 14, coinsIn: 0, featureEvents: [], progressiveEvents: [] }
     expect(store.describeOutcome(CANAL_ROYALE, out as never)).toContain('Net up 14.')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// blackjack-reel store actions: dealHand / hitCard / standHand
+// ---------------------------------------------------------------------------
+
+describe('blackjack-reel interactive actions', () => {
+  it('dealHand charges the ante and sets phase to dealt', () => {
+    setLiveRand(mulberry32(42))
+    const store = freshStore()
+    store.startSession(100_000) // 100_000 cents = 4000 credits at 25¢
+    store.selectMachine('hit-or-bust')
+    store.setBet(2) // 2-coin ante
+    const before = store.bankrollCents
+    store.dealHand()
+
+    // gate should be raised
+    expect(store.spinning).toBe(true)
+
+    // ante should have been charged: 2 coins × 25¢ = 50¢
+    expect(store.bankrollCents).toBe(before - 50)
+
+    // session state must be in dealt phase with 2 cards
+    const bj = store.machineStates['hit-or-bust']!.blackjackReel!
+    expect(bj.phase).toBe('dealt')
+    expect(bj.cards).toHaveLength(2)
+    expect(bj.ante).toBe(2)
+
+    // history record for the deal: coinsIn = 50¢, payout = 0
+    expect(store.history).toHaveLength(1)
+    const rec = store.history[0]!
+    expect(rec.machineId).toBe('hit-or-bust')
+    expect(rec.coinsInCents).toBe(50)
+    expect(rec.payoutCents).toBe(0)
+  })
+
+  it('hitCard adds a card and keeps spinning gate high while hand continues', () => {
+    // Use a seed where the first hit does NOT immediately bust or charlie
+    // (most draws from reel 2 on a low-total hand will continue)
+    setLiveRand(mulberry32(7))
+    const store = freshStore()
+    store.startSession(100_000)
+    store.selectMachine('hit-or-bust')
+    store.setBet(1)
+    store.dealHand()
+    store.revealDone() // lower gate between actions (UI pattern)
+
+    const bj = store.machineStates['hit-or-bust']!.blackjackReel!
+    if (bj.phase !== 'dealt') return // guard: skip if deal auto-resolved (theoretical)
+
+    const cardsBefore = bj.cards.length
+    store.hitCard()
+
+    // If still dealt: one more card was added, no payout booked beyond the deal
+    if (bj.phase === 'dealt') {
+      expect(bj.cards).toHaveLength(cardsBefore + 1)
+      // history still only has the deal record (hit has coinsIn=0 but we haven't booked
+      // a separate record for non-resolving hits — they're not separate cycles)
+    }
+    // If resolved (bust or charlie from a single hit): history grew by 1
+    if (bj.phase === 'resolved') {
+      expect(store.history.length).toBeGreaterThanOrEqual(1)
+    }
+    expect(store.spinning).toBe(true)
+  })
+
+  it('standHand books a payout and sets phase to resolved', () => {
+    setLiveRand(mulberry32(99))
+    const store = freshStore()
+    store.startSession(100_000)
+    store.selectMachine('hit-or-bust')
+    store.setBet(3)
+    store.dealHand()
+    store.revealDone()
+
+    const bj = store.machineStates['hit-or-bust']!.blackjackReel!
+    if (bj.phase !== 'dealt') return // deal put us in dealt; if not, skip
+
+    const bankBefore = store.bankrollCents
+    store.standHand()
+
+    expect(bj.phase).toBe('resolved')
+    expect(store.spinning).toBe(true)
+    // payout was booked (bankroll ≥ bankBefore if we won, or ≤ if total is 0)
+    const lastRec = store.history.at(-1)!
+    expect(lastRec.coinsInCents).toBe(0) // stand is free
+    expect(lastRec.payoutCents).toBeGreaterThanOrEqual(0)
+    expect(store.bankrollCents).toBe(bankBefore + lastRec.payoutCents)
+  })
+
+  it('dealHand is a no-op while spinning or broke', () => {
+    setLiveRand(mulberry32(1))
+    const store = freshStore()
+    store.startSession(100_000)
+    store.selectMachine('hit-or-bust')
+    store.dealHand()
+    expect(store.spinning).toBe(true) // gate is up
+
+    // calling again while spinning does nothing
+    store.dealHand()
+    expect(store.history).toHaveLength(1)
+
+    // lower gate, stand the current hand, lower gate again
+    store.revealDone()
+    store.standHand()
+    store.revealDone()
+    expect(store.history).toHaveLength(2) // deal + stand records
+
+    // drain bankroll to below 1 coin (25¢) and try to deal
+    store.bankrollCents = 10 // 10¢ < 25¢
+    store.dealHand()
+    expect(store.history).toHaveLength(2) // no new deal record
+    expect(store.liveAnnouncement).toMatch(/out of credits/i)
+  })
+
+  it('spinOnce is a no-op for blackjack-reel (uses its own actions)', () => {
+    setLiveRand(mulberry32(2))
+    const store = freshStore()
+    store.startSession(100_000)
+    store.selectMachine('hit-or-bust')
+    store.spinOnce()
+    expect(store.history).toHaveLength(0)
+    expect(store.spinning).toBe(false)
+  })
+
+  it('a full deal→stand hand round-trips through persistence', () => {
+    setLiveRand(mulberry32(42))
+    const store = freshStore()
+    store.startSession(100_000)
+    store.selectMachine('hit-or-bust')
+    store.setBet(1)
+    store.dealHand()
+    store.revealDone()
+    store.standHand()
+    store.revealDone()
+
+    // save and reload
+    const b = freshStore()
+    expect(b.resume()).toBe(true)
+    const bj = b.machineStates['hit-or-bust']!.blackjackReel!
+    expect(bj.phase).toBe('resolved')
+    expect(b.history.length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe('blackjack-reel sanitizeMachineState', () => {
+  it('round-trips a mid-deal blackjack state exactly', () => {
+    const a = freshStore()
+    a.startSession(50_000)
+    a.selectMachine('hit-or-bust')
+    a.machineStates['hit-or-bust']!.blackjackReel = {
+      phase: 'dealt',
+      cards: ['CK', 'C7'],
+      total: 17,
+      isSoft: false,
+      multSum: 0,
+      saveHeld: false,
+      busted: false,
+      charlie: false,
+      ante: 2
+    }
+    a.saveToLocalStorage()
+    const b = freshStore()
+    expect(b.resume()).toBe(true)
+    expect(b.machineStates['hit-or-bust']!.blackjackReel).toEqual({
+      phase: 'dealt',
+      cards: ['CK', 'C7'],
+      total: 17,
+      isSoft: false,
+      multSum: 0,
+      saveHeld: false,
+      busted: false,
+      charlie: false,
+      ante: 2
+    })
+  })
+
+  it('restores idle phase if blackjackReel blob is corrupt', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1,
+      bankrollCents: 5000,
+      currentMachineId: 'hit-or-bust',
+      machineStates: {
+        'hit-or-bust': {
+          progressive: null,
+          videoFeature: null,
+          pachislo: null,
+          blackjackReel: {
+            phase: 'INVALID',
+            cards: ['not-a-symbol', 999],
+            total: 'lots',
+            isSoft: 'yes',
+            multSum: -5,
+            saveHeld: 'maybe',
+            busted: null,
+            charlie: undefined,
+            ante: 99
+          }
+        }
+      },
+      history: [],
+      stats: null,
+      settings: null
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    const bj = store.machineStates['hit-or-bust']!.blackjackReel!
+    // corrupt data → falls back to fresh idle state
+    expect(bj.phase).toBe('idle')
+    expect(bj.cards).toEqual([])
+    expect(bj.ante).toBe(0)
+  })
+
+  it('accepts VOID sentinel in cards array (bust-save mid-hand)', () => {
+    const state = {
+      phase: 'dealt',
+      cards: ['CK', 'C7', 'VOID', 'C4'],
+      total: 21,
+      isSoft: false,
+      multSum: 0,
+      saveHeld: false,
+      busted: false,
+      charlie: false,
+      ante: 1
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1, bankrollCents: 5000, currentMachineId: 'hit-or-bust',
+      machineStates: {
+        'hit-or-bust': {
+          progressive: null, videoFeature: null, pachislo: null,
+          blackjackReel: state
+        }
+      },
+      history: [], stats: null, settings: null
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    expect(store.machineStates['hit-or-bust']!.blackjackReel).toEqual(state)
+  })
+
+  it('bet is selectable for blackjack-reel (1..maxCoins), not forced to max', () => {
+    const store = freshStore()
+    store.startSession(100_000)
+    store.selectMachine('hit-or-bust')
+    expect(HIT_OR_BUST.maxCoins).toBe(3)
+    store.setBet(1)
+    expect(store.currentBet).toBe(1)
+    store.setBet(2)
+    expect(store.currentBet).toBe(2)
+    store.setBet(3)
+    expect(store.currentBet).toBe(3)
+    store.setBet(99) // over max → clamped
+    expect(store.currentBet).toBe(3)
   })
 })

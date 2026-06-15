@@ -2,6 +2,11 @@ import { defineStore } from 'pinia'
 import { addCoinToProgressive, initMachineState, nextSpinCost, spin, validateMachineDef } from '~/engine'
 import type { MachineDef, MachineSessionState, PachisloFlag, PachisloBonusState, SpinOutcome } from '~/engine'
 import { spinPachislo } from '~/engine/pachislo'
+import {
+  dealHand as engineDealHand,
+  hitCard as engineHitCard,
+  standHand as engineStandHand
+} from '~/engine/blackjackReel'
 import { FLOOR } from '~/machines'
 import { liveRand } from '~/utils/liveRand'
 
@@ -187,6 +192,49 @@ function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionStat
       replayNext: p.replayNext === true,
       bonus
     }
+  }
+
+  // blackjack-reel: validate+restore the interactive hand state, or reset to idle
+  if (def.family === 'blackjack-reel' && fresh.blackjackReel !== null
+    && r.blackjackReel !== null && typeof r.blackjackReel === 'object') {
+    const bj = r.blackjackReel as Record<string, unknown>
+    const PHASES = new Set(['idle', 'dealt', 'resolved'])
+    const phase = PHASES.has(bj.phase as string) ? bj.phase as 'idle' | 'dealt' | 'resolved' : null
+
+    // Build the set of valid SymbolIds for this def (declared symbols + VOID sentinel)
+    const validSymbols = new Set([...Object.keys(def.symbols), 'VOID'])
+
+    const cardsOk = Array.isArray(bj.cards)
+      && (bj.cards as unknown[]).every(c => typeof c === 'string' && validSymbols.has(c))
+      && (bj.cards as string[]).length <= 5
+
+    const totalOk = typeof bj.total === 'number' && Number.isFinite(bj.total)
+    const isSoftOk = typeof bj.isSoft === 'boolean'
+    const multSumOk = typeof bj.multSum === 'number' && Number.isFinite(bj.multSum) && (bj.multSum as number) >= 0
+    const saveHeldOk = typeof bj.saveHeld === 'boolean'
+    const bustedOk = typeof bj.busted === 'boolean'
+    const charlieOk = typeof bj.charlie === 'boolean'
+    const anteOk = Number.isInteger(bj.ante) && (bj.ante as number) >= 0 && (bj.ante as number) <= def.maxCoins
+
+    if (phase !== null && cardsOk && totalOk && isSoftOk && multSumOk
+      && saveHeldOk && bustedOk && charlieOk && anteOk) {
+      // Clamp total to sane range (hand totals: 0..31 covers any possible bust)
+      const total = Math.min(Math.max(bj.total as number, 0), 31)
+      const multSum = Math.max(bj.multSum as number, 0)
+      const ante = Math.min(Math.max(bj.ante as number, 0), def.maxCoins)
+      fresh.blackjackReel = {
+        phase,
+        cards: bj.cards as string[],
+        total,
+        isSoft: bj.isSoft as boolean,
+        multSum,
+        saveHeld: bj.saveHeld as boolean,
+        busted: bj.busted as boolean,
+        charlie: bj.charlie as boolean,
+        ante
+      }
+    }
+    // else: corrupt/invalid shape — fresh.blackjackReel stays as the idle default
   }
 
   return fresh
@@ -401,6 +449,9 @@ export const useSlotsStore = defineStore('slots', {
       const state = this.currentState
       if (def === null || state === null || this.phase !== 'playing' || this.spinning) return
 
+      // blackjack-reel is interactive — it uses dealHand/hitCard/standHand, not spinOnce
+      if (def.family === 'blackjack-reel') return
+
       if (presses !== undefined) {
         for (const q of presses) {
           if (!Number.isInteger(q) || q < 0 || q > 20) {
@@ -444,6 +495,23 @@ export const useSlotsStore = defineStore('slots', {
         throw new Error(`${def.id}: nextSpinCost predicted ${costCoins} but spin charged ${out.coinsIn}`)
       }
 
+      this.bookOutcome(def, out)
+      this.lastOutcome = out
+      this.liveAnnouncement = this.describeOutcome(def, out)
+      this.saveToLocalStorage()
+    },
+
+    revealDone() {
+      this.spinning = false
+    },
+
+    /**
+     * Shared bookkeeping for a resolved SpinOutcome: apply credits, push a
+     * history record, update session + per-machine stats, and persist.
+     * Used by spinOnce AND the blackjack-reel interactive actions so the
+     * accounting is exactly identical across all families.
+     */
+    bookOutcome(def: MachineDef, out: SpinOutcome): void {
       const inCents = out.coinsIn * def.denominationCents
       const outCents = out.totalPayout * def.denominationCents
       this.bankrollCents += outCents - inCents
@@ -478,14 +546,104 @@ export const useSlotsStore = defineStore('slots', {
           if (totals.samples.length > SPARKLINE_LIMIT) totals.samples.splice(0, totals.samples.length - SPARKLINE_LIMIT)
         }
       }
+    },
 
+    // ── Hit or Bust interactive actions ──────────────────────────────────────
+
+    /**
+     * Deal two cards for the current blackjack-reel machine. Only fires when:
+     *   - current machine is blackjack-reel
+     *   - phase is 'idle' or 'resolved' (ready for a new hand)
+     *   - bankroll covers the ante (= currentBet coins)
+     *
+     * Charges the ante up-front (coinsIn = currentBet, payout = 0), pushes a
+     * history record, updates wagered stats, saves, and sets the spinning gate.
+     */
+    dealHand(): void {
+      const def = this.currentDef
+      const state = this.currentState
+      if (
+        def === null || state === null
+        || this.phase !== 'playing' || this.spinning
+        || def.family !== 'blackjack-reel'
+        || state.blackjackReel === null
+      ) return
+
+      const bj = state.blackjackReel
+      if (bj.phase !== 'idle' && bj.phase !== 'resolved') return
+
+      const coins = this.currentBet
+      const costCents = coins * def.denominationCents
+      if (costCents > this.bankrollCents) {
+        this.liveAnnouncement = 'Out of credits — play another machine to rebuild your bankroll, or end the session.'
+        return
+      }
+
+      this.spinning = true
+      const out = engineDealHand(def, state, coins, liveRand)
+      this.bookOutcome(def, out)
       this.lastOutcome = out
-      this.liveAnnouncement = this.describeOutcome(def, out)
+      this.liveAnnouncement = `Cards dealt: ${state.blackjackReel!.cards.join(', ')}. Total ${state.blackjackReel!.total}. Balance ${Math.floor(this.bankrollCents / def.denominationCents).toLocaleString('en-US')} credits.`
       this.saveToLocalStorage()
     },
 
-    revealDone() {
-      this.spinning = false
+    /**
+     * Draw one more card for the current in-progress hand. Only fires when
+     * phase === 'dealt'. Free (coinsIn = 0). If the draw resolves the hand
+     * (bust or charlie) the payout is booked immediately.
+     */
+    hitCard(): void {
+      const def = this.currentDef
+      const state = this.currentState
+      if (
+        def === null || state === null
+        || this.phase !== 'playing' || this.spinning
+        || def.family !== 'blackjack-reel'
+        || state.blackjackReel === null
+        || state.blackjackReel.phase !== 'dealt'
+      ) return
+
+      this.spinning = true
+      const out = engineHitCard(def, state, liveRand)
+      const bj = state.blackjackReel
+      const resolved = bj.phase === 'resolved'
+
+      if (resolved) {
+        // bust or charlie: book payout (may be 0 on bust)
+        this.bookOutcome(def, out)
+        this.lastOutcome = out
+        this.liveAnnouncement = this.describeOutcome(def, out)
+      } else {
+        // bust-saved or normal hit — hand continues, no payout yet
+        this.lastOutcome = out
+        const card = out.featureEvents.find(e => e.type === 'hit' || e.type === 'bust-saved')
+        const desc = card?.type === 'bust-saved' ? 'Bust saved! Hand continues.' : `Hit: ${bj.cards[bj.cards.length - 1]}. Total ${bj.total}.`
+        this.liveAnnouncement = `${desc} Balance ${Math.floor(this.bankrollCents / def.denominationCents).toLocaleString('en-US')} credits.`
+      }
+      this.saveToLocalStorage()
+    },
+
+    /**
+     * Stand: resolve the hand at its current total. Only fires when
+     * phase === 'dealt'. Free (coinsIn = 0). Books the payout.
+     */
+    standHand(): void {
+      const def = this.currentDef
+      const state = this.currentState
+      if (
+        def === null || state === null
+        || this.phase !== 'playing' || this.spinning
+        || def.family !== 'blackjack-reel'
+        || state.blackjackReel === null
+        || state.blackjackReel.phase !== 'dealt'
+      ) return
+
+      this.spinning = true
+      const out = engineStandHand(def, state)
+      this.bookOutcome(def, out)
+      this.lastOutcome = out
+      this.liveAnnouncement = this.describeOutcome(def, out)
+      this.saveToLocalStorage()
     },
 
     describeOutcome(def: MachineDef, out: SpinOutcome): string {

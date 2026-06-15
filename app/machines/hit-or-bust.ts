@@ -52,22 +52,22 @@ export const HIT_OR_BUST: BlackjackReelMachineDef = {
     + 'the even-rarer Bust Save voids one busting draw in place, keeping the hand alive for '
     + 'another chance.',
   symbols: {
-    C2: { label: '2' },
-    C3: { label: '3' },
-    C4: { label: '4' },
-    C5: { label: '5' },
-    C6: { label: '6' },
-    C7: { label: '7' },
-    C8: { label: '8' },
-    C9: { label: '9' },
+    C2: { label: '2', icon: 'pip-2' },
+    C3: { label: '3', icon: 'pip-3' },
+    C4: { label: '4', icon: 'pip-4' },
+    C5: { label: '5', icon: 'pip-5' },
+    C6: { label: '6', icon: 'pip-6' },
+    C7: { label: '7', icon: 'pip-7' },
+    C8: { label: '8', icon: 'pip-8' },
+    C9: { label: '9', icon: 'pip-9' },
     C10: { label: '10', icon: 'ten' },
     CJ: { label: 'Jack', icon: 'jack' },
     CQ: { label: 'Queen', icon: 'queen' },
     CK: { label: 'King', icon: 'king' },
     CA: { label: 'Ace', icon: 'ace' },
-    MX2: { label: '×2' },
-    MX3: { label: '×3' },
-    SAVE: { label: 'Bust Save' }
+    MX2: { label: '×2', icon: 'mult-x2' },
+    MX3: { label: '×3', icon: 'mult-x3' },
+    SAVE: { label: 'Bust Save', icon: 'bust-save' }
   },
   cardValues: {
     C2: 2, C3: 3, C4: 4, C5: 5, C6: 6,
