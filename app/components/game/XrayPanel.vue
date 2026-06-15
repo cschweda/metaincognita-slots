@@ -352,7 +352,7 @@ const bjOdds = computed(() => {
       data-test="bj-odds-panel"
     >
       <div class="text-[10px] text-neutral-400 uppercase tracking-wider">
-        Hit or Bust odds (optimal play)
+        Lucky 21 odds (optimal play)
       </div>
       <table class="w-full font-mono text-[11px]">
         <tbody class="divide-y divide-neutral-800/50">
