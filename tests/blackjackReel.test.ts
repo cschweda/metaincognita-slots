@@ -427,6 +427,53 @@ describe('lucky-21 step functions', () => {
     expect(bj.natural).toBe(true)
     expect(bj.bestTotal).toBe(21)
   })
+
+  // ── BUST on 5th reel (reel index 4) — does NOT become a Charlie ───────────
+
+  it('stopReel: BUST on reel 4 → busted, not charlie', () => {
+    // Reels 0-3 land safe cards (5+4+3+2 = 14, no bust), reel 4 is BUST symbol.
+    const def = mkDef([['5C'], ['4S'], ['3D'], ['2H'], ['BUST']])
+    const state = mkState(def)
+    const bj = freshBlackjackState()
+    bj.ante = 2
+    bj.phase = 'spinning'
+    bj.reelStrips = [['5C'], ['4S'], ['3D'], ['2H'], ['BUST']]
+    state.blackjackReel = bj
+
+    stopReel(def, state, zeroRand) // 5C, total 5
+    stopReel(def, state, zeroRand) // 4S, total 9
+    stopReel(def, state, zeroRand) // 3D, total 12
+    stopReel(def, state, zeroRand) // 2H, total 14 — still spinning
+    const out = stopReel(def, state, zeroRand) // BUST symbol on reel 4
+    expect(bj.busted).toBe(true)
+    expect(bj.bustBySymbol).toBe(true)
+    expect(bj.charlie).toBe(false)
+    expect(out.totalPayout).toBe(0)
+  })
+
+  // ── Natural → cashOut pays naturalPay, no Charlie multiplier ──────────────
+
+  it('cashOut after natural (AC+KC) pays naturalPay × ante, not Charlie multiplier', () => {
+    // Drive two stopReel calls: AC then KC → 2-card 21, natural=true, charlie=false.
+    // cashOut at that point: naturalPay=12, mult=max(1,0)=1, charlieMul=1, ante=1 → 12.
+    const def = mkDef([['AC'], ['KC'], ['5D'], ['3H'], ['2C']])
+    const state = mkState(def)
+    const bj = freshBlackjackState()
+    bj.ante = 1
+    bj.phase = 'spinning'
+    bj.reelStrips = [['AC'], ['KC'], ['5D'], ['3H'], ['2C']]
+    state.blackjackReel = bj
+
+    stopReel(def, state, zeroRand) // AC, total 11
+    stopReel(def, state, zeroRand) // KC, total 21 — natural=true
+    expect(bj.natural).toBe(true)
+    expect(bj.charlie).toBe(false)
+
+    const out = cashOut(def, state)
+    // naturalPay=12, mult=max(1,0)=1, charlieMul=1 (charlie=false), ante=1 → 12
+    expect(out.totalPayout).toBe(12)
+    expect(out.totalPayout).toBe(def.naturalPay)
+  })
 })
 
 // ---------- handPayout unit tests (construct states directly) ----------

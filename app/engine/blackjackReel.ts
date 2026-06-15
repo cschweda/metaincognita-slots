@@ -133,7 +133,9 @@ export function handPayout(def: BlackjackReelMachineDef, bj: BlackjackReelSessio
   } else {
     base = payEntry(def.paytable, bj.bestTotal)
   }
-  if (bj.natural && bj.bestTotal === 21) base = def.naturalPay
+  // natural (2-card 21) and charlie (survived all 5) are mutually exclusive; guard so a
+  // future variant can't let the natural premium silently bypass the Charlie multiplier.
+  if (bj.natural && !bj.charlie && bj.bestTotal === 21) base = def.naturalPay
   const charlieMul = bj.charlie ? def.charlieMultiplier : 1
   return base * mult * charlieMul * bj.ante
 }
@@ -238,9 +240,9 @@ export function stopReel(
   // Ratchet: only advance bestTotal upward
   if (bt.total > bj.bestTotal) bj.bestTotal = bt.total
   // Natural: 2-card 21
-  if (bj.idx === 2 && bt.total === 21) bj.natural = true
+  if (r === 1 && bt.total === 21) bj.natural = true // second reel = 2-card 21 → natural
   // Five-Card Charlie: survived all five reels
-  if (bj.idx >= 5) {
+  if (bj.idx === 5) {
     bj.charlie = true
     bj.phase = 'resolved'
     const pay = handPayout(def, bj)
