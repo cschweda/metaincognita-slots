@@ -148,7 +148,11 @@ const bjStrategy = computed(() => {
     multThreshold,
     baseThreshold,
     multChangesThreshold: multThreshold !== null && baseThreshold !== null && multThreshold !== baseThreshold,
-    saveChangesThreshold: saveThreshold !== null && baseThreshold !== null && saveThreshold !== baseThreshold
+    // A held Bust-Save removes the downside of hitting (a bust is voided in place and the
+    // run continues), so the optimal line is to HIT every made total — no total in 12–21
+    // keeps standing optimal, leaving saveThreshold null. That null is the strongest
+    // "strategy changed" signal, not its absence, so derive the note from it directly.
+    saveHitsAll: saveThreshold === null
   }
 })
 
@@ -530,7 +534,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
                   >{{ bjStrategy.soft17Action.toUpperCase() }}</span>
                   — the Ace cushion means standing on soft 17–19 forfeits the chance to reach a higher total or Charlie.
                 </p>
-                <p v-if="bjStrategy.saveChangesThreshold">
+                <p v-if="bjStrategy.saveHitsAll">
                   <span class="text-neutral-300">With Bust Save held:</span>
                   HIT on all hard totals (save voids one bust; every made total is worth chasing the Five-Card Charlie
                   from the reel-4 position).

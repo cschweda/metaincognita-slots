@@ -106,4 +106,17 @@ describe('ParSheetModal', () => {
     expect(cell.exists()).toBe(true)
     expect(cell.text()).toBe('STAND')
   })
+
+  it('hit-or-bust: Bust-Save note says HIT on all hard totals (regression — null threshold = hit-all, not "no change")', async () => {
+    const { wrapper } = setup('hit-or-bust')
+    await wrapper.find('[data-test="tab-math"]').trigger('click')
+    await new Promise(resolve => setTimeout(resolve, 80))
+    await wrapper.vm.$nextTick()
+    const text = wrapper.text()
+    // A held Bust-Save makes HIT optimal at every made total (EV(hit)≈1.40 > EV(stand)=1.0 at 18),
+    // so the save-threshold is null. The note must read that null as "hit everything", NOT as
+    // "no change" — the original guard wrongly rendered the contradictory line below.
+    expect(text).toMatch(/With Bust Save held:[\s\S]*HIT on all hard totals/i)
+    expect(text).not.toMatch(/save does not shift the break-even/i)
+  })
 })
