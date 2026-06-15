@@ -5,8 +5,7 @@ import { mulberry32 } from './rng'
 import { spin, nextSpinCost, initMachineState } from './index'
 import { addCoinToProgressive } from './progressive'
 import { exactRtp } from './exactRtp'
-import { dealHand, hitCard, standHand } from './blackjackReel'
-import { optimalAction } from './blackjackReelRtp'
+// Lucky 21 Task 1: blackjack-reel session simulation stubbed (engine lands in a later task).
 
 export interface SessionOptions {
   /** starting bankroll in CREDITS (1 credit = 1 coin = denominationCents) */
@@ -101,43 +100,9 @@ export function simulateSession(
   }
 
   if (def.family === 'blackjack-reel') {
-    // ── blackjack-reel: each hand is one paid spin (ante = bet) ────────────
-    // Play optimal hands until the player can't afford the ante or hits the cap.
-    while (paidSpins < opts.spinCap) {
-      // ante = bet; check affordability before each hand
-      if (balance < opts.bet) {
-        busted = true
-        break
-      }
-
-      // deal charges the ante
-      const dealOut = dealHand(def, state, opts.bet, rand)
-      balance -= dealOut.coinsIn // charge ante from balance (dealHand doesn't do this)
-      totalIn += dealOut.coinsIn
-
-      // hit-loop under the optimal policy until resolved
-      let handPayout = dealOut.totalPayout
-      const bj = state.blackjackReel!
-      while (bj.phase === 'dealt') {
-        if (optimalAction(def, bj) === 'hit') {
-          const out = hitCard(def, state, rand)
-          handPayout += out.totalPayout
-        } else {
-          const out = standHand(def, state)
-          handPayout += out.totalPayout
-        }
-      }
-
-      // credit payout to balance
-      balance += handPayout
-      totalOut += handPayout
-
-      if (balance > peak) peak = balance
-      if (peak - balance > maxDrawdown) maxDrawdown = peak - balance
-
-      paidSpins++
-      if (recordTrajectory) traj.push(balance)
-    }
+    // Lucky 21 Task 1: session simulation for blackjack-reel is stubbed.
+    // Real Lucky 21 session logic lands in a later task.
+    throw new Error('simulateSession: Lucky 21 blackjack-reel not yet implemented — later task')
   } else {
     // ── all other families ─────────────────────────────────────────────────
     // Free video features have cost 0, so they replay inside this loop without

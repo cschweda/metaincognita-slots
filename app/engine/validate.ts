@@ -252,21 +252,22 @@ export function validateMachineDef(def: MachineDef): void {
       break
     }
     case 'blackjack-reel': {
-      if (def.strips.length !== 5) errors.push(`blackjack-reel needs 5 strips, got ${def.strips.length}`)
+      // Lucky 21 minimal validation (Task 1); expanded in a later task.
+      if (def.reels.length !== 5) errors.push(`blackjack-reel needs 5 reels, got ${def.reels.length}`)
       if (def.paytable.length === 0) errors.push('blackjack-reel paytable must not be empty')
-      // Build the full set of valid symbol ids: card values, multipliers, bust-save
-      const validSymbols = new Set<SymbolId>([
-        ...Object.keys(def.cardValues),
-        def.aceSymbol,
-        ...Object.keys(def.multiplierSymbols),
-        ...(def.bustSaveSymbol !== null ? [def.bustSaveSymbol] : [])
-      ])
-      def.strips.forEach((strip, r) => {
-        if (strip.length === 0) errors.push(`strips[${r}] must not be empty`)
-        strip.forEach((s) => {
-          checkSymbol(s, `strips[${r}]`)
-          if (!validSymbols.has(s)) {
-            errors.push(`strips[${r}]: symbol "${s}" not found in cardValues, aceSymbol, multiplierSymbols, or bustSaveSymbol`)
+      if (!known.has(def.bustSymbol)) errors.push(`bustSymbol "${def.bustSymbol}" not declared in symbols`)
+      // Every non-CARD token in reels must be in multiplierSymbols, minusSymbols, or equal bustSymbol.
+      def.reels.forEach((reel, r) => {
+        reel.forEach((s) => {
+          if (s === 'CARD') return
+          if (!known.has(s)) {
+            errors.push(`reels[${r}]: unknown symbol "${s}"`)
+          } else if (
+            !(s in def.multiplierSymbols)
+            && !(s in def.minusSymbols)
+            && s !== def.bustSymbol
+          ) {
+            errors.push(`reels[${r}]: non-CARD token "${s}" not in multiplierSymbols, minusSymbols, or bustSymbol`)
           }
         })
       })

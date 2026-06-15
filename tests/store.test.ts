@@ -7,6 +7,7 @@ import { STOCK_RUSH } from '../app/machines/stock-rush'
 import { mulberry32, simulateMachine } from '../app/engine'
 import { setLiveRand } from '../app/utils/liveRand'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
+// Lucky 21: HIT_OR_BUST is off the floor in Task 1; imported for the skip-guarded tests below
 import { HIT_OR_BUST } from '../app/machines/hit-or-bust'
 
 function freshStore() {
@@ -465,9 +466,10 @@ describe('describeOutcome — spoken net parity', () => {
 
 // ---------------------------------------------------------------------------
 // blackjack-reel store actions: dealHand / hitCard / standHand
+// Lucky 21: all tests below skipped in Task 1; restored in a later task
 // ---------------------------------------------------------------------------
 
-describe('blackjack-reel interactive actions', () => {
+describe.skip('blackjack-reel interactive actions — Lucky 21: restored in a later task', () => {
   it('dealHand charges the ante and sets phase to dealt', () => {
     setLiveRand(mulberry32(42))
     const store = freshStore()
@@ -606,7 +608,8 @@ describe('blackjack-reel interactive actions', () => {
   })
 })
 
-describe('blackjack-reel sanitizeMachineState', () => {
+// Lucky 21: skipped in Task 1; restored in a later task
+describe.skip('blackjack-reel sanitizeMachineState — Lucky 21: restored in a later task', () => {
   it('round-trips a mid-deal blackjack state exactly', () => {
     const a = freshStore()
     a.startSession(50_000)

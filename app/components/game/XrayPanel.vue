@@ -76,26 +76,26 @@ const internals = computed(() => {
 })
 
 /**
- * Live EV(hit) vs EV(stand) for blackjack-reel hands in the 'dealt' phase.
+ * Live EV(hit) vs EV(stand) for blackjack-reel hands in the 'spinning' phase.
  * Returns null when not applicable (other families or idle/resolved state).
  */
 const bjEv = computed(() => {
   const d = def.value
   if (d === null || d.family !== 'blackjack-reel') return null
   const bj = store.currentState?.blackjackReel
-  if (bj === null || bj === undefined || bj.phase !== 'dealt') return null
+  if (bj === null || bj === undefined || bj.phase !== 'spinning') return null
   return decisionEvs(d as BlackjackReelMachineDef, bj)
 })
 
 /**
  * Bust rate and Five-Card Charlie rate from the exact RTP report.
- * Shown when the hand is not in the 'dealt' phase (idle or resolved).
+ * Shown when the hand is not in the 'spinning' phase (idle or resolved).
  */
 const bjOdds = computed(() => {
   const d = def.value
   if (d === null || d.family !== 'blackjack-reel') return null
   const bj = store.currentState?.blackjackReel
-  if (bj?.phase === 'dealt') return null // EV panel takes over
+  if (bj?.phase === 'spinning') return null // EV panel takes over
   const report = blackjackReelExactRtp(d as BlackjackReelMachineDef)
   const charlieBucket = report.breakdown.find(b => b.entryId === 'charlie')
   const bustBucket = report.breakdown.find(b => b.entryId === 'bust')
@@ -287,7 +287,7 @@ const bjOdds = computed(() => {
       </table>
     </div>
 
-    <!-- Blackjack-reel: live EV(hit) vs EV(stand) during 'dealt' phase -->
+    <!-- Blackjack-reel: live EV(hit) vs EV(stand) during 'spinning' phase -->
     <div
       v-if="bjEv"
       class="space-y-1"

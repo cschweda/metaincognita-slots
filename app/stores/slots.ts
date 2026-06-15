@@ -2,11 +2,7 @@ import { defineStore } from 'pinia'
 import { addCoinToProgressive, initMachineState, nextSpinCost, spin, validateMachineDef } from '~/engine'
 import type { MachineDef, MachineSessionState, PachisloFlag, PachisloBonusState, SpinOutcome } from '~/engine'
 import { spinPachislo } from '~/engine/pachislo'
-import {
-  dealHand as engineDealHand,
-  hitCard as engineHitCard,
-  standHand as engineStandHand
-} from '~/engine/blackjackReel'
+// Lucky 21 Task 1: blackjack-reel engine bodies are stubs (throw); real logic lands in a later task.
 import { FLOOR } from '~/machines'
 import { liveRand } from '~/utils/liveRand'
 
@@ -194,48 +190,9 @@ function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionStat
     }
   }
 
-  // blackjack-reel: validate+restore the interactive hand state, or reset to idle
-  if (def.family === 'blackjack-reel' && fresh.blackjackReel !== null
-    && r.blackjackReel !== null && typeof r.blackjackReel === 'object') {
-    const bj = r.blackjackReel as Record<string, unknown>
-    const PHASES = new Set(['idle', 'dealt', 'resolved'])
-    const phase = PHASES.has(bj.phase as string) ? bj.phase as 'idle' | 'dealt' | 'resolved' : null
-
-    // Build the set of valid SymbolIds for this def (declared symbols + VOID sentinel)
-    const validSymbols = new Set([...Object.keys(def.symbols), 'VOID'])
-
-    const cardsOk = Array.isArray(bj.cards)
-      && (bj.cards as unknown[]).every(c => typeof c === 'string' && validSymbols.has(c))
-      && (bj.cards as string[]).length <= 5
-
-    const totalOk = typeof bj.total === 'number' && Number.isFinite(bj.total)
-    const isSoftOk = typeof bj.isSoft === 'boolean'
-    const multSumOk = typeof bj.multSum === 'number' && Number.isFinite(bj.multSum) && (bj.multSum as number) >= 0
-    const saveHeldOk = typeof bj.saveHeld === 'boolean'
-    const bustedOk = typeof bj.busted === 'boolean'
-    const charlieOk = typeof bj.charlie === 'boolean'
-    const anteOk = Number.isInteger(bj.ante) && (bj.ante as number) >= 0 && (bj.ante as number) <= def.maxCoins
-
-    if (phase !== null && cardsOk && totalOk && isSoftOk && multSumOk
-      && saveHeldOk && bustedOk && charlieOk && anteOk) {
-      // Clamp total to sane range (hand totals: 0..31 covers any possible bust)
-      const total = Math.min(Math.max(bj.total as number, 0), 31)
-      const multSum = Math.max(bj.multSum as number, 0)
-      const ante = Math.min(Math.max(bj.ante as number, 0), def.maxCoins)
-      fresh.blackjackReel = {
-        phase,
-        cards: bj.cards as string[],
-        total,
-        isSoft: bj.isSoft as boolean,
-        multSum,
-        saveHeld: bj.saveHeld as boolean,
-        busted: bj.busted as boolean,
-        charlie: bj.charlie as boolean,
-        ante
-      }
-    }
-    // else: corrupt/invalid shape — fresh.blackjackReel stays as the idle default
-  }
+  // Lucky 21 Task 1: blackjack-reel state shape changed; always return fresh idle state.
+  // Full restore logic lands in a later task once the Lucky 21 machine is complete.
+  // (fresh.blackjackReel is already the correct idle default from initMachineState)
 
   return fresh
 }
@@ -579,12 +536,8 @@ export const useSlotsStore = defineStore('slots', {
         return
       }
 
-      this.spinning = true
-      const out = engineDealHand(def, state, coins, liveRand)
-      this.bookOutcome(def, out)
-      this.lastOutcome = out
-      this.liveAnnouncement = `Cards dealt: ${state.blackjackReel!.cards.join(', ')}. Total ${state.blackjackReel!.total}. Balance ${Math.floor(this.bankrollCents / def.denominationCents).toLocaleString('en-US')} credits.`
-      this.saveToLocalStorage()
+      // Lucky 21 Task 1: engine stub — real deal logic lands in a later task.
+      throw new Error('dealHand: Lucky 21 engine not yet implemented — later task')
     },
 
     /**
@@ -600,27 +553,11 @@ export const useSlotsStore = defineStore('slots', {
         || this.phase !== 'playing' || this.spinning
         || def.family !== 'blackjack-reel'
         || state.blackjackReel === null
-        || state.blackjackReel.phase !== 'dealt'
+        || state.blackjackReel.phase !== 'spinning'
       ) return
 
-      this.spinning = true
-      const out = engineHitCard(def, state, liveRand)
-      const bj = state.blackjackReel
-      const resolved = bj.phase === 'resolved'
-
-      if (resolved) {
-        // bust or charlie: book payout (may be 0 on bust)
-        this.bookOutcome(def, out)
-        this.lastOutcome = out
-        this.liveAnnouncement = this.describeOutcome(def, out)
-      } else {
-        // bust-saved or normal hit — hand continues, no payout yet
-        this.lastOutcome = out
-        const card = out.featureEvents.find(e => e.type === 'hit' || e.type === 'bust-saved')
-        const desc = card?.type === 'bust-saved' ? 'Bust saved! Hand continues.' : `Hit: ${bj.cards[bj.cards.length - 1]}. Total ${bj.total}.`
-        this.liveAnnouncement = `${desc} Balance ${Math.floor(this.bankrollCents / def.denominationCents).toLocaleString('en-US')} credits.`
-      }
-      this.saveToLocalStorage()
+      // Lucky 21 Task 1: engine stub — real hit logic lands in a later task.
+      throw new Error('hitCard: Lucky 21 engine not yet implemented — later task')
     },
 
     /**
@@ -635,15 +572,11 @@ export const useSlotsStore = defineStore('slots', {
         || this.phase !== 'playing' || this.spinning
         || def.family !== 'blackjack-reel'
         || state.blackjackReel === null
-        || state.blackjackReel.phase !== 'dealt'
+        || state.blackjackReel.phase !== 'spinning'
       ) return
 
-      this.spinning = true
-      const out = engineStandHand(def, state)
-      this.bookOutcome(def, out)
-      this.lastOutcome = out
-      this.liveAnnouncement = this.describeOutcome(def, out)
-      this.saveToLocalStorage()
+      // Lucky 21 Task 1: engine stub — real stand logic lands in a later task.
+      throw new Error('standHand: Lucky 21 engine not yet implemented — later task')
     },
 
     describeOutcome(def: MachineDef, out: SpinOutcome): string {

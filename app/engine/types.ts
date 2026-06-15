@@ -261,32 +261,44 @@ export interface PachisloMachineDef extends MachineDefBase {
 
 export interface BlackjackReelMachineDef extends MachineDefBase {
   family: 'blackjack-reel'
-  /** 5 weighted reel strips of card/special SymbolIds (slot-style, with replacement) */
-  strips: SymbolId[][]
-  /** card SymbolId -> blackjack value (2..10; faces 10). Aces handled via aceSymbol. */
-  cardValues: Record<SymbolId, number>
-  aceSymbol: SymbolId
-  /** special multiplier-card SymbolId -> additive face (e.g. {MX2:2, MX3:3}) */
+  /** 5 reel compositions; token 'CARD' = deal next deck card, else a special SymbolId */
+  reels: SymbolId[][]
+  /** special multiplier-card -> additive face (e.g. {MX2:2,MX3:3,MX5:5,MX10:10}) */
   multiplierSymbols: Record<SymbolId, number>
-  /** rare bust-save SymbolId (null = none) */
-  bustSaveSymbol: SymbolId | null
-  /** per-coin payout by final non-bust hand total */
+  /** minus-card -> points removed from the hard total (e.g. {MM2:2,MM3:3}) */
+  minusSymbols: Record<SymbolId, number>
+  /** instant-loss symbol */
+  bustSymbol: SymbolId
+  /** per-coin payout by best non-bust total; totals < qualifyMin are absent (=> 0) */
   paytable: { total: number, pay: number }[]
-  /** bonus per coin added when all five cards survive (Five-Card Charlie) */
-  charlieBonus: number
+  /** minimum best total that pays anything (15) */
+  qualifyMin: number
+  /** per-coin base for a 2-card 21 (natural), replacing paytable(21) when it occurs in two cards */
+  naturalPay: number
+  /** multiplier applied to the whole payout for surviving all five reels (Five-Card Charlie) */
+  charlieMultiplier: number
   progressive: null
 }
 
 export interface BlackjackReelSessionState {
-  phase: 'idle' | 'dealt' | 'resolved'
-  cards: SymbolId[] // revealed symbols (cards + specials), in draw order
-  total: number // best hand total <= 21 (or the busting min if busted)
-  isSoft: boolean // an ace is currently counted as 11
-  multSum: number // additive multiplier sum (0 => pays x1)
-  saveHeld: boolean // a bust-save is available
+  phase: 'idle' | 'spinning' | 'resolved'
+  /** the dealt strips for this hand (CARD tokens resolved to concrete deck ids) */
+  reelStrips: SymbolId[][]
+  /** landed symbol per reel; null until that reel is stopped */
+  landed: (SymbolId | null)[]
+  /** index of the next reel to stop (0..5) */
+  idx: number
+  /** symbols applied to the hand, in stop order (cards + specials) */
+  hand: SymbolId[]
+  hard: number // sum of value cards + 1 per ace, after minus subtractions (floored at 0)
+  aces: number // aces held (one may count as 11)
+  multSum: number // additive multiplier sum
+  bestTotal: number // high-water best total <=21 reached (drives the payout)
+  natural: boolean // a 2-card 21 was reached
   busted: boolean
-  charlie: boolean // survived all five
-  ante: number // coins wagered for this hand (locks the payout scale)
+  bustBySymbol: boolean // true if the loss was a BUST symbol (vs over-21)
+  charlie: boolean // survived all five reels
+  ante: number // coins wagered (locks the payout scale)
 }
 
 export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef | BlackjackReelMachineDef
@@ -411,13 +423,12 @@ export type FeatureEvent
     | { type: 'interlude-started', index: 1 | 2 }
     | { type: 'interlude-ended', index: 1 | 2, bells: number }
     | { type: 'bonus-ended', bonus: 'reg' | 'big' }
-    // blackjack-reel interactive hand events
-    | { type: 'cards-dealt', cards: SymbolId[] }
-    | { type: 'hit', card: SymbolId }
-    | { type: 'bust' }
-    | { type: 'bust-saved', voidedCard: SymbolId }
+    // blackjack-reel (Lucky 21) events
+    | { type: 'cards-dealt', strips: SymbolId[][] }
+    | { type: 'reel-stopped', reel: number, symbol: SymbolId }
+    | { type: 'bust', reel: number, bySymbol: boolean }
     | { type: 'charlie', cards: SymbolId[] }
-    | { type: 'stand', total: number, payout: number }
+    | { type: 'cash-out', bestTotal: number, payout: number }
 
 export interface SpinOutcome {
   machineId: string

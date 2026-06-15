@@ -1,9 +1,10 @@
 <!-- app/components/game/ReelBlackjackReel.vue -->
+<!-- Lucky 21 Task 1: component updated to compile against new BlackjackReelSessionState shape. -->
+<!-- Full UI redesign for stop-the-reels gameplay lands in a later task. -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useReelSymbols } from '~/composables/useReelSymbols'
-import { VOID_CARD } from '~/engine/blackjackReel'
 import type { BlackjackReelMachineDef } from '~/engine'
 
 const store = useSlotsStore()
@@ -12,12 +13,12 @@ const bj = computed(() => store.currentState?.blackjackReel ?? null)
 
 const { iconFor, labelFor } = useReelSymbols(def)
 
-/** Up-to-5 card slots; null = not yet drawn, VOID_CARD = bust-saved placeholder */
+/** Up-to-5 card slots from the landed array; null = not yet drawn */
 const slots = computed<(string | null)[]>(() => {
-  const cards = bj.value?.cards ?? []
+  const landed = bj.value?.landed ?? []
   const result: (string | null)[] = []
   for (let i = 0; i < 5; i++) {
-    result.push(cards[i] ?? null)
+    result.push(landed[i] ?? null)
   }
   return result
 })
@@ -26,19 +27,13 @@ const totalDisplay = computed(() => {
   const state = bj.value
   if (state === null || state.phase === 'idle') return null
   if (state.busted) return 'BUST'
-  if (state.isSoft && state.total <= 21) {
-    const hard = state.total - 10
-    return `${hard} / ${state.total}`
-  }
-  return String(state.total)
+  return String(state.bestTotal)
 })
 
 const multiplierDisplay = computed(() => {
   const state = bj.value
   if (state === null || state.multSum <= 0) return null
-  // The payout multiplier is max(1, multSum) (additive faces: ×2 card ⇒ multSum 2 ⇒ pays ×2;
-  // ×2 + ×3 ⇒ multSum 5 ⇒ ×5). Display multSum directly so the badge matches the payout — NOT
-  // multSum + 1, which overstated the multiplier by one (showed ×3 while paying ×2).
+  // The payout multiplier is max(1, multSum) (additive faces: ×2 card ⇒ multSum 2 ⇒ pays ×2).
   return `×${Math.max(1, state.multSum)}`
 })
 </script>
@@ -51,13 +46,6 @@ const multiplierDisplay = computed(() => {
     <!-- Status badges row -->
     <div class="flex items-center justify-between text-[11px] font-mono min-h-[20px]">
       <div class="flex items-center gap-2">
-        <span
-          v-if="bj.saveHeld"
-          class="rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-300 px-2 py-0.5"
-          data-test="bust-save-badge"
-        >
-          BUST SAVE HELD
-        </span>
         <span
           v-if="multiplierDisplay"
           class="rounded-full border border-violet-500/50 bg-violet-500/10 text-violet-300 px-2 py-0.5"
@@ -95,25 +83,18 @@ const multiplierDisplay = computed(() => {
         :class="[
           card === null
             ? 'border-neutral-800 bg-neutral-950 text-neutral-700'
-            : card === VOID_CARD
-              ? 'border-neutral-700 bg-neutral-950/50 opacity-40'
-              : (bj.busted && i === bj.cards.length - 1)
-                ? 'border-red-500/60 bg-red-500/10'
-                : 'border-neutral-600 bg-neutral-950'
+            : (bj.busted && i === bj.idx - 1)
+              ? 'border-red-500/60 bg-red-500/10'
+              : 'border-neutral-600 bg-neutral-950'
         ]"
-        :aria-label="card === null ? `Card slot ${i + 1} — not yet drawn` : card === VOID_CARD ? 'Bust saved — voided card' : labelFor(card)"
+        :aria-label="card === null ? `Card slot ${i + 1} — not yet drawn` : labelFor(card)"
       >
         <GameSymbolIcon
-          v-if="card !== null && card !== VOID_CARD"
+          v-if="card !== null"
           :icon="iconFor(card)"
           :label="labelFor(card)"
           :size="52"
         />
-        <span
-          v-else-if="card === VOID_CARD"
-          class="text-neutral-600 text-xs font-mono"
-          aria-hidden="true"
-        >VOID</span>
         <span
           v-else
           class="text-neutral-700 text-xl"

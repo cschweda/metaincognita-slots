@@ -1,4 +1,4 @@
-import type { MachineDef, MachineSessionState, SpinOutcome } from './types'
+import type { BlackjackReelSessionState, MachineDef, MachineSessionState, SpinOutcome } from './types'
 import type { RandomFn } from './rng'
 import { mulberry32 } from './rng'
 import { spinStepper } from './stepper'
@@ -6,8 +6,6 @@ import { spinBallyEm } from './ballyEm'
 import { spinVideo } from './video'
 import { spinPachislo } from './pachislo'
 import { initProgressiveState, addCoinToProgressive } from './progressive'
-import { dealHand, hitCard, standHand } from './blackjackReel'
-import { optimalAction } from './blackjackReelRtp'
 
 export * from './types'
 export { mulberry32, cryptoSeed } from './rng'
@@ -17,6 +15,25 @@ export type { ExactRtpReport } from './exactRtp'
 export { nearMisses } from './nearMiss'
 export { validateMachineDef } from './validate'
 export { initProgressiveState, addCoinToProgressive } from './progressive'
+
+export function freshBlackjackState(): BlackjackReelSessionState {
+  return {
+    phase: 'idle',
+    reelStrips: [],
+    landed: [null, null, null, null, null],
+    idx: 0,
+    hand: [],
+    hard: 0,
+    aces: 0,
+    multSum: 0,
+    bestTotal: 0,
+    natural: false,
+    busted: false,
+    bustBySymbol: false,
+    charlie: false,
+    ante: 0
+  }
+}
 
 export function initMachineState(def: MachineDef): MachineSessionState {
   return {
@@ -31,9 +48,7 @@ export function initMachineState(def: MachineDef): MachineSessionState {
           bonus: null
         }
       : null,
-    blackjackReel: def.family === 'blackjack-reel'
-      ? { phase: 'idle', cards: [], total: 0, isSoft: false, multSum: 0, saveHeld: false, busted: false, charlie: false, ante: 0 }
-      : null
+    blackjackReel: def.family === 'blackjack-reel' ? freshBlackjackState() : null
   }
 }
 
@@ -131,66 +146,9 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
   const rand = mulberry32(opts.seed)
   const state = initMachineState(def)
 
-  // ── blackjack-reel: play N hands under the optimal policy ──────────────────
-  // Each "hand" is one paid cycle (ante = opts.coins). Hit/stand loop driven by
-  // optimalAction; dealHand/hitCard/standHand mutate state.blackjackReel and
-  // return SpinOutcome; coinsIn on hitCard and standHand is 0 (only dealHand
-  // charges the ante). We mirror the existing accounting exactly.
+  // ── blackjack-reel (Lucky 21): implemented in a later task ─────────────────
   if (def.family === 'blackjack-reel') {
-    let totalIn = 0
-    let totalOut = 0
-    let hits = 0
-    let cycles = 0
-    let net = 0
-    let peak = 0
-    let maxDrawdown = 0
-    const byEntry: Record<string, number> = {}
-
-    while (cycles < opts.spins) {
-      // deal charges the ante
-      const dealOut = dealHand(def, state, opts.coins, rand)
-      totalIn += dealOut.coinsIn // = opts.coins
-
-      // hit-loop under the optimal policy until resolved
-      let handOut = 0
-      const bj = state.blackjackReel!
-      while (bj.phase === 'dealt') {
-        if (optimalAction(def, bj) === 'hit') {
-          const out = hitCard(def, state, rand)
-          handOut += out.totalPayout
-          for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-        } else {
-          const out = standHand(def, state)
-          handOut += out.totalPayout
-          for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-        }
-      }
-      // also credit any payout from the deal itself (none in current impl, but
-      // mirror the existing loop's pattern of accumulating all wins)
-      for (const w of dealOut.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-      totalOut += dealOut.totalPayout + handOut
-
-      const spinPayout = dealOut.totalPayout + handOut
-      net += spinPayout - opts.coins
-      if (net > peak) peak = net
-      if (peak - net > maxDrawdown) maxDrawdown = peak - net
-
-      if (spinPayout > 0) hits++
-      cycles++
-    }
-
-    return {
-      machineId: def.id,
-      spins: opts.spins,
-      coins: opts.coins,
-      totalIn,
-      totalOut,
-      rtp: totalIn > 0 ? totalOut / totalIn : 0,
-      hitFrequency: hits / opts.spins,
-      jackpotHits: 0,
-      maxDrawdown,
-      byEntry
-    }
+    throw new Error('lucky-21 simulate: implemented in a later task')
   }
 
   // ── all other families ──────────────────────────────────────────────────────

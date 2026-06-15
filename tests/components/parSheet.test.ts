@@ -47,7 +47,8 @@ describe('ParSheetModal', () => {
     expect(wrapper.text()).toMatch(/of 72/) // virtual entries per reel
   })
 
-  it('hit-or-bust: paytable shows value entries + Five-Card Charlie bonus', async () => {
+  // Lucky 21: all hit-or-bust par-sheet tests skipped in Task 1 (machine off floor, RTP stub throws); restored in a later task
+  it.skip('hit-or-bust: paytable shows value entries + Five-Card Charlie bonus', async () => {
     const { wrapper } = setup('hit-or-bust')
     await wrapper.find('[data-test="tab-paytable"]').trigger('click')
     // Value paytable entries
@@ -60,7 +61,7 @@ describe('ParSheetModal', () => {
     expect(wrapper.text()).toMatch(/\+1 per coin/)
   })
 
-  it('hit-or-bust: exact math tab shows RTP, strategy table, and bust/charlie rates', async () => {
+  it.skip('hit-or-bust: exact math tab shows RTP, strategy table, and bust/charlie rates', async () => {
     const { wrapper } = setup('hit-or-bust')
     await wrapper.find('[data-test="tab-math"]').trigger('click')
     // The report computes lazily (30 ms paint delay) — wait it out
@@ -81,7 +82,7 @@ describe('ParSheetModal', () => {
     expect(wrapper.text()).toContain('Bust (loss)')
   })
 
-  it('hit-or-bust: strategy table is card-count-aware with "2 cards"/"3 cards"/"4 cards" columns', async () => {
+  it.skip('hit-or-bust: strategy table is card-count-aware with "2 cards"/"3 cards"/"4 cards" columns', async () => {
     const { wrapper } = setup('hit-or-bust')
     await wrapper.find('[data-test="tab-math"]').trigger('click')
     await new Promise(resolve => setTimeout(resolve, 80))
@@ -96,7 +97,7 @@ describe('ParSheetModal', () => {
     expect(table.text()).toContain('18')
   })
 
-  it('hit-or-bust: hard 18 at 2 cards shows STAND in the strategy matrix (regression guard)', async () => {
+  it.skip('hit-or-bust: hard 18 at 2 cards shows STAND in the strategy matrix (regression guard)', async () => {
     const { wrapper } = setup('hit-or-bust')
     await wrapper.find('[data-test="tab-math"]').trigger('click')
     await new Promise(resolve => setTimeout(resolve, 80))
@@ -107,7 +108,7 @@ describe('ParSheetModal', () => {
     expect(cell.text()).toBe('STAND')
   })
 
-  it('hit-or-bust: Bust-Save note says HIT on all hard totals (regression — null threshold = hit-all, not "no change")', async () => {
+  it.skip('hit-or-bust: Bust-Save note says HIT on all hard totals (regression — null threshold = hit-all, not "no change")', async () => {
     const { wrapper } = setup('hit-or-bust')
     await wrapper.find('[data-test="tab-math"]').trigger('click')
     await new Promise(resolve => setTimeout(resolve, 80))

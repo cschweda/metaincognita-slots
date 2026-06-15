@@ -24,11 +24,11 @@ export function useBlackjackReel() {
   })
 
   const canHit = computed(() =>
-    !store.spinning && phase.value === 'dealt'
+    !store.spinning && phase.value === 'spinning'
   )
 
   const canStand = computed(() =>
-    !store.spinning && phase.value === 'dealt'
+    !store.spinning && phase.value === 'spinning'
   )
 
   function deal() {

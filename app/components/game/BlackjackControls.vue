@@ -64,7 +64,7 @@ const anteDisplay = computed(() => {
     </UButton>
 
     <span
-      v-if="phase === 'dealt'"
+      v-if="phase === 'spinning'"
       class="text-[10px] text-amber-400 uppercase tracking-wider ml-1"
     >Hand in play</span>
     <span

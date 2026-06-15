@@ -36,7 +36,7 @@ interface StripRow { symbol: string, label: string, counts: number[], weights?: 
 const stripRows = computed<StripRow[]>(() => {
   const d = def.value
   if (d === null) return []
-  const strips = d.family === 'stepper' ? d.physicalStrips : d.strips
+  const strips = d.family === 'stepper' ? d.physicalStrips : d.family === 'blackjack-reel' ? d.reels : d.strips
   const symbols = Object.keys(d.symbols)
   return symbols.map((symbol) => {
     const counts = strips.map(strip => strip.filter(c => c === symbol).length)
@@ -107,10 +107,12 @@ const bjStrategy = computed(() => {
     })
   }))
 
-  // Soft-17 note: query the DP via optimalAction with a real soft state (CA+C6).
+  // Soft-17 note: query the DP via optimalAction with a placeholder state (Lucky 21 DP lands in a later task).
+  // Lucky 21 Task 1: state shape updated to new fields; DP stub throws, strategyMatrixCell also throws.
   const soft17State: BlackjackReelSessionState = {
-    phase: 'dealt', cards: ['CA', 'C6'], total: 17, isSoft: true,
-    multSum: 0, saveHeld: false, busted: false, charlie: false, ante: 1
+    phase: 'spinning', reelStrips: [], landed: ['CA', 'C6', null, null, null],
+    idx: 2, hand: ['CA', 'C6'], hard: 7, aces: 1, multSum: 0,
+    bestTotal: 17, natural: false, busted: false, bustBySymbol: false, charlie: false, ante: 1
   }
   const soft17Action = optimalAction(d, soft17State)
 
@@ -210,7 +212,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
         {
           id: 'charlie-bonus',
           text: `Five-Card Charlie bonus (added on top)`,
-          pay: `+${d.charlieBonus} per coin`
+          pay: `+${d.charlieMultiplier} per coin`
         }
       ]
     default: {
