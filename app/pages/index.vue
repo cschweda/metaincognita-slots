@@ -11,12 +11,13 @@ onMounted(() => {
   if (store.phase === 'floor' && store.peekSavedSession()) store.resume()
 })
 
-const FAMILY_ORDER = ['video', 'stepper', 'bally-em', 'pachislo'] as const
+const FAMILY_ORDER = ['video', 'stepper', 'bally-em', 'pachislo', 'blackjack-reel'] as const
 const FAMILY_HEADING: Record<string, string> = {
   'video': 'Video slots',
   'stepper': 'Telnaes steppers (1984)',
   'bally-em': 'Vintage Bally Series E (1979)',
-  'pachislo': 'Pachislo skill-stop'
+  'pachislo': 'Pachislo skill-stop',
+  'blackjack-reel': 'Blackjack reel'
 }
 const groups = computed(() => FAMILY_ORDER.map(family => ({
   family,

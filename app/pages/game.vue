@@ -1,16 +1,24 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
+import { useBlackjackReel } from '~/composables/useBlackjackReel'
 
 const store = useSlotsStore()
 const route = useRoute()
 const parOpen = ref(false)
+const { canDeal, canHit, deal, hit } = useBlackjackReel()
 
 function onKeydown(e: KeyboardEvent) {
   if (e.code !== 'Space' || e.repeat) return
   const target = e.target as HTMLElement | null
   if (target !== null && ['INPUT', 'BUTTON', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
   if (store.currentDef?.family === 'pachislo') return // pachislo spins via its own controls
+  if (store.currentDef?.family === 'blackjack-reel') {
+    e.preventDefault()
+    if (canHit.value) hit()
+    else if (canDeal.value) deal()
+    return
+  }
   e.preventDefault()
   store.spinOnce()
 }
@@ -88,6 +96,10 @@ onUnmounted(() => {
             v-else-if="store.currentDef?.family === 'pachislo'"
             :key="store.currentMachineId ?? ''"
           />
+          <GameReelBlackjackReel
+            v-else-if="store.currentDef?.family === 'blackjack-reel'"
+            :key="store.currentMachineId ?? ''"
+          />
         </GameMachineChrome>
         <GameResultBar />
         <GameBetControls>
@@ -96,6 +108,12 @@ onUnmounted(() => {
             #pachislo-controls
           >
             <GamePachisloControls />
+          </template>
+          <template
+            v-if="store.currentDef?.family === 'blackjack-reel'"
+            #blackjack-controls
+          >
+            <GameBlackjackControls />
           </template>
         </GameBetControls>
       </div>

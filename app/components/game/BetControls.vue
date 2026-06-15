@@ -89,7 +89,7 @@ function spin() {
         {{ inFeature ? 'Out of credits — bonus stalled' : 'Out of credits' }}
       </span>
       <UButton
-        v-if="def.family !== 'pachislo'"
+        v-if="def.family !== 'pachislo' && def.family !== 'blackjack-reel'"
         data-test="spin"
         color="primary"
         size="lg"
@@ -100,6 +100,7 @@ function spin() {
         {{ inFeature ? 'Play feature game' : 'Spin' }}
       </UButton>
       <slot name="pachislo-controls" />
+      <slot name="blackjack-controls" />
     </div>
   </div>
 </template>
