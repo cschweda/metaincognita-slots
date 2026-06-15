@@ -233,6 +233,35 @@ export function optimalAction(
 }
 
 /**
+ * PAR sheet strategy matrix helper: the optimal action for a hard hand of
+ * `hardTotal` at `numCards` cards (no aces, no multipliers, no save held).
+ *
+ * Constructs the DP state directly from the numeric parameters — no card
+ * fabrication needed — so the result is guaranteed to match `optimalAction`
+ * for any equivalent live session state with the same (handSize, hard) tuple.
+ *
+ * This is the single source of truth for every cell of the PAR sheet's
+ * card-count × total matrix, which ensures the table can never contradict
+ * the live X-ray.
+ */
+export function strategyMatrixCell(
+  def: BlackjackReelMachineDef,
+  hardTotal: number,
+  numCards: number,
+  opts: { saveHeld?: boolean, multSum?: number } = {}
+): 'hit' | 'stand' {
+  const { solve } = makeSolver(def)
+  const s: DpState = {
+    handSize: numCards,
+    hard: hardTotal, // no aces → hard === best total
+    aces: 0,
+    multSum: opts.multSum ?? 0,
+    saveCount: opts.saveHeld ? 1 : 0
+  }
+  return solve(s).action
+}
+
+/**
  * EV of hitting vs. standing at the current decision point, plus the optimal
  * action. Useful for the X-ray panel: "the casino never shows you this."
  *

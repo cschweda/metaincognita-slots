@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { BlackjackReelMachineDef, BlackjackReelSessionState, MachineSessionState } from '../app/engine/types'
-import { optimalAction, blackjackReelExactRtp, decisionEvs } from '../app/engine/blackjackReelRtp'
+import { optimalAction, blackjackReelExactRtp, decisionEvs, strategyMatrixCell } from '../app/engine/blackjackReelRtp'
 import { dealHand, hitCard, standHand } from '../app/engine/blackjackReel'
 import { mulberry32 } from '../app/engine/rng'
+import { HIT_OR_BUST } from '../app/machines/hit-or-bust'
 
 // ---------------------------------------------------------------------------
 // Tiny hand-tuned fixtures. Each strip is a single-symbol (or few-symbol) reel
@@ -410,5 +411,153 @@ describe('decisionEvs', () => {
     const report = blackjackReelExactRtp(def)
     // RTP = weighted average over all deals; here deal is deterministic (only 1 deal).
     expect(dpValue).toBeCloseTo(report.rtpPerCoin, 10)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// strategyMatrixCell + surface-consistency tests
+//
+// Guards the PAR sheet against contradicting the live X-ray. For every
+// (numCards, total) sample point:
+//   strategyMatrixCell(def, total, numCards)
+//     === optimalAction(def, fabricatedState)
+//     === (evHit > evStand ? 'hit' : 'stand') from decisionEvs
+//
+// The regression case that triggered this fix: hard 18 at 2 cards must be STAND.
+// ---------------------------------------------------------------------------
+
+describe('strategyMatrixCell — card-count-aware PAR matrix helper', () => {
+  // Build a synthetic BlackjackReelSessionState for a given hard total + card count.
+  // Uses only value cards (no aces, no specials) so total = hard sum exactly.
+  // Card construction (verified to cover all test cases):
+  //   numCards=2: C10 + C(T-10) for T in 12..20; C2 + C(T-2) for T in 4..11
+  //   numCards=3: C10+C2+C(T-12) for T in 14..21; C2+C2+C(T-4) for T in 6..13
+  //   numCards=4: C10+C2+C2+C(T-14) for T in 16..21; C2+C2+C2+C(T-6) for T in 8..15
+  function cardSym(v: number): string {
+    return `C${v}`
+  }
+
+  function fabricateHardState(
+    total: number,
+    numCards: number,
+    saveHeld = false
+  ): BlackjackReelSessionState {
+    let cards: string[]
+    if (numCards === 2) {
+      if (total >= 12 && total <= 20) cards = ['C10', cardSym(total - 10)]
+      else cards = ['C2', cardSym(total - 2)]
+    } else if (numCards === 3) {
+      if (total >= 14 && total <= 21) cards = ['C10', 'C2', cardSym(total - 12)]
+      else cards = ['C2', 'C2', cardSym(total - 4)]
+    } else {
+      if (total >= 16 && total <= 21) cards = ['C10', 'C2', 'C2', cardSym(total - 14)]
+      else cards = ['C2', 'C2', 'C2', cardSym(total - 6)]
+    }
+    return {
+      phase: 'dealt',
+      cards,
+      total,
+      isSoft: false,
+      multSum: 0,
+      saveHeld,
+      busted: false,
+      charlie: false,
+      ante: 1
+    }
+  }
+
+  it('strategyMatrixCell exists and returns hit or stand', () => {
+    const action = strategyMatrixCell(HIT_OR_BUST, 18, 2)
+    expect(['hit', 'stand']).toContain(action)
+  })
+
+  it('REGRESSION: hard 18 at 2 cards must be STAND (contradicted the old 1-D PAR table)', () => {
+    const action = strategyMatrixCell(HIT_OR_BUST, 18, 2)
+    expect(action).toBe('stand')
+  })
+
+  it('strategyMatrixCell agrees with optimalAction for hard 18 at 2 cards', () => {
+    const state = fabricateHardState(18, 2)
+    const direct = optimalAction(HIT_OR_BUST, state)
+    const matrix = strategyMatrixCell(HIT_OR_BUST, 18, 2)
+    expect(matrix).toBe(direct)
+  })
+
+  it('strategyMatrixCell agrees with decisionEvs sign for hard 18 at 2 cards', () => {
+    const state = fabricateHardState(18, 2)
+    const evs = decisionEvs(HIT_OR_BUST, state)
+    expect(evs).not.toBeNull()
+    const evsAction = evs!.evHit > evs!.evStand ? 'hit' : 'stand'
+    const matrix = strategyMatrixCell(HIT_OR_BUST, 18, 2)
+    expect(matrix).toBe(evsAction)
+  })
+
+  // Sampled grid: totals × card counts that are reachable in the game.
+  // For each point, assert all three surfaces agree.
+  const CARD_COUNTS = [2, 3, 4] as const
+
+  // Totals reachable for each numCards:
+  //   numCards=2: total in 4..20 via non-ace cards (or 21 via 10+A but we use hard)
+  //   numCards=3: total in 6..21
+  //   numCards=4: total in 8..21
+  const reachable: Record<2 | 3 | 4, number[]> = {
+    2: [12, 13, 14, 15, 16, 17, 18, 19, 20],
+    3: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    4: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+  }
+
+  for (const numCards of CARD_COUNTS) {
+    for (const total of reachable[numCards]) {
+      it(`all three surfaces agree for hard ${total} at ${numCards} cards`, () => {
+        const state = fabricateHardState(total, numCards)
+        const direct = optimalAction(HIT_OR_BUST, state)
+        const evs = decisionEvs(HIT_OR_BUST, state)
+        const matrix = strategyMatrixCell(HIT_OR_BUST, total, numCards)
+
+        // optimalAction and strategyMatrixCell must match
+        expect(matrix).toBe(direct)
+
+        // decisionEvs must also agree (evs is non-null since phase='dealt', < 5 cards)
+        expect(evs).not.toBeNull()
+        const evsAction = evs!.evHit > evs!.evStand ? 'hit' : 'stand'
+        expect(matrix).toBe(evsAction)
+      })
+    }
+  }
+
+  it('hard 21 at 2 cards is STAND (paytable pays 2 per coin; no room to improve)', () => {
+    // total 21 is the maximum paying hand (pay=2). Cannot improve. Must stand.
+    // hard 21 at 2 non-ace cards requires two-card combos that don't exist (max is 10+10=20).
+    // We skip total=21 in reachable[2] but confirm 3/4-card hard 21 is STAND.
+    const state21_3: BlackjackReelSessionState = {
+      phase: 'dealt', cards: ['C2', 'C9', 'C10'], total: 21, isSoft: false,
+      multSum: 0, saveHeld: false, busted: false, charlie: false, ante: 1
+    }
+    expect(optimalAction(HIT_OR_BUST, state21_3)).toBe('stand')
+    expect(strategyMatrixCell(HIT_OR_BUST, 21, 3)).toBe('stand')
+  })
+})
+
+describe('strategyMatrixCell — Four-card made totals chase Five-Card Charlie', () => {
+  // At 4 cards, a made total (18/19/20) might be +EV to hit because surviving
+  // to 5 cards wins a Charlie bonus. Check what the DP actually says and assert it.
+  it('returns consistent action for hard 18 at 4 cards (DP determines HIT or STAND)', () => {
+    const action = strategyMatrixCell(HIT_OR_BUST, 18, 4)
+    // Must be one of the two valid actions
+    expect(['hit', 'stand']).toContain(action)
+    // Must agree with optimalAction: C2+C2+C4+C10 = 18, 4 cards
+    const s18_4: BlackjackReelSessionState = {
+      phase: 'dealt',
+      cards: ['C2', 'C2', 'C4', 'C10'],
+      total: 18,
+      isSoft: false,
+      multSum: 0,
+      saveHeld: false,
+      busted: false,
+      charlie: false,
+      ante: 1
+    }
+    const direct = optimalAction(HIT_OR_BUST, s18_4)
+    expect(action).toBe(direct)
   })
 })

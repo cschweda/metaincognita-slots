@@ -80,4 +80,30 @@ describe('ParSheetModal', () => {
     expect(wrapper.text()).toContain('Total 20')
     expect(wrapper.text()).toContain('Bust (loss)')
   })
+
+  it('hit-or-bust: strategy table is card-count-aware with "2 cards"/"3 cards"/"4 cards" columns', async () => {
+    const { wrapper } = setup('hit-or-bust')
+    await wrapper.find('[data-test="tab-math"]').trigger('click')
+    await new Promise(resolve => setTimeout(resolve, 80))
+    await wrapper.vm.$nextTick()
+    const table = wrapper.find('[data-test="bj-strategy-table"]')
+    expect(table.exists()).toBe(true)
+    // The matrix must have card-count columns in the header
+    expect(table.text()).toMatch(/2 cards/i)
+    expect(table.text()).toMatch(/3 cards/i)
+    expect(table.text()).toMatch(/4 cards/i)
+    // Row 18 must be present (a key regression case)
+    expect(table.text()).toContain('18')
+  })
+
+  it('hit-or-bust: hard 18 at 2 cards shows STAND in the strategy matrix (regression guard)', async () => {
+    const { wrapper } = setup('hit-or-bust')
+    await wrapper.find('[data-test="tab-math"]').trigger('click')
+    await new Promise(resolve => setTimeout(resolve, 80))
+    await wrapper.vm.$nextTick()
+    // The row for total 18 must exist with a data-test attribute we can interrogate
+    const cell = wrapper.find('[data-test="bj-matrix-cell-18-2"]')
+    expect(cell.exists()).toBe(true)
+    expect(cell.text()).toBe('STAND')
+  })
 })
