@@ -2,8 +2,10 @@
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { nearMisses } from '~/engine'
+import { decisionEvs, blackjackReelExactRtp } from '~/engine/blackjackReelRtp'
 import { floorIntel } from '~/utils/floorIntel'
 import { formatPercent } from '~/utils/format'
+import type { BlackjackReelMachineDef } from '~/engine/types'
 
 const store = useSlotsStore()
 const def = computed(() => store.currentDef)
@@ -71,6 +73,37 @@ const internals = computed(() => {
     if (p.replayNext) rows.push({ k: 'replay', v: 'next game free' })
   }
   return rows
+})
+
+/**
+ * Live EV(hit) vs EV(stand) for blackjack-reel hands in the 'dealt' phase.
+ * Returns null when not applicable (other families or idle/resolved state).
+ */
+const bjEv = computed(() => {
+  const d = def.value
+  if (d === null || d.family !== 'blackjack-reel') return null
+  const bj = store.currentState?.blackjackReel
+  if (bj === null || bj === undefined || bj.phase !== 'dealt') return null
+  return decisionEvs(d as BlackjackReelMachineDef, bj)
+})
+
+/**
+ * Bust rate and Five-Card Charlie rate from the exact RTP report.
+ * Shown when the hand is not in the 'dealt' phase (idle or resolved).
+ */
+const bjOdds = computed(() => {
+  const d = def.value
+  if (d === null || d.family !== 'blackjack-reel') return null
+  const bj = store.currentState?.blackjackReel
+  if (bj?.phase === 'dealt') return null // EV panel takes over
+  const report = blackjackReelExactRtp(d as BlackjackReelMachineDef)
+  const charlieBucket = report.breakdown.find(b => b.entryId === 'charlie')
+  const bustBucket = report.breakdown.find(b => b.entryId === 'bust')
+  return {
+    bustRate: bustBucket?.probability ?? 0,
+    charlieRate: charlieBucket?.probability ?? 0,
+    rtpPerCoin: report.rtpPerCoin
+  }
 })
 </script>
 
@@ -248,6 +281,112 @@ const internals = computed(() => {
             </th>
             <td class="py-0.5 text-right text-neutral-300">
               {{ row.v }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Blackjack-reel: live EV(hit) vs EV(stand) during 'dealt' phase -->
+    <div
+      v-if="bjEv"
+      class="space-y-1"
+      data-test="bj-ev-panel"
+    >
+      <div class="text-[10px] text-amber-400 uppercase tracking-wider">
+        The casino never shows you this
+      </div>
+      <table class="w-full font-mono text-[11px]">
+        <tbody class="divide-y divide-neutral-800/50">
+          <tr>
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
+              EV(stand)
+            </th>
+            <td
+              class="py-0.5 text-right"
+              :class="bjEv.action === 'stand' ? 'text-emerald-400 font-bold' : 'text-neutral-300'"
+            >
+              {{ bjEv.evStand.toFixed(4) }}
+              <span
+                v-if="bjEv.action === 'stand'"
+                class="text-emerald-400"
+              > ← optimal</span>
+            </td>
+          </tr>
+          <tr>
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
+              EV(hit)
+            </th>
+            <td
+              class="py-0.5 text-right"
+              :class="bjEv.action === 'hit' ? 'text-amber-300 font-bold' : 'text-neutral-300'"
+            >
+              {{ bjEv.evHit.toFixed(4) }}
+              <span
+                v-if="bjEv.action === 'hit'"
+                class="text-amber-300"
+              > ← optimal</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="text-[10px] text-neutral-500">
+        EV per coin wagered under this machine's optimal policy. Optimal action:
+        <span
+          class="font-bold"
+          :class="bjEv.action === 'hit' ? 'text-amber-300' : 'text-emerald-400'"
+        >{{ bjEv.action.toUpperCase() }}</span>
+      </p>
+    </div>
+
+    <!-- Blackjack-reel: idle/resolved — show bust + charlie odds -->
+    <div
+      v-else-if="bjOdds"
+      class="space-y-1"
+      data-test="bj-odds-panel"
+    >
+      <div class="text-[10px] text-neutral-400 uppercase tracking-wider">
+        Hit or Bust odds (optimal play)
+      </div>
+      <table class="w-full font-mono text-[11px]">
+        <tbody class="divide-y divide-neutral-800/50">
+          <tr>
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
+              Bust rate
+            </th>
+            <td class="py-0.5 text-right text-neutral-300">
+              {{ formatPercent(bjOdds.bustRate, 2) }}
+            </td>
+          </tr>
+          <tr>
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
+              Five-Card Charlie
+            </th>
+            <td class="py-0.5 text-right text-neutral-300">
+              {{ formatPercent(bjOdds.charlieRate, 2) }}
+            </td>
+          </tr>
+          <tr>
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
+              Exact RTP/coin
+            </th>
+            <td class="py-0.5 text-right text-emerald-400">
+              {{ formatPercent(bjOdds.rtpPerCoin, 4) }}
             </td>
           </tr>
         </tbody>

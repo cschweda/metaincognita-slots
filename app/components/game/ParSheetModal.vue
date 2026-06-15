@@ -3,8 +3,10 @@ import { computed, ref, watch } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { exactRtp } from '~/engine'
 import { pachisloBonusValues } from '~/engine/pachisloRtp'
+import { optimalAction } from '~/engine/blackjackReelRtp'
 import { formatOdds, formatPercent } from '~/utils/format'
 import type { ExactRtpReport, MachineDef } from '~/engine'
+import type { BlackjackReelSessionState } from '~/engine/types'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
@@ -73,6 +75,126 @@ const bonusValues = computed(() => {
 // in (out/IN), not credits paid — so don't mislabel it "Avg pay/coin".
 const payColLabel = computed(() => def.value?.family === 'pachislo' ? 'Value ÷ IN' : 'Avg pay/coin')
 
+/**
+ * Optimal strategy table for the blackjack-reel PAR sheet.
+ * Samples the DP policy across representative totals × save/mult states and
+ * collapses to human-readable rows shown in the math tab.
+ */
+const bjStrategy = computed(() => {
+  const d = def.value
+  if (d === null || d.family !== 'blackjack-reel') return null
+
+  interface StrategyRow { condition: string, action: 'hit' | 'stand', note: string }
+  const rows: StrategyRow[] = []
+
+  // Helper: build a minimal session state and query the policy.
+  const query = (cards: string[], saveHeld: boolean, total: number, isSoft: boolean): 'hit' | 'stand' => {
+    const state: BlackjackReelSessionState = {
+      phase: 'dealt', cards, total, isSoft,
+      multSum: 0, saveHeld, busted: false, charlie: false, ante: 1
+    }
+    return optimalAction(d, state)
+  }
+  const queryMult = (cards: string[], saveHeld: boolean, total: number, isSoft: boolean): 'hit' | 'stand' => {
+    const state: BlackjackReelSessionState = {
+      phase: 'dealt', cards, total, isSoft,
+      multSum: 2, saveHeld, busted: false, charlie: false, ante: 1
+    }
+    return optimalAction(d, state)
+  }
+
+  // Hard totals (2-card deal, no save, no mult): totals 4–17
+  // Determine the threshold where stand becomes optimal (hard, no save, no mult)
+  let hardThreshold = 21
+  for (let t = 4; t <= 21; t++) {
+    const cards = t >= 10 ? ['CK', 'CA'] : ['C2', 'C2'] // dummy cards — only total matters via summarize
+    // Use two-card hand so handSize=2, draw from reel[2]
+    const act = query([cards[0]!, cards[1]!], false, t, false)
+    if (act === 'stand') {
+      hardThreshold = t
+      break
+    }
+  }
+  rows.push({
+    condition: `Hard ≤${hardThreshold - 1}`,
+    action: 'hit',
+    note: 'Risk is worth the higher total'
+  })
+  rows.push({
+    condition: `Hard ${hardThreshold}+`,
+    action: 'stand',
+    note: 'Standing EV ≥ hit EV'
+  })
+
+  // Soft 17 (A+6) — classic borderline: check with and without save
+  const softAct = query(['CA', 'C6'], false, 17, true)
+  rows.push({
+    condition: 'Soft 17 (Ace + 6)',
+    action: softAct,
+    note: softAct === 'hit' ? 'Ace cushion makes hitting +EV' : 'Stand (no gain from hitting)'
+  })
+
+  // With a multiplier held — typically widens the hit range (bigger payoff amplifies the upside)
+  let hardMultThreshold = 21
+  for (let t = 4; t <= 21; t++) {
+    const act = queryMult(['CK', 'C2'], false, t, false)
+    if (act === 'stand') {
+      hardMultThreshold = t
+      break
+    }
+  }
+  if (hardMultThreshold !== hardThreshold) {
+    rows.push({
+      condition: `Hard ≤${hardMultThreshold - 1} (multiplier held)`,
+      action: 'hit',
+      note: 'Multiplier amplifies upside; hit threshold rises'
+    })
+    rows.push({
+      condition: `Hard ${hardMultThreshold}+ (multiplier held)`,
+      action: 'stand',
+      note: 'Even with ×N, standing wins'
+    })
+  } else {
+    rows.push({
+      condition: 'With multiplier held',
+      action: 'hit',
+      note: `Same threshold (${hardThreshold}) — multiplier doesn't change break-even`
+    })
+  }
+
+  // With bust-save held — save extends the hit range
+  let hardSaveThreshold = 21
+  for (let t = 4; t <= 21; t++) {
+    const act = query(['CK', 'C2'], true, t, false)
+    if (act === 'stand') {
+      hardSaveThreshold = t
+      break
+    }
+  }
+  if (hardSaveThreshold !== hardThreshold) {
+    rows.push({
+      condition: `Hard ≤${hardSaveThreshold - 1} (Bust Save held)`,
+      action: 'hit',
+      note: 'Save provides insurance; hit threshold rises'
+    })
+    rows.push({
+      condition: `Hard ${hardSaveThreshold}+ (Bust Save held)`,
+      action: 'stand',
+      note: 'Even with a save, standing is optimal'
+    })
+  }
+
+  return { rows, hardThreshold, hardSaveThreshold, hardMultThreshold }
+})
+
+/** Human-readable label for a breakdown entry ID (e.g. "total-20" → "Total 20"). */
+function breakdownLabel(entryId: string): string {
+  if (entryId === 'bust') return 'Bust (loss)'
+  if (entryId === 'charlie') return 'Five-Card Charlie'
+  if (entryId.startsWith('total-')) return `Total ${entryId.slice(6)}`
+  return entryId
+}
+
 function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
   switch (d.family) {
     case 'video':
@@ -110,11 +232,18 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
         { id: 'big', text: 'BIG lined (then 3 rounds of 8)', pay: `${d.pays.bonusLined}` }
       ]
     case 'blackjack-reel':
-      return d.paytable.map(e => ({
-        id: `total-${e.total}`,
-        text: `Hand total ${e.total}`,
-        pay: `${e.pay}`
-      }))
+      return [
+        ...d.paytable.map(e => ({
+          id: `total-${e.total}`,
+          text: `Hand total ${e.total}`,
+          pay: `${e.pay} per coin`
+        })),
+        {
+          id: 'charlie-bonus',
+          text: `Five-Card Charlie bonus (added on top)`,
+          pay: `+${d.charlieBonus} per coin`
+        }
+      ]
     default: {
       const exhaustive: never = d
       throw new Error(`unhandled family: ${(exhaustive as MachineDef).family}`)
@@ -344,7 +473,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
                   :key="b.entryId"
                 >
                   <td class="py-1 pr-2 text-neutral-300">
-                    {{ b.entryId }}
+                    {{ def.family === 'blackjack-reel' ? breakdownLabel(b.entryId) : b.entryId }}
                   </td>
                   <td class="py-1 pr-2 text-right text-neutral-400">
                     {{ formatOdds(b.probability) }}
@@ -367,6 +496,64 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
             <p class="text-[10px] text-neutral-400">
               RTP-share column sums to the exact RTP. Every figure derives from the machine definition at render time.
             </p>
+
+            <!-- Blackjack-reel: optimal strategy derived from the DP -->
+            <template v-if="def.family === 'blackjack-reel' && bjStrategy">
+              <div class="text-[10px] uppercase tracking-widest text-neutral-400 pt-1">
+                Optimal strategy (DP-derived, assumes this machine's strips)
+              </div>
+              <table
+                class="w-full text-xs font-mono"
+                data-test="bj-strategy-table"
+              >
+                <thead>
+                  <tr class="text-neutral-400 text-left">
+                    <th
+                      scope="col"
+                      class="py-1 pr-2"
+                    >
+                      Situation
+                    </th>
+                    <th
+                      scope="col"
+                      class="py-1 pr-2 text-center"
+                    >
+                      Action
+                    </th>
+                    <th
+                      scope="col"
+                      class="py-1 text-left"
+                    >
+                      Why
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-800/60">
+                  <tr
+                    v-for="row in bjStrategy.rows"
+                    :key="row.condition"
+                  >
+                    <td class="py-1 pr-2 text-neutral-300">
+                      {{ row.condition }}
+                    </td>
+                    <td
+                      class="py-1 pr-2 text-center font-bold"
+                      :class="row.action === 'hit' ? 'text-amber-300' : 'text-emerald-400'"
+                    >
+                      {{ row.action.toUpperCase() }}
+                    </td>
+                    <td class="py-1 text-neutral-400 text-[10px]">
+                      {{ row.note }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="text-[10px] text-neutral-400">
+                Strategy assumes no prior knowledge of upcoming cards (each reel is independent).
+                Bust rate {{ formatPercent(1 - report.hitFrequency, 2) }} · Charlie rate
+                {{ formatPercent(report.breakdown.find(b => b.entryId === 'charlie')?.probability ?? 0, 2) }}.
+              </p>
+            </template>
           </template>
         </div>
       </div>

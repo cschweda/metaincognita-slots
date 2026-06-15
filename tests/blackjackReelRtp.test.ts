@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BlackjackReelMachineDef, BlackjackReelSessionState, MachineSessionState } from '../app/engine/types'
-import { optimalAction, blackjackReelExactRtp } from '../app/engine/blackjackReelRtp'
+import { optimalAction, blackjackReelExactRtp, decisionEvs } from '../app/engine/blackjackReelRtp'
 import { dealHand, hitCard, standHand } from '../app/engine/blackjackReel'
 import { mulberry32 } from '../app/engine/rng'
 
@@ -334,5 +334,81 @@ describe('DP ↔ live step-function agreement (incl. bust-saves + multipliers)',
     expect(Math.abs(empiricalRtp - exact.rtpPerCoin)).toBeLessThan(4 * se)
     const hfSe = Math.sqrt(exact.hitFrequency * (1 - exact.hitFrequency) / N)
     expect(Math.abs(empiricalHf - exact.hitFrequency)).toBeLessThan(4 * hfSe)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// decisionEvs — EV(hit) vs EV(stand) at the live decision point
+// ---------------------------------------------------------------------------
+
+describe('decisionEvs', () => {
+  it('returns null when phase is not dealt', () => {
+    const def = makeDef({ strips: [['CT'], ['C7'], ['CT'], ['CT'], ['CT']], bustSaveSymbol: null })
+    const idle: BlackjackReelSessionState = {
+      phase: 'idle', cards: [], total: 0, isSoft: false, multSum: 0,
+      saveHeld: false, busted: false, charlie: false, ante: 1
+    }
+    expect(decisionEvs(def, idle)).toBeNull()
+    const resolved: BlackjackReelSessionState = {
+      phase: 'resolved', cards: ['CT', 'C7'], total: 17, isSoft: false, multSum: 0,
+      saveHeld: false, busted: false, charlie: false, ante: 1
+    }
+    expect(decisionEvs(def, resolved)).toBeNull()
+  })
+
+  it('returns null at 5 cards (forced charlie — no decision)', () => {
+    // 5 cards in the hand → no decision left, charlie fires automatically.
+    const def = makeDef({ strips: [['C2'], ['C2'], ['C2'], ['C2'], ['C2']], bustSaveSymbol: null })
+    const fiveCard = decisionState({ cards: ['C2', 'C2', 'C2', 'C2', 'C2'], total: 10 })
+    expect(decisionEvs(def, fiveCard)).toBeNull()
+  })
+
+  it('EV(stand) > EV(hit) when hitting is a guaranteed bust', () => {
+    // Total 20, next reel all tens → any hit busts immediately (no save).
+    // EV(stand) = pay(20) = 3; EV(hit) = 0.
+    const def = makeDef({
+      strips: [['CT'], ['CT'], ['CT'], ['CT'], ['CT']],
+      bustSaveSymbol: null,
+      paytable: [{ total: 20, pay: 3 }, { total: 21, pay: 5 }]
+    })
+    const state = decisionState({ cards: ['CT', 'CT'], total: 20 })
+    const evs = decisionEvs(def, state)
+    expect(evs).not.toBeNull()
+    expect(evs!.evStand).toBeCloseTo(3, 10)
+    expect(evs!.evHit).toBeCloseTo(0, 10)
+    expect(evs!.action).toBe('stand')
+  })
+
+  it('EV(hit) > EV(stand) when next card is a guaranteed-safe multiplier', () => {
+    // Total 17 (pay 1), next reel is all ×2 multiplier: safe (adds 0 to total),
+    // multSum becomes 2, then we must stand for pay(17)×2 = 2. No further cards
+    // are possible (reel 3 = tens → bust from 17+10=27, no save → hit EV = 0).
+    // So EV(hit from 17) = 1 × pay(17)×2 = 2 > EV(stand) = 1.
+    const def = makeDef({
+      strips: [['C7'], ['CT'], ['MX2'], ['CT'], ['CT']],
+      bustSaveSymbol: null,
+      paytable: [{ total: 17, pay: 1 }]
+    })
+    const state = decisionState({ cards: ['C7', 'CT'], total: 17 })
+    const evs = decisionEvs(def, state)
+    expect(evs).not.toBeNull()
+    expect(evs!.evHit).toBeGreaterThan(evs!.evStand)
+    expect(evs!.action).toBe('hit')
+  })
+
+  it('EV values agree with solve().value at the initial state', () => {
+    // The max(evHit, evStand) must equal the DP's value for the same state.
+    const def = makeDef({
+      strips: [['C7'], ['CT'], ['C2', 'CT'], ['C2', 'CT'], ['C2']],
+      bustSaveSymbol: null
+    })
+    const state = decisionState({ cards: ['C7', 'CT'], total: 17 })
+    const evs = decisionEvs(def, state)
+    expect(evs).not.toBeNull()
+    const dpValue = Math.max(evs!.evHit, evs!.evStand)
+    // The exact RTP for a deterministic 17-start equals the DP value directly.
+    const report = blackjackReelExactRtp(def)
+    // RTP = weighted average over all deals; here deal is deterministic (only 1 deal).
+    expect(dpValue).toBeCloseTo(report.rtpPerCoin, 10)
   })
 })

@@ -233,6 +233,32 @@ export function optimalAction(
 }
 
 /**
+ * EV of hitting vs. standing at the current decision point, plus the optimal
+ * action. Useful for the X-ray panel: "the casino never shows you this."
+ *
+ * Returns null when the hand is not in a decision state (phase !== 'dealt' or
+ * already at 5 cards / forced stand).
+ */
+export function decisionEvs(
+  def: BlackjackReelMachineDef,
+  partialState: BlackjackReelSessionState
+): { evHit: number, evStand: number, action: 'hit' | 'stand' } | null {
+  if (partialState.phase !== 'dealt') return null
+  const s = summarize(def, partialState)
+  if (s.handSize >= MAX_REELS) return null // forced charlie — no decision
+  const { solve, afterDraw, probsFor } = makeSolver(def)
+  const evStand = standEV(def, s)
+  const probs = probsFor(s.handSize)
+  let evHit = 0
+  for (const [card, p] of probs) {
+    const next = afterDraw(s, card)
+    evHit += p * (next === null ? 0 : solve(next).value)
+  }
+  const action = evHit > evStand ? 'hit' : 'stand'
+  return { evHit, evStand, action }
+}
+
+/**
  * Exact RTP, hit frequency, and variance for a blackjack-reel machine under
  * optimal stopping. Enumerates the two-card deal (strips 0 × 1); for each deal
  * runs the DP for the post-deal value and outcome distribution under the

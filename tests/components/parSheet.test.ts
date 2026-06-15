@@ -46,4 +46,38 @@ describe('ParSheetModal', () => {
     await wrapper.find('[data-test="tab-strips"]').trigger('click')
     expect(wrapper.text()).toMatch(/of 72/) // virtual entries per reel
   })
+
+  it('hit-or-bust: paytable shows value entries + Five-Card Charlie bonus', async () => {
+    const { wrapper } = setup('hit-or-bust')
+    await wrapper.find('[data-test="tab-paytable"]').trigger('click')
+    // Value paytable entries
+    expect(wrapper.text()).toContain('Hand total 18')
+    expect(wrapper.text()).toContain('Hand total 21')
+    // Charlie bonus row
+    expect(wrapper.text()).toContain('Five-Card Charlie bonus')
+    // Pay values present
+    expect(wrapper.text()).toMatch(/1 per coin/)
+    expect(wrapper.text()).toMatch(/\+1 per coin/)
+  })
+
+  it('hit-or-bust: exact math tab shows RTP, strategy table, and bust/charlie rates', async () => {
+    const { wrapper } = setup('hit-or-bust')
+    await wrapper.find('[data-test="tab-math"]').trigger('click')
+    // The report computes lazily (30 ms paint delay) — wait it out
+    await new Promise(resolve => setTimeout(resolve, 80))
+    await wrapper.vm.$nextTick()
+    // Exact RTP (≈ 89.9977% from frozen figures in hit-or-bust.ts: 0.8999774891774895)
+    expect(wrapper.text()).toContain('89.9977%')
+    // Strategy table is present
+    expect(wrapper.find('[data-test="bj-strategy-table"]').exists()).toBe(true)
+    // Strategy table has hit and stand rules
+    expect(wrapper.text()).toMatch(/HIT/)
+    expect(wrapper.text()).toMatch(/STAND/)
+    // Bust/charlie rates from the breakdown footer
+    expect(wrapper.text()).toMatch(/Bust rate/)
+    expect(wrapper.text()).toMatch(/Five-Card Charlie/)
+    // Breakdown uses friendly labels
+    expect(wrapper.text()).toContain('Total 20')
+    expect(wrapper.text()).toContain('Bust (loss)')
+  })
 })
