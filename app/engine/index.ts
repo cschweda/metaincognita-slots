@@ -1,4 +1,4 @@
-import type { BlackjackReelSessionState, MachineDef, MachineSessionState, SpinOutcome } from './types'
+import type { MachineDef, MachineSessionState, SpinOutcome } from './types'
 import type { RandomFn } from './rng'
 import { mulberry32 } from './rng'
 import { spinStepper } from './stepper'
@@ -6,6 +6,7 @@ import { spinBallyEm } from './ballyEm'
 import { spinVideo } from './video'
 import { spinPachislo } from './pachislo'
 import { initProgressiveState, addCoinToProgressive } from './progressive'
+import { freshBlackjackState } from './blackjackReel'
 
 export * from './types'
 export { mulberry32, cryptoSeed } from './rng'
@@ -15,25 +16,7 @@ export type { ExactRtpReport } from './exactRtp'
 export { nearMisses } from './nearMiss'
 export { validateMachineDef } from './validate'
 export { initProgressiveState, addCoinToProgressive } from './progressive'
-
-export function freshBlackjackState(): BlackjackReelSessionState {
-  return {
-    phase: 'idle',
-    reelStrips: [],
-    landed: [null, null, null, null, null],
-    idx: 0,
-    hand: [],
-    hard: 0,
-    aces: 0,
-    multSum: 0,
-    bestTotal: 0,
-    natural: false,
-    busted: false,
-    bustBySymbol: false,
-    charlie: false,
-    ante: 0
-  }
-}
+export { freshBlackjackState } from './blackjackReel'
 
 export function initMachineState(def: MachineDef): MachineSessionState {
   return {

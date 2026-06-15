@@ -1,8 +1,15 @@
-// Lucky 21 engine — hand evaluation layer (Task 3).
-// Step functions (dealReels/stopReel/cashOut/handPayout) are Task 4 stubs.
+// Lucky 21 engine — hand evaluation (Task 3) + step functions + payout (Task 4).
 
-import type { BlackjackReelMachineDef, SymbolId } from './types'
-import { cardValue, isAce } from './deck'
+import type {
+  BlackjackReelMachineDef,
+  BlackjackReelSessionState,
+  FeatureEvent,
+  MachineSessionState,
+  SpinOutcome,
+  SymbolId
+} from './types'
+import type { RandomFn } from './rng'
+import { buildDeck, shuffle, cardValue, isAce } from './deck'
 
 // ---------- accumulator ----------
 
@@ -85,20 +92,175 @@ export function evaluateHand(def: EvalCfg, syms: readonly SymbolId[]): HandEval 
   }
 }
 
-// ---------- Task 4 stubs (DO NOT IMPLEMENT HERE) ----------
+// ---------- Task 4: fresh session state ----------
 
-export function dealReels(): never {
-  throw new Error('dealReels: not implemented — later task')
+export function freshBlackjackState(): BlackjackReelSessionState {
+  return {
+    phase: 'idle',
+    reelStrips: [],
+    landed: [null, null, null, null, null],
+    idx: 0,
+    hand: [],
+    hard: 0,
+    aces: 0,
+    multSum: 0,
+    bestTotal: 0,
+    natural: false,
+    busted: false,
+    bustBySymbol: false,
+    charlie: false,
+    ante: 0
+  }
 }
 
-export function stopReel(): never {
-  throw new Error('stopReel: not implemented — later task')
+// ---------- Task 4: payout ----------
+
+/** Look up a total in the paytable; returns 0 when absent. */
+export function payEntry(paytable: { total: number, pay: number }[], total: number): number {
+  return paytable.find(e => e.total === total)?.pay ?? 0
 }
 
-export function cashOut(): never {
-  throw new Error('cashOut: not implemented — later task')
+/**
+ * Best-total paytable × additive multiplier × Charlie ×, with the qualify
+ * floor and natural premium. Returns whole credits.
+ */
+export function handPayout(def: BlackjackReelMachineDef, bj: BlackjackReelSessionState): number {
+  if (bj.busted) return 0
+  const mult = Math.max(1, bj.multSum)
+  let base: number
+  if (bj.charlie) {
+    base = Math.max(payEntry(def.paytable, bj.bestTotal), payEntry(def.paytable, def.qualifyMin))
+  } else {
+    base = payEntry(def.paytable, bj.bestTotal)
+  }
+  if (bj.natural && bj.bestTotal === 21) base = def.naturalPay
+  const charlieMul = bj.charlie ? def.charlieMultiplier : 1
+  return base * mult * charlieMul * bj.ante
 }
 
-export function handPayout(): never {
-  throw new Error('handPayout: not implemented — later task')
+// ---------- Task 4: internal outcome builder ----------
+
+function outcome(
+  def: BlackjackReelMachineDef,
+  bj: BlackjackReelSessionState,
+  coins: number,
+  coinsIn: number,
+  featureEvents: FeatureEvent[],
+  payout = 0
+): SpinOutcome {
+  return {
+    machineId: def.id,
+    family: 'blackjack-reel',
+    coins,
+    gameKind: 'base',
+    coinsIn,
+    stops: [],
+    grid: bj.landed.map(s => (s !== null ? [s] : [])),
+    wins: payout > 0
+      ? [{
+          line: 'hand',
+          entryId: bj.charlie ? 'charlie' : `total-${bj.bestTotal}`,
+          symbols: [...bj.hand],
+          payCredits: payout,
+          wildCount: 0,
+          progressive: false
+        }]
+      : [],
+    totalPayout: payout,
+    progressiveEvents: [],
+    featureEvents,
+    trace: { draws: [] }
+  }
+}
+
+// ---------- Task 4: step functions ----------
+
+/**
+ * Deal phase: builds dealt reel strips (resolving 'CARD' tokens to unique deck
+ * cards), locks ante, transitions to 'spinning'.
+ */
+export function dealReels(
+  def: BlackjackReelMachineDef,
+  state: MachineSessionState,
+  coins: number,
+  rand: RandomFn
+): SpinOutcome {
+  const bj = freshBlackjackState()
+  bj.ante = coins
+  bj.phase = 'spinning'
+  const deck = shuffle(buildDeck(), rand)
+  let di = 0
+  bj.reelStrips = def.reels.map(slots =>
+    slots.map(tok => (tok === 'CARD' ? deck[di++]! : tok)))
+  state.blackjackReel = bj
+  return outcome(def, bj, coins, coins, [{ type: 'cards-dealt', strips: bj.reelStrips.map(s => [...s]) }])
+}
+
+/**
+ * Stop the next reel: picks a uniform random symbol from that reel's dealt
+ * strip, applies it to the hand, updates best total (ratchet), checks for
+ * bust/BUST, natural, and Five-Card-Charlie auto-resolve.
+ */
+export function stopReel(
+  def: BlackjackReelMachineDef,
+  state: MachineSessionState,
+  rand: RandomFn
+): SpinOutcome {
+  const bj = state.blackjackReel
+  if (bj === null) throw new Error(`${def.id}: stopReel with no hand`)
+  if (bj.phase !== 'spinning') throw new Error(`${def.id}: stopReel in phase ${bj.phase}`)
+  const r = bj.idx
+  const strip = bj.reelStrips[r]!
+  const sym = strip[Math.floor(rand() * strip.length)]!
+  bj.landed[r] = sym
+  bj.idx = r + 1
+  // BUST symbol: instant loss, no card added to hand
+  if (sym === def.bustSymbol) {
+    bj.busted = true
+    bj.bustBySymbol = true
+    bj.phase = 'resolved'
+    return outcome(def, bj, bj.ante, 0, [{ type: 'bust', reel: r, bySymbol: true }])
+  }
+  // Add symbol to hand and recompute
+  bj.hand.push(sym)
+  const acc = freshAcc()
+  for (const s of bj.hand) applySymbol(acc, def, s)
+  const bt = bestTotal(acc.hard, acc.aces)
+  bj.hard = acc.hard
+  bj.aces = acc.aces
+  bj.multSum = acc.multSum
+  // Over-21 bust
+  if (bt.total > 21) {
+    bj.busted = true
+    bj.phase = 'resolved'
+    return outcome(def, bj, bj.ante, 0, [{ type: 'bust', reel: r, bySymbol: false }])
+  }
+  // Ratchet: only advance bestTotal upward
+  if (bt.total > bj.bestTotal) bj.bestTotal = bt.total
+  // Natural: 2-card 21
+  if (bj.idx === 2 && bt.total === 21) bj.natural = true
+  // Five-Card Charlie: survived all five reels
+  if (bj.idx >= 5) {
+    bj.charlie = true
+    bj.phase = 'resolved'
+    const pay = handPayout(def, bj)
+    return outcome(def, bj, bj.ante, 0, [{ type: 'charlie', cards: [...bj.hand] }], pay)
+  }
+  return outcome(def, bj, bj.ante, 0, [{ type: 'reel-stopped', reel: r, symbol: sym }])
+}
+
+/**
+ * Cash out: resolve the hand at its current best total. May be called at any
+ * point while phase === 'spinning'.
+ */
+export function cashOut(
+  def: BlackjackReelMachineDef,
+  state: MachineSessionState
+): SpinOutcome {
+  const bj = state.blackjackReel
+  if (bj === null) throw new Error(`${def.id}: cashOut with no hand`)
+  if (bj.phase !== 'spinning') throw new Error(`${def.id}: cashOut in phase ${bj.phase}`)
+  bj.phase = 'resolved'
+  const pay = handPayout(def, bj)
+  return outcome(def, bj, bj.ante, 0, [{ type: 'cash-out', bestTotal: bj.bestTotal, payout: pay }], pay)
 }
