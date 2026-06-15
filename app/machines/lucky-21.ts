@@ -15,49 +15,56 @@ import type { BlackjackReelMachineDef } from '../engine/types'
  * Reel 1: pure cards (deal card 1).
  * Reel 2: pure cards (deal card 2). Reels 1–2 are ALL 'CARD' (validator-enforced).
  * Reel 3: lock-in bonus, NO cards — multipliers (MX2, MX3) + a minus (MM3) over a
- *   wall of BUST (7/10). Heavy BUST here is the primary RTP dial: it gates whether
+ *   wall of BUST (8/11). Heavy BUST here is the primary RTP dial: it gates whether
  *   the player can bank a multiplier before the card reels return.
  * Reel 4: mix — two cards return alongside a multiplier (MX3), a minus (MM3), and
- *   BUST (6/10).
+ *   BUST (9/13).
  * Reel 5: the big one — ×5 / ×10 (the signature: 2×MX5 + MX10) + a wall of BUST
- *   (8/13) + two returning cards, NO minus.
+ *   (11/16) + two returning cards, NO minus.
  *
  * ── Payout model (RTP = E[base × max(1,multSum) × charlieMul]; the ante cancels) ─
  * The paytable pays are PER-COIN CREDITS and are deliberately SMALL — the house
- * edge (≈9.43%) comes from the high BUST + sub-qualifyMin (=0-pay) frequency under
+ * edge (≈9.92%) comes from the high BUST + sub-qualifyMin (=0-pay) frequency under
  * optimal play, NOT from the pay magnitude. Under the exact optimal-stopping DP the
  * policy banks a qualifying two-card total at the first decision and otherwise rides
- * the BUST reels toward a multiplier-stacked Five-Card Charlie, so the paytable is
- * flat (every qualifying total pays 1) and the upside lives in the multipliers and
- * the ×3 Charlie. The dollar *feel* lives in denominationCents (25¢ × up-to-5
- * coins), NOT in the paytable magnitude.
+ * the BUST reels toward a multiplier-stacked Five-Card Charlie. The curve is a
+ * GENTLE climb — "the closer to 21, the more you bank": totals 15–20 pay the floor
+ * (1), a 21 pays 3, and a two-card natural 21 pays 4 (a strict premium over a
+ * built-up 21). The big upside still lives in the multipliers and the ×3 Charlie;
+ * the dollar *feel* lives in denominationCents (25¢ × up-to-5 coins) too.
  *
- * A climbing paytable or a richer natural premium each adds ~5% RTP here (cashes
- * at 20/21 and two-card naturals are frequent), which would require so much extra
- * BUST that reel 3 loses its multiplier faces and the Charlie becomes unreachable;
- * the flat curve (which satisfies the 21 ≥ 20 ≥ … ≥ 15 and naturalPay ≥ paytable[21]
- * constraints with equality) keeps the reel roles intact and the signature alive.
+ * Why the climb stops at 21/natural rather than stepping every total: reels 1–2
+ * can't bust, so any base bump at the FREQUENT risk-free totals (esp. 20, ~10.3% of
+ * hands) is amplified by the multiplier/Charlie factors and adds several % RTP —
+ * bumping 20 to 2 forces ~+12% RTP and (offsetting it with BUST) would crush the
+ * Five-Card Charlie below ~0.6%. Climbing ONLY the rarer top (21 ≈ 4.8%, of which a
+ * NATURAL is the cheapest premium of all) buys a vivid 1→3→4 reward ladder for a
+ * modest +12% RTP, offset by a few extra BUSTs that keep the Charlie at ~1.06%
+ * (≈27% of the return) and the reel roles + ×5/×10 signature intact.
  *
  * Integer-credit invariant: handPayout = base × max(1,multSum) × charlieMultiplier
  *   × ante is always a WHOLE number of credits because every paytable[].pay,
  *   naturalPay, and charlieMultiplier is a positive integer (and ante, multSum are
- *   integers). Verified: 0 fractional payouts over 2M optimal-policy hands with
- *   varying ante; the per-coin payout set is {0, 1, 3, 6, 9, 15, 18, 21, 24, 30, …, 48}.
+ *   integers). Verified: 0 fractional payouts over 4M optimal-policy hands with
+ *   varying ante.
  *
  * ── Calibration (2026-06-15, blackjackReelExactRtp, optimal stopping) ────────
- * Paytable (per-coin): every total 15..21 pays 1.  naturalPay = 1.
+ * Paytable (per-coin): totals 15–20 pay 1; 21 pays 3.  naturalPay = 4 (> 21).
  * charlieMultiplier = 3 (Five-Card Charlie scales the whole payout).
  *
- * Frozen exact-math figures (see tests/machines-lucky21.test.ts):
- *   rtpPerCoin      = 0.9056816544369226   (≈ 90.57%)
- *   hitFrequency    = 0.5285228202523613   (≈ 52.85%)
- *   variancePerCoin = 10.685766343483504   (high-volatility, Charlie-driven)
- *   bustRate        = 0.47147717974763875  (≈ 47.15%)  [P(bust terminal)]
- *   charlieRate     = 0.018718898683733852 (≈  1.87%)  [P(Five-Card Charlie)]
+ * Frozen exact-math figures (see tests/machines-blackjack.test.ts):
+ *   rtpPerCoin      = 0.9008462712680554   (≈ 90.08%)
+ *   hitFrequency    = 0.5204396594571127   (≈ 52.04%)
+ *   variancePerCoin = 8.627557473749649    (high-volatility, Charlie-driven)
+ *   bustRate        = 0.47956034054288743  (≈ 47.96%)  [P(bust terminal)]
+ *   charlieRate     = 0.010635737888485142 (≈  1.06%)  [P(Five-Card Charlie)]
  *
- * EV breakdown (per-coin contribution): the 1.87% Charlie hands carry ~43.7% of
- * the return (avg ≈ 21 per coin via stacked multipliers × the ×3 Charlie); the
- * frequent total-15..21 cashes pay 1 each; 47.15% bust to 0. Cross-validated by
+ * EV breakdown (per-coin contribution): the 1.06% Charlie hands carry ~27.3% of
+ * the return (avg ≈ 23 per coin via stacked multipliers × the ×3 Charlie); a 21
+ * pays 3 and a two-card natural pays 4 (~21.4% of the return — virtually all 21
+ * cashes are naturals, since reaching 21 AFTER the deal means surviving the BUST
+ * reels and drawing exactly right, which optimal play almost never waits for); the
+ * frequent total-15..20 cashes pay 1 each; 47.96% bust to 0. Cross-validated by
  * pnpm verify (sim RTP vs the exact DP inside its 3.5σ band).
  */
 export const LUCKY_21: BlackjackReelMachineDef = {
@@ -95,23 +102,27 @@ export const LUCKY_21: BlackjackReelMachineDef = {
     ['CARD', 'CARD', 'CARD', 'CARD', 'CARD', 'CARD', 'CARD', 'CARD', 'CARD', 'CARD'],
 
     // ── Reel 3 — lock-in bonus, NO cards ────────────────────────────────
-    // 7 BUST + MX2 + MX3 + MM3. BUST density here is the primary RTP dial.
-    ['BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'MX2', 'MX3', 'MM3'],
+    // 8 BUST + MX2 + MX3 + MM3. BUST density here is the primary RTP dial
+    // (one extra BUST vs the flat curve, to offset the climbing 21/natural).
+    ['BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'MX2', 'MX3', 'MM3'],
 
     // ── Reel 4 — mix, cards return ──────────────────────────────────────
-    // 2 cards + 6 BUST + MX3 + MM3.
-    ['CARD', 'CARD', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'MX3', 'MM3'],
+    // 2 cards + 9 BUST + MX3 + MM3.
+    ['CARD', 'CARD', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'MX3', 'MM3'],
 
     // ── Reel 5 — the big one: ×5/×10 over a wall of BUST, NO minus ───────
-    // 2 cards + 8 BUST + MX5 + MX5 + MX10 (the signature ×5/×10 lives here).
-    ['CARD', 'CARD', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'MX5', 'MX10', 'MX5']
+    // 2 cards + 11 BUST + MX5 + MX5 + MX10 (the signature ×5/×10 lives here).
+    ['CARD', 'CARD', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'MX5', 'MX10', 'MX5']
   ],
 
   /**
-   * Per-coin payout for a resolved hand by best total. Flat (every qualifying
-   * total pays 1): the house edge is in the bust/0-pay frequency, and the upside
-   * is carried by the multiplier faces and the ×3 Five-Card Charlie, not by the
-   * base curve. Satisfies the 21 ≥ 20 ≥ … ≥ 15 ordering with equality.
+   * Per-coin payout for a resolved hand by best total — a GENTLE climbing curve:
+   * the closer to 21, the more you bank. Totals 15–20 pay the floor (1); a 21
+   * pays 3. The base climb is deliberately concentrated at the rare top (21) — the
+   * frequent risk-free 2-card totals (esp. 20) are too costly to bump (see the
+   * header note), and the multiplier faces + the ×3 Five-Card Charlie still carry
+   * the big upside. Totals are strictly ascending (validator-enforced); the pays
+   * climb 1→3 with the natural premium below.
    */
   paytable: [
     { total: 15, pay: 1 },
@@ -120,12 +131,12 @@ export const LUCKY_21: BlackjackReelMachineDef = {
     { total: 18, pay: 1 },
     { total: 19, pay: 1 },
     { total: 20, pay: 1 },
-    { total: 21, pay: 1 }
+    { total: 21, pay: 3 }
   ],
 
   qualifyMin: 15,
-  /** a 2-card 21 (natural) pays the same per-coin base as any other 21 here (≥ paytable[21]) */
-  naturalPay: 1,
+  /** a 2-card 21 (natural) pays a strict premium over a built-up 21 (4 > paytable[21] = 3) */
+  naturalPay: 4,
   /** ×3 the whole payout for surviving all five reels (Five-Card Charlie) */
   charlieMultiplier: 3,
 

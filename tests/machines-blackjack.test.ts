@@ -58,9 +58,9 @@ describe('lucky-21 — machine integrity', () => {
     })
     expect(counts[0]).toEqual({ CARD: 10 })
     expect(counts[1]).toEqual({ CARD: 10 })
-    expect(counts[2]).toEqual({ BUST: 7, MX2: 1, MX3: 1, MM3: 1 })
-    expect(counts[3]).toEqual({ CARD: 2, BUST: 6, MX3: 1, MM3: 1 })
-    expect(counts[4]).toEqual({ CARD: 2, BUST: 8, MX5: 2, MX10: 1 })
+    expect(counts[2]).toEqual({ BUST: 8, MX2: 1, MX3: 1, MM3: 1 })
+    expect(counts[3]).toEqual({ CARD: 2, BUST: 9, MX3: 1, MM3: 1 })
+    expect(counts[4]).toEqual({ CARD: 2, BUST: 11, MX5: 2, MX10: 1 })
   })
 
   it('every pay, naturalPay, and charlieMultiplier is a positive integer (integer-credit invariant)', () => {
@@ -72,9 +72,13 @@ describe('lucky-21 — machine integrity', () => {
     expect(LUCKY_21.naturalPay).toBeGreaterThan(0)
     expect(Number.isInteger(LUCKY_21.charlieMultiplier)).toBe(true)
     expect(LUCKY_21.charlieMultiplier).toBeGreaterThanOrEqual(1)
-    // paytable totals strictly ascending, naturalPay >= paytable[21]
+    // GENTLE climbing curve: a 21 banks strictly more than the 15 floor, and a
+    // 2-card natural is a strict premium over a built-up 21 (the design feel —
+    // "the closer to 21, the more you bank").
+    const pay15 = LUCKY_21.paytable.find(e => e.total === 15)!.pay
     const pay21 = LUCKY_21.paytable.find(e => e.total === 21)!.pay
-    expect(LUCKY_21.naturalPay).toBeGreaterThanOrEqual(pay21)
+    expect(pay21).toBeGreaterThan(pay15)
+    expect(LUCKY_21.naturalPay).toBeGreaterThan(pay21)
   })
 
   it('handPayout is always a whole number of credits under optimal play (varying ante)', () => {
@@ -106,23 +110,23 @@ describe('lucky-21 — FROZEN calibration (optimal stopping)', () => {
     expect(exactRtp(LUCKY_21).rtpPerCoin).toBeCloseTo(blackjackReelExactRtp(LUCKY_21).rtpPerCoin, 12)
   })
 
-  it('FROZEN: rtpPerCoin = 0.9056816544369226 (≈ 90.57%), inside [0.89, 0.91]', () => {
+  it('FROZEN: rtpPerCoin = 0.9008462712680554 (≈ 90.08%), inside [0.89, 0.91]', () => {
     const { report } = rates()
-    expect(report.rtpPerCoin).toBeCloseTo(0.9056816544369226, 10)
+    expect(report.rtpPerCoin).toBeCloseTo(0.9008462712680554, 10)
     expect(report.rtpPerCoin).toBeGreaterThanOrEqual(0.89)
     expect(report.rtpPerCoin).toBeLessThanOrEqual(0.91)
   })
 
-  it('FROZEN: hitFrequency = 0.5285228202523613, variancePerCoin = 10.685766343483504', () => {
+  it('FROZEN: hitFrequency = 0.5204396594571127, variancePerCoin = 8.627557473749649', () => {
     const { report } = rates()
-    expect(report.hitFrequency).toBeCloseTo(0.5285228202523613, 10)
-    expect(report.variancePerCoin).toBeCloseTo(10.685766343483504, 8)
+    expect(report.hitFrequency).toBeCloseTo(0.5204396594571127, 10)
+    expect(report.variancePerCoin).toBeCloseTo(8.627557473749649, 8)
   })
 
-  it('FROZEN: bust rate 0.47147717974763875 (~47%), Charlie rate 0.018718898683733852 (~1.87%)', () => {
+  it('FROZEN: bust rate 0.47956034054288743 (~48%), Charlie rate 0.010635737888485142 (~1.06%)', () => {
     const { bust, charlie } = rates()
-    expect(bust).toBeCloseTo(0.47147717974763875, 10)
-    expect(charlie).toBeCloseTo(0.018718898683733852, 10)
+    expect(bust).toBeCloseTo(0.47956034054288743, 10)
+    expect(charlie).toBeCloseTo(0.010635737888485142, 10)
     // believable bust band + a non-trivial (jackpot-frequency) Charlie
     expect(bust).toBeGreaterThan(0.40)
     expect(bust).toBeLessThan(0.55)
