@@ -34,7 +34,7 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
         <span class="text-neutral-300"> Simulator</span>
       </h1>
       <p class="text-neutral-400 text-sm">
-        Nine authentic machines. Every number computed, never asserted — flip the X-ray on and see the guts.
+        Ten authentic machines. Every number computed, never asserted — flip the X-ray on and see the guts.
       </p>
     </div>
 

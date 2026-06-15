@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/og-image.png" alt="Slots Simulator — nine machines, Monte-Carlo Sim Lab, /learn explainers, and the math the floor never shows" width="800">
+  <img src="public/og-image.png" alt="Slots Simulator — ten machines, Monte-Carlo Sim Lab, /learn explainers, and the math the floor never shows" width="800">
 </p>
 
 # Metaincognita Slots
@@ -10,7 +10,7 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.7.0.** The floor is open: nine machines, full game surfaces,
+**Status: v0.8.0.** The floor is open: ten machines, full game surfaces,
 per-machine cabinet chrome, X-ray mode, PAR sheets, session history, a
 Monte-Carlo Sim Lab, and /learn explainers on the math the floor never shows.
 
@@ -24,9 +24,10 @@ pnpm dev        # open http://localhost:3000
 1. **Floor** — set a bankroll, then pick a machine from the family-grouped
    card grid. Each card shows the exact RTP and a one-line description.
 2. **Machine** — spin, adjust your bet, watch the reels inside each
-   machine's bespoke decorative cabinet chrome (nine themed frames: gothic
+   machine's bespoke decorative cabinet chrome (ten themed frames: gothic
    stone, pachinko neon, baroque gold, emerald scales, riveted steel, ice
-   facets, rising flames, warm brass, cool turquoise). Hit **X-ray** to
+   facets, rising flames, warm brass, cool turquoise, green-felt card room).
+   Hit **X-ray** to
    open the side panel: labeled RNG trace, near-miss callouts, a live
    session-vs-exact RTP convergence sparkline, and machine internals.
 3. **PAR sheet** — click the spreadsheet icon for the full pay-table with
@@ -60,6 +61,7 @@ This is an educational simulator. No real money is involved.
 | Thunder Vault | Video (lines) | 5 reels x 24 stops, 25-line, Grand progressive | 90.2948% @ Grand reset |
 | Ruby of Gargoyle | Video (lines) | 5 reels x 24 stops, 25-line, hold & spin, Gargoyle's Eye ×N multiplier, Grand progressive | 90.0802% @ Grand reset |
 | Stock Rush | Pachislo (skill-stop) | 3 reels x 21 stops, flag lottery, stock queue | 66.0012%–120.0028% by operator level (L4 default 91.5013%) |
+| Hit or Bust | Blackjack reel (press-your-luck) | 5 card reels, deal + hit/stand, additive multiplier cards, Five-Card Charlie, Bust-Save | 89.9977% under optimal stopping |
 
 Every RTP shown is **computed** from the machine definition by exact
 enumeration (`exactRtp`) — never asserted — and verified by seeded
@@ -69,15 +71,13 @@ multi-million-spin simulation.
 
 Planned machines (see `docs/superpowers/specs/2026-06-14-future-games-roadmap.md`):
 
-- **Five Card Charlie** *(working title; also "Hit Me")* — a press-your-luck
-  blackjack on five reels. Spin a card per reel; stand or hit again; bust over
-  21 and lose the hand. Multiplier/bonus cards tempt you to hit even on a strong
-  total, and surviving all five reels is the five-card Charlie bonus. A new
-  family: sequential reveal + player stop-decisions + hand evaluation, with RTP
-  computed under optimal stopping strategy (video-poker-style).
-- **Crash / cash-out** — a stop-or-bust machine (the flameout-family mechanic):
-  each stop banks credits, a bad stop forfeits the lot. Distinct from pachislo
-  skill-stop, where wins are protected.
+- **Galactic Crash** — a pure crash / cash-out machine: four "climb" reels plus
+  a separate fifth multiplier reel and two buttons (Spin / Cash Out). Each spin
+  either survives and grows the running payout or crashes and forfeits the lot;
+  your winnings stay fully at risk until you cash out, and the multiplier reel is
+  the big-but-riskiest score. Distinct from pachislo skill-stop, where banked
+  wins are protected — here everything rides until you bank it. RTP computed
+  under optimal cash-out timing (the same exact-EV machinery as Hit or Bust).
 - **Authentic 4-tier progressives** — Mini/Minor/Major/Grand as scaling pools,
   generalizing the single-meter progressive system.
 
@@ -110,6 +110,24 @@ slips ≤ 4 stops, and an exhaustive 21³ check proves no win can land without a
 flag — so your timing changes *when*, never *how much*. Six operator odds
 levels straight from the manual's bands (65–67% up to 115–125%).
 
+## Blackjack reel (press-your-luck)
+
+Hit or Bust reimagines blackjack as a five-card reel game. Ante a bet, the
+machine deals two cards, then you **Hit** (reveal the next card) or **Stand**
+(lock the payout) across up to five reels. There's no dealer — you play a
+scaling paytable by final hand value (21 best, then 20/19/18; bust pays
+nothing). Additive multiplier cards (×2 + ×3 = ×5) tempt you to hit even a
+strong total, a rare **Bust-Save** voids one busting card so the run lives on,
+and surviving all five cards is the **Five-Card Charlie** bonus.
+
+RTP is exact under **optimal stopping**: a backward-induction DP over the
+decision state `(cards drawn, hard total, aces, multiplier sum, save held)`
+enumerates the whole tree (24-cell strips → the 24⁵ cycle is exact), and a
+simulate-under-optimal cross-check converges to it (89.9977% exact vs 89.9858%
+simulated). The PAR sheet renders the DP-derived hit/stand strategy table and
+the exact bust / Five-Card-Charlie odds; X-ray shows the live EV(hit) vs
+EV(stand) at each decision — the math the casino never shows.
+
 ## Per-machine cabinet chrome
 
 Each machine's reel window sits inside a bespoke, gaudy, "weird-Vegas"
@@ -133,7 +151,7 @@ pnpm test          # unit + frozen-calibration + convergence suites
 pnpm verify        # headless floor verification report (5M cycles/machine)
 ```
 
-`pnpm verify` now covers 9 machines and prints a jackpot-column footnote
+`pnpm verify` now covers 10 machines and prints a jackpot-column footnote
 distinguishing progressive meter hits (Bally, Thunder Vault Grand) from
 pachislo bonus flags. Convergence tests include video cycle-SE cases and
 pachislo block-SE at levels 1/4/6.
@@ -155,6 +173,7 @@ sevens-ablaze           2     94.4881%    94.7558%     0.2677%    15.7193%    15
 series-e-3line          1     89.0351%    89.1345%     0.0994%    11.8144%    11.8181%         2  PASS
 series-e-multiplier     3     89.1264%    89.1293%     0.0029%    14.2559%    14.2621%       204  PASS
 stock-rush              3     91.5013%    92.3172%     0.8159%    21.2341%    21.2290%         0  PASS
+hit-or-bust             3     89.9977%    89.9858%     0.0120%    50.2266%    50.2163%         0  PASS
 ```
 
 ## Tech

@@ -3,6 +3,51 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.0] - 2026-06-15
+
+### Added
+- **Hit or Bust** — a new machine and a new engine family, `blackjack-reel`
+  (the floor's tenth machine). Press-your-luck blackjack reimagined as a
+  five-card reel game:
+  - Ante a bet; the machine deals two cards, then you **Hit** (reveal the next
+    card) or **Stand** (lock the payout) across up to five reels. No dealer —
+    you play a scaling paytable by final hand value (21 best, then 20/19/18;
+    bust pays nothing).
+  - **Additive multiplier cards** (×2 + ×3 = ×5) that contribute nothing to the
+    total but scale the payout — tempting you to hit even a strong hand.
+  - **Five-Card Charlie** bonus for surviving all five cards, and a rare
+    **Bust-Save** that voids one busting card in place so the run continues.
+  - **Exact RTP under optimal stopping**: a backward-induction DP over the
+    state `(cards drawn, hard total, aces, multiplier sum, save held)`
+    enumerates the whole decision tree. Calibrated to 89.9977%; a
+    simulate-under-optimal cross-check converges (89.9858% sim, Δ 0.0120%).
+  - **PAR sheet** renders the DP-derived hit/stand strategy table and the exact
+    bust / Five-Card-Charlie odds; **X-ray** shows the live EV(hit) vs
+    EV(stand) at each decision.
+  - Bespoke **green-felt card-room chrome** (gold table trim, ♠♥♦♣ corner
+    ornaments, chip stacks, neon "HIT OR BUST · 21" sign) — the tenth chrome
+    module, via the v0.7.0 chrome system.
+
+### Fixed
+- PAR strategy table is now card-count-aware and derived entirely from the DP,
+  so it can never contradict the live X-ray (it previously queried the DP with
+  card arrays that didn't sum to the stated total). The Bust-Save note now
+  correctly reads a null stand-threshold as "HIT on all hard totals" instead of
+  "no change".
+- Hit or Bust multiplier badge overstated the multiplier by one (showed ×3 while
+  the hand paid ×2); it now matches the payout's `max(1, multSum)`.
+- Accessibility on the Hit or Bust game screen → 100/100: empty card slots
+  carried `aria-label` with no role (now `role="img"` in a `role="group"`
+  row), and the X-ray EV footnote met contrast (neutral-400).
+- Bet + Deal/Hit/Stand controls wrap on narrow viewports instead of clipping
+  the Hit/Stand buttons off-screen.
+- `pnpm verify` (and `simulateMachine`/`exactRtp` plumbing) now covers the
+  `blackjack-reel` family — the floor verification reports all ten machines.
+
+### Changed
+- og-image alt, README, social meta, and the floor intro now read "ten
+  machines"; `pnpm verify` covers 10.
+
 ## [0.7.0] - 2026-06-14
 
 ### Added
