@@ -28,6 +28,9 @@ export function initMachineState(def: MachineDef): MachineSessionState {
           replayNext: false,
           bonus: null
         }
+      : null,
+    blackjackReel: def.family === 'blackjack-reel'
+      ? { phase: 'idle', cards: [], total: 0, isSoft: false, multSum: 0, saveHeld: false, busted: false, charlie: false, ante: 0 }
       : null
   }
 }
@@ -53,6 +56,8 @@ export function nextSpinCost(def: MachineDef, state: MachineSessionState, coins:
       }
       return ps.replayNext ? 0 : coins
     }
+    case 'blackjack-reel':
+      return coins
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
@@ -75,6 +80,8 @@ export function spin(
       return spinVideo(def, state, coins, rand)
     case 'pachislo':
       return spinPachislo(def, state, coins, rand)
+    case 'blackjack-reel':
+      throw new Error('blackjack-reel is interactive; use dealHand/hitCard/standHand')
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

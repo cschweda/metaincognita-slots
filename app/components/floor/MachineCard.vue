@@ -9,7 +9,7 @@ const props = defineProps<{ def: MachineDef }>()
 const store = useSlotsStore()
 
 const FAMILY_LABEL: Record<MachineDef['family'], string> = {
-  'video': 'Video', 'stepper': 'Stepper', 'bally-em': 'Vintage Bally', 'pachislo': 'Pachislo'
+  'video': 'Video', 'stepper': 'Stepper', 'bally-em': 'Vintage Bally', 'pachislo': 'Pachislo', 'blackjack-reel': 'Blackjack reel'
 }
 
 const jackpotCents = computed<number | null>(() => {

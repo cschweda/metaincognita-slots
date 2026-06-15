@@ -251,6 +251,27 @@ export function validateMachineDef(def: MachineDef): void {
       if (il.maxBells < 1) errors.push('interlude.maxBells must be >= 1')
       break
     }
+    case 'blackjack-reel': {
+      if (def.strips.length !== 5) errors.push(`blackjack-reel needs 5 strips, got ${def.strips.length}`)
+      if (def.paytable.length === 0) errors.push('blackjack-reel paytable must not be empty')
+      // Build the full set of valid symbol ids: card values, multipliers, bust-save
+      const validSymbols = new Set<SymbolId>([
+        ...Object.keys(def.cardValues),
+        def.aceSymbol,
+        ...Object.keys(def.multiplierSymbols),
+        ...(def.bustSaveSymbol !== null ? [def.bustSaveSymbol] : [])
+      ])
+      def.strips.forEach((strip, r) => {
+        if (strip.length === 0) errors.push(`strips[${r}] must not be empty`)
+        strip.forEach((s) => {
+          checkSymbol(s, `strips[${r}]`)
+          if (!validSymbols.has(s)) {
+            errors.push(`strips[${r}]: symbol "${s}" not found in cardValues, aceSymbol, multiplierSymbols, or bustSaveSymbol`)
+          }
+        })
+      })
+      break
+    }
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

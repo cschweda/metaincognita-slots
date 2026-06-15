@@ -163,6 +163,8 @@ export function nearMisses(def: MachineDef, out: SpinOutcome): NearMissCallout[]
       return videoCallouts(def, out)
     case 'pachislo':
       return pachisloCallouts(def, out)
+    case 'blackjack-reel':
+      return []
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

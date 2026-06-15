@@ -109,6 +109,12 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
         { id: 'reg', text: 'REG lined (then 8 guaranteed wins)', pay: `${d.pays.bonusLined}` },
         { id: 'big', text: 'BIG lined (then 3 rounds of 8)', pay: `${d.pays.bonusLined}` }
       ]
+    case 'blackjack-reel':
+      return d.paytable.map(e => ({
+        id: `total-${e.total}`,
+        text: `Hand total ${e.total}`,
+        pay: `${e.pay}`
+      }))
     default: {
       const exhaustive: never = d
       throw new Error(`unhandled family: ${(exhaustive as MachineDef).family}`)

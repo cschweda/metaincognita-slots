@@ -1,7 +1,7 @@
 // Single source of truth for engine types. Pure data + pure functions only —
 // nothing in app/engine may import from Vue, Nuxt, or Pinia.
 
-export type MachineFamily = 'stepper' | 'bally-em' | 'video' | 'pachislo'
+export type MachineFamily = 'stepper' | 'bally-em' | 'video' | 'pachislo' | 'blackjack-reel'
 
 export type SymbolId = string
 
@@ -259,7 +259,37 @@ export interface PachisloMachineDef extends MachineDefBase {
   progressive: null
 }
 
-export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef
+export interface BlackjackReelMachineDef extends MachineDefBase {
+  family: 'blackjack-reel'
+  /** 5 weighted reel strips of card/special SymbolIds (slot-style, with replacement) */
+  strips: SymbolId[][]
+  /** card SymbolId -> blackjack value (2..10; faces 10). Aces handled via aceSymbol. */
+  cardValues: Record<SymbolId, number>
+  aceSymbol: SymbolId
+  /** special multiplier-card SymbolId -> additive face (e.g. {MX2:2, MX3:3}) */
+  multiplierSymbols: Record<SymbolId, number>
+  /** rare bust-save SymbolId (null = none) */
+  bustSaveSymbol: SymbolId | null
+  /** per-coin payout by final non-bust hand total */
+  paytable: { total: number, pay: number }[]
+  /** bonus per coin added when all five cards survive (Five-Card Charlie) */
+  charlieBonus: number
+  progressive: null
+}
+
+export interface BlackjackReelSessionState {
+  phase: 'idle' | 'dealt' | 'resolved'
+  cards: SymbolId[] // revealed symbols (cards + specials), in draw order
+  total: number // best hand total <= 21 (or the busting min if busted)
+  isSoft: boolean // an ace is currently counted as 11
+  multSum: number // additive multiplier sum (0 => pays x1)
+  saveHeld: boolean // a bust-save is available
+  busted: boolean
+  charlie: boolean // survived all five
+  ante: number // coins wagered for this hand (locks the payout scale)
+}
+
+export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef | BlackjackReelMachineDef
 
 // ---------- spin results ----------
 
@@ -308,6 +338,7 @@ export interface MachineSessionState {
   progressive: ProgressiveState | null
   videoFeature: VideoFeatureState | null
   pachislo: PachisloSessionState | null
+  blackjackReel: BlackjackReelSessionState | null
 }
 
 export interface RngDraw {
