@@ -303,15 +303,15 @@ const bjOdds = computed(() => {
               scope="row"
               class="py-0.5 text-left font-normal text-neutral-400"
             >
-              EV(stand)
+              EV(cash)
             </th>
             <td
               class="py-0.5 text-right"
-              :class="bjEv.action === 'stand' ? 'text-emerald-400 font-bold' : 'text-neutral-300'"
+              :class="bjEv.action === 'cash' ? 'text-emerald-400 font-bold' : 'text-neutral-300'"
             >
-              {{ bjEv.evStand.toFixed(4) }}
+              {{ bjEv.evCash.toFixed(4) }}
               <span
-                v-if="bjEv.action === 'stand'"
+                v-if="bjEv.action === 'cash'"
                 class="text-emerald-400"
               > ← optimal</span>
             </td>
@@ -321,15 +321,15 @@ const bjOdds = computed(() => {
               scope="row"
               class="py-0.5 text-left font-normal text-neutral-400"
             >
-              EV(hit)
+              EV(continue)
             </th>
             <td
               class="py-0.5 text-right"
-              :class="bjEv.action === 'hit' ? 'text-amber-300 font-bold' : 'text-neutral-300'"
+              :class="bjEv.action === 'continue' ? 'text-amber-300 font-bold' : 'text-neutral-300'"
             >
-              {{ bjEv.evHit.toFixed(4) }}
+              {{ bjEv.evContinue.toFixed(4) }}
               <span
-                v-if="bjEv.action === 'hit'"
+                v-if="bjEv.action === 'continue'"
                 class="text-amber-300"
               > ← optimal</span>
             </td>
@@ -340,7 +340,7 @@ const bjOdds = computed(() => {
         EV per coin wagered under this machine's optimal policy. Optimal action:
         <span
           class="font-bold"
-          :class="bjEv.action === 'hit' ? 'text-amber-300' : 'text-emerald-400'"
+          :class="bjEv.action === 'continue' ? 'text-amber-300' : 'text-emerald-400'"
         >{{ bjEv.action.toUpperCase() }}</span>
       </p>
     </div>
