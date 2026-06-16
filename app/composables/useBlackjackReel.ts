@@ -4,7 +4,7 @@
 // actions: deal / stop / cashOut.
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { bestTotal, handPayout } from '~/engine/blackjackReel'
+import { bestTotal, handPayout, GAMBLE_CAP } from '~/engine/blackjackReel'
 import type { BlackjackReelMachineDef } from '~/engine'
 import type { SymbolId } from '~/engine/types'
 
@@ -155,6 +155,31 @@ export function useBlackjackReel() {
     !store.spinning && phase.value === 'spinning'
   )
 
+  // ── gamble (double-or-nothing bonus) ───────────────────────────────────────
+  const gambleAmount = computed(() => bjState.value?.gambleAmount ?? 0)
+  const gambleCount = computed(() => bjState.value?.gambleCount ?? 0)
+  const canGambleStop = computed(() =>
+    !store.spinning && phase.value === 'gamble' && gambleCount.value < GAMBLE_CAP)
+  const canGambleCashOut = computed(() =>
+    !store.spinning && phase.value === 'gamble')
+  // Fair 50/50 → EV of stopping equals the amount on the line. The honesty surface.
+  const gambleEv = computed(() => gambleAmount.value)
+  const gambleAmountDollars = computed(() => {
+    const d = def.value
+    return d === null ? '$0.00' : `$${(gambleAmount.value * d.denominationCents / 100).toFixed(2)}`
+  })
+
+  function gambleStop() {
+    if (!canGambleStop.value) return
+    store.gambleStop()
+    store.revealDone()
+  }
+  function gambleCashOut() {
+    if (!canGambleCashOut.value) return
+    store.gambleCashOut()
+    store.revealDone()
+  }
+
   // ── actions ────────────────────────────────────────────────────────────────
   function deal() {
     if (!canDeal.value) return
@@ -272,6 +297,14 @@ export function useBlackjackReel() {
     cashOut,
     playAgain,
     modalOutcome,
+    gambleAmount,
+    gambleCount,
+    canGambleStop,
+    canGambleCashOut,
+    gambleEv,
+    gambleAmountDollars,
+    gambleStop,
+    gambleCashOut,
     // backward compat for pages/game.vue key handler
     canHit: canStop,
     canStand: canCash,
