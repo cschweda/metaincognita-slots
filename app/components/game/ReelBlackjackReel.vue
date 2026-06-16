@@ -108,11 +108,10 @@ const showModal = computed(() => bj.phase.value === 'resolved')
             aria-hidden="true"
           />
 
-          <!-- Spinning strip (active) OR idle attract spin -->
+          <!-- Spinning strip (active during a hand) -->
           <div
-            v-else-if="(bj.phase.value === 'spinning' || bj.phase.value === 'idle') && bj.reelStrips.value[i - 1]"
+            v-else-if="bj.phase.value === 'spinning' && bj.reelStrips.value[i - 1]"
             class="bj-strip motion-safe:bj-strip-spin"
-            :class="{ 'bj-strip-attract': bj.phase.value === 'idle' }"
           >
             <!-- Two passes of the strip for seamless loop -->
             <template
@@ -121,6 +120,27 @@ const showModal = computed(() => bj.phase.value === 'resolved')
             >
               <div
                 v-for="(sym, si) in bj.reelStrips.value[i - 1]"
+                :key="`${pass}-${si}`"
+                class="bj-strip-card"
+              >
+                <GameCardFace :symbol="sym" />
+              </div>
+            </template>
+          </div>
+
+          <!-- Idle attract spin — uses reel composition, not the empty dealt strips -->
+          <div
+            v-else-if="bj.phase.value === 'idle'"
+            class="bj-strip motion-safe:bj-strip-spin"
+            aria-hidden="true"
+          >
+            <!-- Two passes for seamless loop; content from reel composition -->
+            <template
+              v-for="pass in 2"
+              :key="pass"
+            >
+              <div
+                v-for="(sym, si) in bj.attractStrips.value[i - 1]"
                 :key="`${pass}-${si}`"
                 class="bj-strip-card"
               >
@@ -362,15 +382,9 @@ const showModal = computed(() => bj.phase.value === 'resolved')
   animation: lucky21-scroll 2.1s linear infinite;
   filter: blur(.2px);
 }
-/* Idle attract: slower, dimmer, no blur — visually distinct from active spin */
-.bj-strip-attract {
-  animation-duration: 3.6s !important;
-  opacity: 0.55;
-  filter: none;
-}
+/* Reduced-motion: freeze the strip in place (both attract and active spin). */
 @media (prefers-reduced-motion: reduce) {
   .bj-strip-spin { animation: none !important; filter: none; }
-  .bj-strip-attract { animation: none !important; opacity: 0.3; }
 }
 
 /* ── Result Modal ── */

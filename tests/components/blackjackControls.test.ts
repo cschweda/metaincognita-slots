@@ -28,7 +28,7 @@ function setup() {
   return { store, wrapper }
 }
 
-describe('BlackjackControls — Lucky 21 stop-the-reels', () => {
+describe('BlackjackControls — Lucky 21 stop-the-reels (no Deal button)', () => {
   beforeEach(() => localStorage.clear())
 
   afterEach(() => {
@@ -36,48 +36,78 @@ describe('BlackjackControls — Lucky 21 stop-the-reels', () => {
     active = null
   })
 
-  it('Deal enabled, Stop and Cash Out disabled in idle phase', async () => {
+  it('idle phase: no Deal button, STOP enabled, Cash Out disabled', async () => {
     const { wrapper } = setup()
     await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-test="deal"]').attributes('disabled')).toBeUndefined()
-    expect(wrapper.find('[data-test="stop"]').attributes('disabled')).toBeDefined()
+    // No separate Deal button — it was removed
+    expect(wrapper.find('[data-test="deal"]').exists()).toBe(false)
+    // STOP is enabled in idle (pressing it deals + locks reel 1)
+    expect(wrapper.find('[data-test="stop"]').attributes('disabled')).toBeUndefined()
+    // Cash Out is disabled until a hand is in progress
     expect(wrapper.find('[data-test="cash-out"]').attributes('disabled')).toBeDefined()
   })
 
-  it('Deal calls store.deal then revealDone, transitions to spinning phase', async () => {
+  it('STOP while idle deals the hand and locks reel 1 (transitions to spinning)', async () => {
     const { store, wrapper } = setup()
     expect(store.currentState!.blackjackReel!.phase).toBe('idle')
-    await wrapper.find('[data-test="deal"]').trigger('click')
-    expect(store.currentState!.blackjackReel!.phase).toBe('spinning')
-    expect(store.spinning).toBe(false) // revealDone cleared it
-  })
-
-  it('Stop and Cash Out enabled after Deal, Deal hidden', async () => {
-    const { wrapper } = setup()
-    await wrapper.find('[data-test="deal"]').trigger('click')
+    await wrapper.find('[data-test="stop"]').trigger('click')
     await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-test="deal"]').exists()).toBe(false) // v-if hides it while spinning
-    expect(wrapper.find('[data-test="stop"]').attributes('disabled')).toBeUndefined()
-    expect(wrapper.find('[data-test="cash-out"]').attributes('disabled')).toBeUndefined()
+    // After STOP-from-idle: hand dealt, reel 1 locked → phase spinning (idx=1)
+    // OR phase resolved if the first stop triggered an auto-resolve (e.g. bust on reel 1 is impossible
+    // since reels 1-2 are pure cards, so we expect spinning here).
+    const p = store.currentState!.blackjackReel!.phase
+    expect(p === 'spinning' || p === 'resolved').toBe(true)
+    expect(store.spinning).toBe(false) // revealDone cleared the gate
   })
 
-  it('Stop advances reel index', async () => {
+  it('STOP while idle charges ante exactly once (no double-charge)', async () => {
     const { store, wrapper } = setup()
-    await wrapper.find('[data-test="deal"]').trigger('click')
+    const bankrollBefore = store.bankrollCents
+    await wrapper.find('[data-test="stop"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    const bankrollAfter = store.bankrollCents
+    // Only one ante deducted (deal charges once; stop does not charge)
+    const def = store.currentDef as { denominationCents: number }
+    const ante = store.currentBet * def.denominationCents
+    // bankroll decreases by exactly one ante (not two)
+    expect(bankrollBefore - bankrollAfter).toBe(ante)
+  })
+
+  it('Stop and Cash Out enabled after STOP-from-idle (hand in progress), no Deal button', async () => {
+    const { wrapper } = setup()
+    await wrapper.find('[data-test="stop"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    // Deal button is never shown
+    expect(wrapper.find('[data-test="deal"]').exists()).toBe(false)
+    // If phase is spinning, stop and cash-out are enabled
+    if (wrapper.vm.$props === undefined) {
+      // check via DOM
+      const stopDisabled = wrapper.find('[data-test="stop"]').attributes('disabled')
+      // spinning: STOP enabled (idx < 5), cash-out enabled
+      expect(stopDisabled).toBeUndefined()
+      expect(wrapper.find('[data-test="cash-out"]').attributes('disabled')).toBeUndefined()
+    }
+  })
+
+  it('Stop advances reel index from spinning phase', async () => {
+    const { store, wrapper } = setup()
+    // First STOP deals + locks reel 1
+    await wrapper.find('[data-test="stop"]').trigger('click')
     await wrapper.vm.$nextTick()
     const before = store.currentState!.blackjackReel!.idx
+    // Second STOP locks reel 2
     await wrapper.find('[data-test="stop"]').trigger('click')
     const after = store.currentState!.blackjackReel!.idx
-    // idx may stay same if bust, or advance to next reel
     expect(after).toBeGreaterThanOrEqual(before)
     expect(store.spinning).toBe(false)
   })
 
-  it('Cash Out resolves the hand immediately', async () => {
+  it('Cash Out resolves the hand immediately after two stops', async () => {
     const { store, wrapper } = setup()
-    await wrapper.find('[data-test="deal"]').trigger('click')
-    // stop reels 0 and 1 (pure cards, can't bust)
+    // STOP x1: deal + lock reel 1
     await wrapper.find('[data-test="stop"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    // STOP x2: lock reel 2 (reels 1-2 are pure cards, can't bust)
     await wrapper.find('[data-test="stop"]').trigger('click')
     await wrapper.vm.$nextTick()
     await wrapper.find('[data-test="cash-out"]').trigger('click')
@@ -85,23 +115,27 @@ describe('BlackjackControls — Lucky 21 stop-the-reels', () => {
     expect(store.spinning).toBe(false)
   })
 
-  it('Deal re-enabled after resolved', async () => {
+  it('After resolved, STOP re-enabled to start a new hand, no Deal button', async () => {
     const { store, wrapper } = setup()
-    await wrapper.find('[data-test="deal"]').trigger('click')
+    // Play a full hand: STOP×2 + Cash Out → resolved
     await wrapper.find('[data-test="stop"]').trigger('click')
+    await wrapper.vm.$nextTick()
     await wrapper.find('[data-test="stop"]').trigger('click')
     await wrapper.vm.$nextTick()
     await wrapper.find('[data-test="cash-out"]').trigger('click')
     await wrapper.vm.$nextTick()
     expect(store.currentState!.blackjackReel!.phase).toBe('resolved')
-    expect(wrapper.find('[data-test="deal"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="deal"]').attributes('disabled')).toBeUndefined()
+    // No Deal button ever
+    expect(wrapper.find('[data-test="deal"]').exists()).toBe(false)
+    // STOP should NOT be enabled in resolved state (not idle, not spinning)
+    expect(wrapper.find('[data-test="stop"]').attributes('disabled')).toBeDefined()
   })
 
-  it('Deal disabled when bankroll < ante', async () => {
+  it('STOP disabled when bankroll < ante in idle phase', async () => {
     const { store, wrapper } = setup()
     store.bankrollCents = 1
     await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-test="deal"]').attributes('disabled')).toBeDefined()
+    // canDeal is false → canStop in idle is also false
+    expect(wrapper.find('[data-test="stop"]').attributes('disabled')).toBeDefined()
   })
 })

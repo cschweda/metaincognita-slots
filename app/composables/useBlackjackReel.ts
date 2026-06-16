@@ -6,6 +6,7 @@ import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { bestTotal, handPayout } from '~/engine/blackjackReel'
 import type { BlackjackReelMachineDef } from '~/engine'
+import type { SymbolId } from '~/engine/types'
 
 export interface ModalOutcome {
   kind: 'win' | 'bust' | 'charlie'
@@ -72,6 +73,26 @@ export function useBlackjackReel() {
   // ── best total for logic ───────────────────────────────────────────────────
   const bestTotalVal = computed((): number => bjState.value?.bestTotal ?? 0)
 
+  // ── attract strips (idle phase only) ──────────────────────────────────────
+  // Build a short strip per reel from the reel composition tokens so the idle
+  // attract renders actual cards/specials. 'CARD' tokens are replaced with
+  // representative deck cards (cycling through a fixed ordering so the strip
+  // is deterministic and bounded). Bounded: max ~16 items * 2 passes = ≤32
+  // elements per reel — never thousands.
+  const attractStrips = computed((): SymbolId[][] => {
+    const d = def.value
+    if (d === null) return [[], [], [], [], []]
+    // A fixed representative subset of the deck for attract cards (8 cards,
+    // covering ranks A/K/Q/J/T/9/8/7 across suits for visual variety).
+    const attractDeck: SymbolId[] = ['AS', 'KH', 'QD', 'JC', 'TS', 'AH', '9D', '8C']
+    let di = 0
+    return d.reels.map((slots): SymbolId[] =>
+      slots.map((tok): SymbolId =>
+        tok === 'CARD' ? attractDeck[di++ % attractDeck.length]! : tok
+      )
+    )
+  })
+
   // ── can*/action gates ──────────────────────────────────────────────────────
   const canDeal = computed(() => {
     const d = def.value
@@ -81,10 +102,16 @@ export function useBlackjackReel() {
     return store.currentBet * d.denominationCents <= store.bankrollCents
   })
 
-  const canStop = computed(() =>
-    !store.spinning && phase.value === 'spinning'
-  )
+  // STOP is enabled in idle (to start the hand) and spinning (to lock a reel).
+  // It is NOT enabled while the store's spinning gate is held (mid-action).
+  const canStop = computed(() => {
+    if (store.spinning) return false
+    const p = phase.value
+    if (p === 'idle') return canDeal.value // same bankroll gate
+    return p === 'spinning'
+  })
 
+  // CASH OUT is only valid once a hand is in progress.
   const canCash = computed(() =>
     !store.spinning && phase.value === 'spinning'
   )
@@ -98,8 +125,19 @@ export function useBlackjackReel() {
 
   function stop() {
     if (!canStop.value) return
-    store.stop()
-    store.revealDone()
+    if (phase.value === 'idle') {
+      // STOP while idle: deal the hand (charges the ante), then immediately
+      // lock reel 1. deal() sets spinning=true and the store transitions to
+      // phase 'spinning'; revealDone clears the gate; then stop() picks up.
+      store.deal()
+      store.revealDone()
+      // After revealDone the gate is clear and phase is 'spinning' — proceed.
+      store.stop()
+      store.revealDone()
+    } else {
+      store.stop()
+      store.revealDone()
+    }
   }
 
   function cashOut() {
@@ -170,6 +208,7 @@ export function useBlackjackReel() {
     bjState,
     phase,
     reelStrips,
+    attractStrips,
     landed,
     idx,
     score,

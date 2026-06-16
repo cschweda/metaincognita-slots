@@ -43,6 +43,16 @@ describe('Reel surfaces', () => {
     expect(wrapper.find('[data-test="bj-surface"]').exists()).toBe(true)
   })
 
+  it('blackjack-reel idle attract renders bounded strip-card slots (no empty strips)', () => {
+    const wrapper = withMachine(ReelBlackjackReel, 'lucky-21')
+    // Idle attract strips are built from the reel composition (not the empty dealt strips).
+    // Each reel has ≥1 bj-strip-card slot; total across 5 reels × 2 loop passes must be
+    // bounded (≤ 5 reels × 16 tokens × 2 passes = 160). Verifies no empty/runaway strips.
+    const slots = wrapper.findAll('.bj-strip-card')
+    expect(slots.length).toBeGreaterThan(0)
+    expect(slots.length).toBeLessThanOrEqual(160)
+  })
+
   it('blackjack-reel renders BUST modal after a bust stop', () => {
     // withMachine creates+activates pinia, so mutate AFTER to share the same store
     const wrapper = withMachine(ReelBlackjackReel, 'lucky-21')
