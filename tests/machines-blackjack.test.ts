@@ -11,6 +11,7 @@ import { blackjackReelExactRtp, makeOptimalStopFn, optimalStop } from '../app/en
 import { validateMachineDef } from '../app/engine/validate'
 import { dealReels, stopReel, cashOut, freshBlackjackState, gambleStop, gambleCashOut } from '../app/engine/blackjackReel'
 import { mulberry32 } from '../app/engine/rng'
+import { simulateMachine } from '../app/engine'
 import { LUCKY_21 } from '../app/machines/lucky-21'
 import type { MachineSessionState } from '../app/engine/types'
 
@@ -248,5 +249,18 @@ describe('blackjack bonus — DP treats a natural as terminal', () => {
       idx: 2, hand: ['AS', 'TH'], hard: 11, aces: 1, multSum: 0,
       bestTotal: 21, natural: true, ante: 1 }
     expect(optimalStop(LUCKY_21, bj)).toBe('cash')
+  })
+})
+
+describe('blackjack bonus — simulation resolves naturals', () => {
+  it('never leaves a hand stuck in the gamble phase (sim RTP tracks the DP)', () => {
+    const res = simulateMachine(LUCKY_21, { spins: 20000, coins: 1, seed: 7, progressiveMode: 'static' })
+    expect(Number.isFinite(res.rtp)).toBe(true)
+    expect(res.rtp).toBeGreaterThan(0)
+    // Collecting the guaranteed natural payout (the EV-neutral gamble) keeps the
+    // simulated RTP tracking the exact DP. Before this fix a natural left the hand
+    // in 'gamble' and paid 0, so the sim under-returned by several points.
+    const dp = blackjackReelExactRtp(LUCKY_21).rtpPerCoin
+    expect(res.rtp).toBeCloseTo(dp, 1)
   })
 })

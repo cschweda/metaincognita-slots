@@ -6,7 +6,7 @@ import { spinBallyEm } from './ballyEm'
 import { spinVideo } from './video'
 import { spinPachislo } from './pachislo'
 import { initProgressiveState, addCoinToProgressive } from './progressive'
-import { freshBlackjackState, dealReels, stopReel, cashOut } from './blackjackReel'
+import { freshBlackjackState, dealReels, stopReel, cashOut, gambleCashOut } from './blackjackReel'
 import { makeOptimalStopFn } from './blackjackReelRtp'
 
 export * from './types'
@@ -165,6 +165,13 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
         }
         handPay += out.totalPayout
         for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
+        if (state.blackjackReel!.phase === 'gamble') {
+          // Natural bonus: collect the guaranteed (the gamble is EV-neutral), so
+          // the simulated RTP matches the DP, which values a natural at naturalPay.
+          out = gambleCashOut(def, state)
+          handPay += out.totalPayout
+          for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
+        }
       }
 
       totalOut += handPay
