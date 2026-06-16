@@ -15,6 +15,9 @@ export interface ModalOutcome {
   mult: number
   totalDollars: string
   sub: string
+  // true when this resolved hand came through the blackjack double-or-nothing
+  // bonus (a natural); the flow chips read the gamble result, not handPayout.
+  gamble?: boolean
   // bust-only
   bustLabel?: string
   bustValue?: string
@@ -224,6 +227,31 @@ export function useBlackjackReel() {
 
     const ante = bj.ante
     const anteDollars = (ante * d.denominationCents / 100).toFixed(2)
+
+    // Blackjack-bonus: a resolved natural came through the double-or-nothing
+    // gamble. Its result is bj.gambleAmount (already 0 on a gamble loss, or the
+    // laddered amount on a win/cash-out) — NOT handPayout. The dollar hero must
+    // equal the gamble result and a loss must read as a BUST at $0.
+    if (bj.natural) {
+      const gambleCents = bj.gambleAmount * d.denominationCents
+      const gambleDollars = `$${(gambleCents / 100).toFixed(2)}`
+      const won = bj.gambleAmount > 0
+      const doubled = bj.gambleCount > 0 ? ` — doubled ${bj.gambleCount}×` : ''
+      return {
+        kind: won ? 'win' : 'bust',
+        best: 21,
+        baseDollars: gambleCents / 100,
+        mult: 1,
+        totalDollars: gambleDollars,
+        gamble: true,
+        sub: won
+          ? `BLACKJACK${doubled} — kept ${gambleDollars}`
+          : 'gambled the blackjack and busted',
+        bustLabel: 'Blackjack bonus',
+        bustValue: 'BUST',
+        bustResult: '$0.00'
+      }
+    }
 
     if (bj.busted) {
       const bustLabel = bj.bustBySymbol ? 'Drew a' : 'Total'

@@ -32,8 +32,8 @@ type CocktailTag = { text: string, tone: '' | 'good' | 'danger' | 'charlie' }
 const REEL_COCKTAILS: CocktailTag[][] = [
   [{ text: 'cards', tone: '' }],
   [{ text: 'cards', tone: '' }],
-  [{ text: '×2/×3', tone: 'good' }, { text: '−3/−2', tone: 'good' }, { text: 'BUST', tone: 'danger' }],
-  [{ text: 'cards', tone: '' }, { text: '×2/×3', tone: 'good' }, { text: '−3', tone: 'good' }, { text: 'BUST', tone: 'danger' }],
+  [{ text: '×2/×3', tone: 'good' }, { text: '−3', tone: 'good' }, { text: 'BUST', tone: 'danger' }],
+  [{ text: 'cards', tone: '' }, { text: '×3/×5', tone: 'good' }, { text: '−3', tone: 'good' }, { text: 'BUST', tone: 'danger' }],
   [{ text: 'cards', tone: '' }, { text: '×5/×10 big', tone: 'good' }, { text: 'BUST', tone: 'danger' }, { text: 'survive=CHARLIE', tone: 'charlie' }]
 ]
 </script>
@@ -304,7 +304,21 @@ const REEL_COCKTAILS: CocktailTag[][] = [
             class="l21-flow"
             data-test="modal-flow"
           >
-            <template v-if="bj.modalOutcome.value?.kind !== 'bust'">
+            <!-- Blackjack double-or-nothing bonus: a single result chip -->
+            <template v-if="bj.modalOutcome.value?.gamble">
+              <div
+                class="l21-fchip"
+                :class="bj.modalOutcome.value?.kind === 'bust' ? 'l21-fchip-danger' : ''"
+              >
+                <div class="l21-fl">
+                  Blackjack bonus
+                </div>
+                <div class="l21-fv">
+                  {{ bj.modalOutcome.value?.kind === 'bust' ? 'BUST' : bj.modalOutcome.value?.totalDollars }}
+                </div>
+              </div>
+            </template>
+            <template v-else-if="bj.modalOutcome.value?.kind !== 'bust'">
               <div class="l21-fchip">
                 <div class="l21-fl">
                   {{ bj.modalOutcome.value?.kind === 'charlie' ? '5-card survival' : `Hand ${bj.modalOutcome.value?.best} pays` }}
@@ -378,6 +392,91 @@ const REEL_COCKTAILS: CocktailTag[][] = [
           >
             Play Again
           </button>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ── Double-or-nothing bonus overlay (a true 2-card natural) ─────── -->
+    <Transition name="l21-modal">
+      <div
+        v-if="bj.phase.value === 'gamble'"
+        class="l21-gamble-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Blackjack bonus — double or nothing"
+        data-test="gamble-overlay"
+      >
+        <div class="l21-gamble">
+          <div class="l21-gamble-title">
+            BLACKJACK!
+          </div>
+          <div class="l21-gamble-online">
+            on the line: <b data-test="gamble-amount">{{ bj.gambleAmountDollars.value }}</b>
+          </div>
+
+          <!-- the spinning chromed reel (honest 50/50 — the engine flips it) -->
+          <div class="l21-gamble-window">
+            <div
+              class="l21-gamble-strip l21-strip-spin"
+              aria-hidden="true"
+            >
+              <template
+                v-for="pass in 2"
+                :key="pass"
+              >
+                <div
+                  v-for="n in 4"
+                  :key="`${pass}-${n}`"
+                  class="l21-gamble-face"
+                  :class="n % 2 === 1 ? 'l21-gamble-x2' : 'l21-gamble-bust'"
+                >
+                  <b>{{ n % 2 === 1 ? '×2' : '💥' }}</b>
+                  <span>{{ n % 2 === 1 ? 'DOUBLE' : 'BUST' }}</span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- ladder: light the rung at the current double count -->
+          <div
+            class="l21-gamble-ladder"
+            aria-hidden="true"
+          >
+            <span
+              v-for="r in 4"
+              :key="r"
+              class="l21-rung"
+              :class="{ 'l21-rung-on': (r - 1) === bj.gambleCount.value }"
+            >×{{ 2 ** (r - 1) }}</span>
+          </div>
+
+          <div class="l21-controls">
+            <button
+              class="l21-btn l21-btn-gstop"
+              data-test="gamble-stop"
+              :disabled="!bj.canGambleStop.value"
+              aria-label="Stop the bonus reel — double or bust"
+              @click="bj.gambleStop()"
+            >
+              Stop
+              <small>double or bust</small>
+            </button>
+            <button
+              class="l21-btn l21-btn-cash"
+              data-test="gamble-cash"
+              :disabled="!bj.canGambleCashOut.value"
+              aria-label="Cash out the blackjack bonus"
+              @click="bj.gambleCashOut()"
+            >
+              Cash Out
+              <small>keep {{ bj.gambleAmountDollars.value }}</small>
+            </button>
+          </div>
+
+          <div class="l21-gamble-cap">
+            Land <b>×2</b> → the amount doubles and the reel spins again (up to 3 doubles).
+            Land <i>BUST</i> → lose it all. Nothing is locked until you choose.
+          </div>
         </div>
       </div>
     </Transition>
@@ -857,4 +956,144 @@ const REEL_COCKTAILS: CocktailTag[][] = [
 @media (max-width: 420px) {
   .l21-controls { flex-direction: column; }
 }
+
+/* ── Double-or-nothing bonus overlay (chrome, ported from bonus-reel-spin.html) ── */
+.l21-gamble-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2,10,7,.82);
+  backdrop-filter: blur(4px);
+  z-index: 60;
+  padding: 20px;
+}
+
+/* the chromed metallic frame (mockup .dz) */
+.l21-gamble {
+  width: 100%;
+  max-width: 380px;
+  border-radius: 16px;
+  padding: 14px 16px 16px;
+  background: linear-gradient(180deg, #f4f7fa 0%, #c6cfd8 16%, #7e8995 50%, #aab4c0 80%, #e8eef2 100%);
+  border: 2px solid #e2e8ee;
+  box-shadow: 0 0 0 2px #444c56, 0 14px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.85);
+}
+.l21-gamble-title {
+  text-align: center;
+  font-family: 'Bungee', 'Arial Black', sans-serif;
+  font-size: 22px;
+  color: #0a5e30;
+  text-shadow: 0 1px 0 rgba(255,255,255,.7);
+  line-height: 1;
+}
+.l21-gamble-online {
+  text-align: center;
+  font-family: 'Orbitron', monospace;
+  font-weight: 800;
+  font-size: 12px;
+  color: #2b323a;
+  margin: 2px 0 10px;
+}
+.l21-gamble-online b { color: var(--gold-dk); }
+
+/* the spinning reel window (mockup .dzwin) */
+.l21-gamble-window {
+  position: relative;
+  width: 130px;
+  height: 150px;
+  margin: 0 auto;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #05100d;
+  box-shadow: inset 0 0 16px #000, 0 0 0 3px #cdd6de, 0 0 0 5px #4a525c;
+}
+.l21-gamble-window::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-1.5px);
+  z-index: 3;
+  background: linear-gradient(90deg, transparent, rgba(255,210,74,.9), transparent);
+}
+.l21-gamble-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+/* faces (mockup .face): height 64 + margin 4*2 = 72px each; the strip duplicates
+   4 faces, so the .l21-strip-spin translateY(-50%) loops seamlessly. */
+.l21-gamble-face {
+  width: 108px;
+  height: 64px;
+  margin: 4px 0;
+  border-radius: 8px;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bungee', 'Arial Black', sans-serif;
+  box-shadow: inset 0 0 10px rgba(0,0,0,.5);
+}
+.l21-gamble-face b { line-height: 1; }
+.l21-gamble-face span { font-size: 8px; letter-spacing: 1.5px; }
+.l21-gamble-x2 {
+  background: linear-gradient(180deg, #7bffb0, #0f8f48);
+  color: #04240f;
+}
+.l21-gamble-x2 b { font-size: 26px; }
+.l21-gamble-bust {
+  background: linear-gradient(180deg, #ff7d92, #cf1c39);
+  color: #fff;
+}
+.l21-gamble-bust b { font-size: 22px; }
+
+/* ladder (mockup .ladder / .rung) */
+.l21-gamble-ladder {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin: 12px 0 4px;
+}
+.l21-rung {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 20px;
+  background: #39404a;
+  color: #aeb8c2;
+  border: 1px solid #596470;
+}
+.l21-rung-on {
+  background: linear-gradient(180deg, #fff6c8, var(--gold));
+  color: #3a2400;
+  border-color: var(--gold-dk);
+}
+
+/* STOP(red) / CASH(green) gamble buttons (mockup .btn.stop / .btn.cash) */
+.l21-btn-gstop {
+  background: linear-gradient(180deg, #ff8aa0, #cf1c39);
+  color: #fff;
+  box-shadow: 0 4px 0 #7a0f20;
+}
+
+.l21-gamble-cap {
+  text-align: center;
+  font-size: 10px;
+  color: #2b323a;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+.l21-gamble-cap b { color: #0a5e30; }
+.l21-gamble-cap i { color: #cf1c39; font-style: normal; }
 </style>
