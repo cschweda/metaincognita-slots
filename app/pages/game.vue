@@ -50,8 +50,47 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- ── Lucky 21 (blackjack-reel): dedicated demo-faithful felt page ── -->
   <div
-    v-if="store.currentDef"
+    v-if="store.currentDef && store.currentDef.family === 'blackjack-reel'"
+    class="l21-page"
+  >
+    <div class="l21-page-grid">
+      <div class="l21-page-main">
+        <GameReelBlackjackReel :key="store.currentMachineId ?? ''" />
+      </div>
+      <aside class="l21-page-side">
+        <div class="l21-side-tools">
+          <UButton
+            :color="store.settings.xray ? 'primary' : 'neutral'"
+            :variant="store.settings.xray ? 'solid' : 'outline'"
+            :aria-pressed="store.settings.xray"
+            size="xs"
+            icon="i-lucide-scan-line"
+            @click="store.setXray(!store.settings.xray)"
+          >
+            X-ray
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="xs"
+            icon="i-lucide-file-spreadsheet"
+            @click="parOpen = true"
+          >
+            PAR sheet
+          </UButton>
+          <GameParSheetModal v-model:open="parOpen" />
+        </div>
+        <GameSessionSidebar />
+        <GameXrayPanel />
+      </aside>
+    </div>
+  </div>
+
+  <!-- ── All other machines: the standard simulator shell ── -->
+  <div
+    v-else-if="store.currentDef"
     class="px-4 py-4 max-w-[1100px] mx-auto space-y-3"
   >
     <GameMachineMarquee />
@@ -101,10 +140,6 @@ onUnmounted(() => {
             v-else-if="store.currentDef?.family === 'pachislo'"
             :key="store.currentMachineId ?? ''"
           />
-          <GameReelBlackjackReel
-            v-else-if="store.currentDef?.family === 'blackjack-reel'"
-            :key="store.currentMachineId ?? ''"
-          />
         </GameMachineChrome>
         <GameResultBar />
         <GameBetControls>
@@ -113,12 +148,6 @@ onUnmounted(() => {
             #pachislo-controls
           >
             <GamePachisloControls />
-          </template>
-          <template
-            v-if="store.currentDef?.family === 'blackjack-reel'"
-            #blackjack-controls
-          >
-            <GameBlackjackControls />
           </template>
         </GameBetControls>
       </div>
@@ -129,3 +158,35 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Lucky 21 — full-bleed felt page (the demo's body background) */
+.l21-page {
+  min-height: 100%;
+  padding: 24px 14px 40px;
+  background: radial-gradient(120% 90% at 50% 0%, #15725a 0%, #0c4a37 38%, #04221a 100%);
+}
+.l21-page-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .l21-page-grid { grid-template-columns: minmax(0, 1fr) 300px; }
+}
+.l21-page-main { min-width: 0; }
+.l21-page-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.l21-side-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+</style>

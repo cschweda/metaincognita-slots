@@ -11,6 +11,9 @@ onMounted(() => {
   if (store.phase === 'floor' && store.peekSavedSession()) store.resume()
 })
 
+const FEATURED_ID = 'lucky-21'
+const featured = computed(() => FLOOR.find(def => def.id === FEATURED_ID) ?? null)
+
 const FAMILY_ORDER = ['video', 'stepper', 'bally-em', 'pachislo', 'blackjack-reel'] as const
 const FAMILY_HEADING: Record<string, string> = {
   'video': 'Video slots',
@@ -19,11 +22,13 @@ const FAMILY_HEADING: Record<string, string> = {
   'pachislo': 'Pachislo skill-stop',
   'blackjack-reel': 'Blackjack reel'
 }
+// The featured machine is promoted to the top; drop it from its family group
+// (and hide any group left empty) so it never appears twice.
 const groups = computed(() => FAMILY_ORDER.map(family => ({
   family,
   heading: FAMILY_HEADING[family]!,
-  machines: FLOOR.filter(def => def.family === family)
-})))
+  machines: FLOOR.filter(def => def.family === family && def.id !== FEATURED_ID)
+})).filter(group => group.machines.length > 0))
 </script>
 
 <template>
@@ -69,6 +74,11 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
           </UButton>
         </div>
       </div>
+
+      <FloorFeaturedMachine
+        v-if="featured"
+        :def="featured"
+      />
 
       <section
         v-for="group in groups"

@@ -73,6 +73,45 @@ export function useBlackjackReel() {
   // ── best total for logic ───────────────────────────────────────────────────
   const bestTotalVal = computed((): number => bjState.value?.bestTotal ?? 0)
 
+  // ── ante (fixed bet) display ────────────────────────────────────────────────
+  const anteDollars = computed((): string => {
+    const bj = bjState.value
+    const d = def.value
+    if (d === null) return '$0.00'
+    const coins = (bj !== null && bj.ante > 0) ? bj.ante : store.currentBet
+    return `$${(coins * d.denominationCents / 100).toFixed(2)}`
+  })
+
+  // ── live message line (mirrors the demo's setMsg states) ────────────────────
+  const message = computed((): { text: string, tone: '' | 'good' | 'bad' | 'gold' } => {
+    const bj = bjState.value
+    const d = def.value
+    if (bj === null || d === null || bj.phase === 'idle' || bj.phase === 'resolved') {
+      return { text: 'Press STOP to lock reel 1', tone: '' }
+    }
+    // spinning: describe the reel we just locked
+    const lastIdx = bj.idx - 1
+    if (lastIdx < 0) return { text: 'Press STOP to lock reel 1', tone: '' }
+    const sym = bj.landed[lastIdx] ?? null
+    const cash = cashValueDollars.value
+    if (sym !== null && sym in d.multiplierSymbols) {
+      return { text: `×${d.multiplierSymbols[sym]} multiplier — ${cash}`, tone: 'gold' }
+    }
+    if (sym !== null && sym in d.minusSymbols) {
+      return { text: `−${d.minusSymbols[sym]} safe room (${cash} holds)`, tone: 'good' }
+    }
+    // a card landed
+    if (bj.bestTotal < d.qualifyMin) {
+      const { total } = bestTotal(bj.hard, bj.aces)
+      return { text: `Score ${total} — reach ${d.qualifyMin} to win`, tone: '' }
+    }
+    if (cashValueCents.value > 0) return { text: `${cash} on the line — push toward 21`, tone: 'good' }
+    return { text: 'No gain — push toward 21', tone: '' }
+  })
+
+  // STOP button sub-label: which reel the next STOP locks (demo updateStopLabel).
+  const stopHint = computed((): string => (idx.value < 5 ? `spin reel ${idx.value + 1}` : '—'))
+
   // ── attract strips (idle phase only) ──────────────────────────────────────
   // Build a short strip per reel from the reel composition tokens so the idle
   // attract renders actual cards/specials. 'CARD' tokens are replaced with
@@ -214,6 +253,9 @@ export function useBlackjackReel() {
     score,
     cashValueCents,
     cashValueDollars,
+    anteDollars,
+    message,
+    stopHint,
     multSum,
     bestTotalVal,
     canDeal,

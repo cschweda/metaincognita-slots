@@ -18,6 +18,24 @@ const cashAtZero = computed(() => bj.cashValueCents.value === 0)
 
 // ─── result modal open/close ──────────────────────────────────────────────────
 const showModal = computed(() => bj.phase.value === 'resolved')
+
+// ─── reel labels + cocktail tags (presentation; matches the demo verbatim) ────
+const REEL_NAMES = [
+  'Reel 1 · cards',
+  'Reel 2 · cards',
+  'Reel 3 · LOCK-IN BONUS · no cards',
+  'Reel 4 · MIX · fewer BUST',
+  'Reel 5 · BIG · more cards'
+] as const
+
+type CocktailTag = { text: string, tone: '' | 'good' | 'danger' | 'charlie' }
+const REEL_COCKTAILS: CocktailTag[][] = [
+  [{ text: 'cards', tone: '' }],
+  [{ text: 'cards', tone: '' }],
+  [{ text: '×2/×3', tone: 'good' }, { text: '−3/−2', tone: 'good' }, { text: 'BUST', tone: 'danger' }],
+  [{ text: 'cards', tone: '' }, { text: '×2/×3', tone: 'good' }, { text: '−3', tone: 'good' }, { text: 'BUST', tone: 'danger' }],
+  [{ text: 'cards', tone: '' }, { text: '×5/×10 big', tone: 'good' }, { text: 'BUST', tone: 'danger' }, { text: 'survive=CHARLIE', tone: 'charlie' }]
+]
 </script>
 
 <template>
@@ -76,7 +94,7 @@ const showModal = computed(() => bj.phase.value === 'resolved')
           class="l21-betref"
           data-test="cash-ref"
         >
-          {{ cashAtZero ? 'reach 15 to win' : 'from your bet' }}
+          {{ cashAtZero ? 'reach 15 to win' : `from your ${bj.anteDollars.value} bet` }}
         </div>
       </div>
     </div>
@@ -99,7 +117,7 @@ const showModal = computed(() => bj.phase.value === 'resolved')
       >
         <!-- Reel label -->
         <div class="l21-reel-name">
-          Reel {{ i }}
+          {{ REEL_NAMES[i - 1] }}
         </div>
 
         <!-- Reel window -->
@@ -128,7 +146,7 @@ const showModal = computed(() => bj.phase.value === 'resolved')
           <!-- Spinning strip (active during a hand) -->
           <div
             v-else-if="bj.phase.value === 'spinning' && bj.reelStrips.value[i - 1]"
-            class="l21-strip motion-safe:l21-strip-spin"
+            class="l21-strip l21-strip-spin"
           >
             <template
               v-for="pass in 2"
@@ -147,7 +165,7 @@ const showModal = computed(() => bj.phase.value === 'resolved')
           <!-- Idle attract spin — uses reel composition -->
           <div
             v-else-if="bj.phase.value === 'idle'"
-            class="l21-strip motion-safe:l21-strip-spin"
+            class="l21-strip l21-strip-spin"
             aria-hidden="true"
           >
             <template
@@ -165,12 +183,59 @@ const showModal = computed(() => bj.phase.value === 'resolved')
           </div>
         </div>
 
-        <!-- Cocktail tags placeholder (keeps layout height) -->
-        <div
-          v-if="bj.phase.value !== 'idle'"
-          class="l21-cocktail"
-        />
+        <!-- Cocktail tags — what each reel can land (matches the demo) -->
+        <div class="l21-cocktail">
+          <span
+            v-for="(tag, ti) in REEL_COCKTAILS[i - 1]"
+            :key="ti"
+            class="l21-tag"
+            :class="tag.tone ? `l21-tag-${tag.tone}` : ''"
+          >{{ tag.text }}</span>
+        </div>
       </div>
+    </div>
+
+    <!-- ── Live message line (mirrors the demo's setMsg states) ───────── -->
+    <div
+      class="l21-msg"
+      :class="bj.message.value.tone ? `l21-msg-${bj.message.value.tone}` : ''"
+      data-test="bj-msg"
+      aria-live="polite"
+    >
+      {{ bj.message.value.text }}
+    </div>
+
+    <!-- ── STOP / CASH OUT controls (in-cabinet, like the demo) ───────── -->
+    <div class="l21-controls">
+      <button
+        class="l21-btn l21-btn-stop"
+        data-test="stop"
+        :disabled="!bj.canStop.value"
+        :aria-label="bj.phase.value === 'idle' ? 'Stop — deal and lock reel 1' : 'Stop — lock the next reel'"
+        @click="bj.stop()"
+      >
+        Stop
+        <small>{{ bj.stopHint.value }}</small>
+      </button>
+      <button
+        class="l21-btn l21-btn-cash"
+        data-test="cash-out"
+        :disabled="!bj.canCash.value"
+        aria-label="Cash out — take current winnings"
+        @click="bj.cashOut()"
+      >
+        Cash Out
+        <small>take {{ cashDollars }}</small>
+      </button>
+    </div>
+
+    <!-- ── Foot explainer (matches the demo) ──────────────────────────── -->
+    <div class="l21-foot">
+      Reels 1–2 are pure cards — your 2-card total. <b>Reel 3 has no cards</b>: the
+      lock-in bonus — grab a <b>×multiplier</b> (or −safe room) over a wall of BUST.
+      The <b>real danger is reels 4–5</b>, where cards return and the big <b>×5/×10</b>
+      sit behind even more BUST. Nothing pays under 15; <b>15 qualifies</b>, a 21 pays
+      triple, and surviving all five is <b>Charlie ×3</b>.
     </div>
 
     <!-- ── Result Modal ──────────────────────────────────────────────── -->
@@ -545,8 +610,25 @@ const showModal = computed(() => bj.phase.value === 'resolved')
   .l21-strip-spin { animation: none !important; filter: none; }
 }
 
-/* cocktail placeholder */
-.l21-cocktail { min-height: 18px; }
+/* cocktail tags — what each reel can land */
+.l21-cocktail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+  min-height: 18px;
+}
+.l21-tag {
+  font-size: 8px;
+  padding: 2px 4px;
+  border-radius: 5px;
+  background: #0d2d24;
+  border: 1px solid #1d4a3b;
+  color: #9fe0cd;
+}
+.l21-tag-danger  { color: #ffb3bf; border-color: #5a2230; }
+.l21-tag-good    { color: #e7c9ff; border-color: #4a2a6b; }
+.l21-tag-charlie { color: var(--gold); border-color: var(--gold-dk); }
 
 /* ── Result Modal ── */
 .l21-modal-backdrop {
@@ -682,5 +764,78 @@ const showModal = computed(() => bj.phase.value === 'resolved')
   color: #9fd9c8;
   margin-bottom: 20px;
   letter-spacing: 1px;
+}
+
+/* ── Live message line ── */
+.l21-msg {
+  text-align: center;
+  min-height: 26px;
+  margin: 12px 0 4px;
+  font-family: 'Bungee', sans-serif;
+  font-size: 18px;
+  letter-spacing: 1px;
+  color: #eafff9;
+}
+.l21-msg-good { color: var(--green); }
+.l21-msg-bad  { color: var(--red); }
+.l21-msg-gold { color: var(--gold); }
+
+/* ── STOP / CASH OUT controls (in-cabinet) ── */
+.l21-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+.l21-btn {
+  flex: 1;
+  border: none;
+  border-radius: 14px;
+  padding: 15px;
+  font-weight: 900;
+  font-size: 17px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-family: 'Bungee', sans-serif;
+  transition: transform .08s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.l21-btn:active { transform: translateY(2px); }
+.l21-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.l21-btn small {
+  display: block;
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin-top: 2px;
+  opacity: .85;
+  text-transform: none;
+  font-weight: 400;
+}
+.l21-btn-stop {
+  background: linear-gradient(180deg, #ffd76b, #e0890f);
+  color: #2a1500;
+  box-shadow: 0 4px 0 #8a4f00, 0 0 26px rgba(255,160,30,.55);
+}
+.l21-btn-cash {
+  background: linear-gradient(180deg, #7bffb0, #16a85a);
+  color: #04240f;
+  box-shadow: 0 4px 0 #0a5e30, 0 0 26px rgba(40,220,120,.5);
+}
+
+/* ── Foot explainer ── */
+.l21-foot {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: #9fd9c8;
+  line-height: 1.6;
+}
+.l21-foot b { color: var(--gold); }
+
+@media (max-width: 420px) {
+  .l21-controls { flex-direction: column; }
 }
 </style>
