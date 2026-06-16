@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { exactRtp } from '../app/engine/exactRtp'
-import { blackjackReelExactRtp, makeOptimalStopFn } from '../app/engine/blackjackReelRtp'
+import { blackjackReelExactRtp, makeOptimalStopFn, optimalStop } from '../app/engine/blackjackReelRtp'
 import { validateMachineDef } from '../app/engine/validate'
 import { dealReels, stopReel, cashOut, freshBlackjackState, gambleStop, gambleCashOut } from '../app/engine/blackjackReel'
 import { mulberry32 } from '../app/engine/rng'
@@ -239,5 +239,14 @@ describe('blackjack bonus — gamble resolution', () => {
       expect(Number.isInteger(out.totalPayout)).toBe(true)
       expect(out.totalPayout).toBe(LUCKY_21.naturalPay * ante * 2)
     }
+  })
+})
+
+describe('blackjack bonus — DP treats a natural as terminal', () => {
+  it('optimalStop on a 2-card natural is cash (cannot continue)', () => {
+    const bj = { ...freshBlackjackState(), phase: 'spinning' as const,
+      idx: 2, hand: ['AS', 'TH'], hard: 11, aces: 1, multSum: 0,
+      bestTotal: 21, natural: true, ante: 1 }
+    expect(optimalStop(LUCKY_21, bj)).toBe('cash')
   })
 })

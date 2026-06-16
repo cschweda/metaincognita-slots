@@ -284,6 +284,15 @@ function makeSolver(def: BlackjackReelMachineDef) {
     const hit = memoSolve.get(key)
     if (hit !== undefined) return hit
 
+    // A natural (2-card 21) ends the hand: terminal at the guaranteed value.
+    // The double-or-nothing bonus is a fair 50/50, so its EV equals this value —
+    // the gamble adds variance, not RTP, and is modelled only in live play.
+    if (s.natural) {
+      const nat: Solution = { value: cashValue(def, s), action: 'cash' }
+      memoSolve.set(key, nat)
+      return nat
+    }
+
     let result: Solution
     if (s.reel >= MAX_REELS) {
       // Survived all five reels: forced Five-Card Charlie resolution.
