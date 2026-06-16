@@ -65,9 +65,39 @@ describe('lucky-21 — machine integrity', () => {
     })
     expect(counts[0]).toEqual({ CARD: 10 })
     expect(counts[1]).toEqual({ CARD: 10 })
-    expect(counts[2]).toEqual({ BUST: 8, MX2: 1, MX3: 1, MM3: 1 })
-    expect(counts[3]).toEqual({ CARD: 2, BUST: 9, MX3: 1, MM3: 1 })
-    expect(counts[4]).toEqual({ CARD: 2, BUST: 11, MX5: 2, MX10: 1 })
+    expect(counts[2]).toEqual({ BUST: 6, MX2: 1, MX3: 1, MM3: 1 })
+    expect(counts[3]).toEqual({ CARD: 2, BUST: 13, MX3: 1, MX5: 1, MM3: 1 })
+    expect(counts[4]).toEqual({ CARD: 2, BUST: 20, MX5: 2, MX10: 1 })
+  })
+
+  it('danger + bonus escalate across the special reels (BUST 6<13<20, ×3<×5<×10)', () => {
+    const bust = (i: number) => LUCKY_21.reels[i]!.filter(s => s === 'BUST').length
+    expect(bust(2)).toBeLessThan(bust(3))
+    expect(bust(3)).toBeLessThan(bust(4))
+    expect([bust(2), bust(3), bust(4)]).toEqual([6, 13, 20])
+    const maxMult = (i: number) => Math.max(0, ...LUCKY_21.reels[i]!
+      .filter(s => s.startsWith('MX')).map(s => Number(s.slice(2))))
+    expect(maxMult(2)).toBe(3)
+    expect(maxMult(3)).toBe(5)
+    expect(maxMult(4)).toBe(10)
+  })
+
+  it('BUSTs are scattered, never a contiguous wall, on each special reel', () => {
+    const longestRun = (i: number) => {
+      let max = 0
+      let cur = 0
+      for (const s of LUCKY_21.reels[i]!) {
+        cur = s === 'BUST' ? cur + 1 : 0
+        if (cur > max) max = cur
+      }
+      return max
+    }
+    // No special reel is a contiguous BUST wall. Reels 3-4 spread to runs <= 3;
+    // reel 5 has only 5 non-BUST faces splitting 20 BUST, so its tightest even
+    // spread is runs of 3-4 (ceil(20/6) = 4) — still scattered, never a wall.
+    expect(longestRun(2)).toBeLessThanOrEqual(3)
+    expect(longestRun(3)).toBeLessThanOrEqual(3)
+    expect(longestRun(4)).toBeLessThanOrEqual(4)
   })
 
   it('every pay, naturalPay, and charlieMultiplier is a positive integer (integer-credit invariant)', () => {
@@ -128,23 +158,23 @@ describe('lucky-21 — FROZEN calibration (optimal stopping)', () => {
     expect(exactRtp(LUCKY_21).rtpPerCoin).toBeCloseTo(blackjackReelExactRtp(LUCKY_21).rtpPerCoin, 12)
   })
 
-  it('FROZEN: rtpPerCoin = 0.9008462712680554 (≈ 90.08%), inside [0.89, 0.91]', () => {
+  it('FROZEN: rtpPerCoin = 0.9002547143073755 (≈ 90.03%), inside [0.895, 0.905]', () => {
     const { report } = rates()
-    expect(report.rtpPerCoin).toBeCloseTo(0.9008462712680554, 10)
-    expect(report.rtpPerCoin).toBeGreaterThanOrEqual(0.89)
-    expect(report.rtpPerCoin).toBeLessThanOrEqual(0.91)
+    expect(report.rtpPerCoin).toBeCloseTo(0.9002547143073755, 10)
+    expect(report.rtpPerCoin).toBeGreaterThanOrEqual(0.895)
+    expect(report.rtpPerCoin).toBeLessThanOrEqual(0.905)
   })
 
-  it('FROZEN: hitFrequency = 0.5204396594571127, variancePerCoin = 8.627557473749649', () => {
+  it('FROZEN: hitFrequency = 0.5175336121913153, variancePerCoin = 7.751122922982434', () => {
     const { report } = rates()
-    expect(report.hitFrequency).toBeCloseTo(0.5204396594571127, 10)
-    expect(report.variancePerCoin).toBeCloseTo(8.627557473749649, 8)
+    expect(report.hitFrequency).toBeCloseTo(0.5175336121913153, 10)
+    expect(report.variancePerCoin).toBeCloseTo(7.751122922982434, 8)
   })
 
-  it('FROZEN: bust rate 0.47956034054288743 (~48%), Charlie rate 0.010635737888485142 (~1.06%)', () => {
+  it('FROZEN: bust rate 0.48246638780868467 (~48%), Charlie rate 0.00772969062268782 (~0.77%)', () => {
     const { bust, charlie } = rates()
-    expect(bust).toBeCloseTo(0.47956034054288743, 10)
-    expect(charlie).toBeCloseTo(0.010635737888485142, 10)
+    expect(bust).toBeCloseTo(0.48246638780868467, 10)
+    expect(charlie).toBeCloseTo(0.00772969062268782, 10)
     // believable bust band + a non-trivial (jackpot-frequency) Charlie
     expect(bust).toBeGreaterThan(0.40)
     expect(bust).toBeLessThan(0.55)

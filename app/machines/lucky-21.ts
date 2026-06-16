@@ -9,38 +9,43 @@ import type { BlackjackReelMachineDef } from '../engine/types'
  * lock-in faces: additive ×N multipliers, minus-point cards, and instant-loss
  * BUST symbols. Surviving all five reels is a Five-Card Charlie (×3 the whole
  * payout). The signature is reel 5: rare ×5 / ×10 multipliers wrapped in a wall
- * of BUST — the climb to a big hand or nothing.
+ * of BUST — the climb to a big hand or nothing. A two-card NATURAL 21 ends the
+ * hand into a fair double-or-nothing bonus (see Tasks 1–5 / blackjackReel.ts).
  *
- * ── Reel roles (counts tuned to ~90% RTP; roles preserved) ──────────────────
+ * ── Reel roles (escalating danger + bonus; scattered BUST; ~90% RTP) ─────────
  * Reel 1: pure cards (deal card 1).
  * Reel 2: pure cards (deal card 2). Reels 1–2 are ALL 'CARD' (validator-enforced).
- * Reel 3: lock-in bonus, NO cards — multipliers (MX2, MX3) + a minus (MM3) over a
- *   wall of BUST (8/11). Heavy BUST here is the primary RTP dial: it gates whether
- *   the player can bank a multiplier before the card reels return.
- * Reel 4: mix — two cards return alongside a multiplier (MX3), a minus (MM3), and
- *   BUST (9/13).
- * Reel 5: the big one — ×5 / ×10 (the signature: 2×MX5 + MX10) + a wall of BUST
- *   (11/16) + two returning cards, NO minus.
+ * Reel 3: FRIENDLIER lock-in bonus, NO cards — modest multipliers (MX2, MX3) and a
+ *   minus (MM3) over scattered BUST (6/9). Fewest BUST of the three special reels:
+ *   the gentlest gate, where a multiplier is most reachable before cards return.
+ * Reel 4: mix — two cards return alongside BIGGER bonus (the ×5 enters: MX3, MX5)
+ *   and a minus (MM3) over scattered BUST (13/18). Danger steps up from reel 3.
+ * Reel 5: the big one — the BIGGEST multipliers (the signature: 2×MX5 + MX10) over
+ *   the densest scattered BUST (20/25) + two returning cards, NO minus. Danger
+ *   peaks here. Escalation across the special reels: BUST 6 → 13 → 20, max-mult
+ *   ×3 → ×5 → ×10. BUSTs are interleaved (scattered), never a contiguous wall.
  *
  * ── Payout model (RTP = E[base × max(1,multSum) × charlieMul]; the ante cancels) ─
  * The paytable pays are PER-COIN CREDITS and are deliberately SMALL — the house
- * edge (≈9.92%) comes from the high BUST + sub-qualifyMin (=0-pay) frequency under
+ * edge (≈9.97%) comes from the high BUST + sub-qualifyMin (=0-pay) frequency under
  * optimal play, NOT from the pay magnitude. Under the exact optimal-stopping DP the
  * policy banks a qualifying two-card total at the first decision and otherwise rides
  * the BUST reels toward a multiplier-stacked Five-Card Charlie. The curve is a
  * GENTLE climb — "the closer to 21, the more you bank": totals 15–20 pay the floor
- * (1), a 21 pays 3, and a two-card natural 21 pays 4 (a strict premium over a
- * built-up 21). The big upside still lives in the multipliers and the ×3 Charlie;
- * the dollar *feel* lives in denominationCents (25¢ × up-to-5 coins) too.
+ * (1), a 21 pays 3, and a two-card natural 21 pays 5 (a strict premium over a
+ * built-up 21). A natural ENDS the hand and opens the fair double-or-nothing bonus
+ * (RTP-neutral — the gamble adds variance, not edge). The big upside lives in the
+ * multipliers and the ×3 Charlie; the dollar *feel* lives in denominationCents
+ * (25¢ × up-to-5 coins) too.
  *
  * Why the climb stops at 21/natural rather than stepping every total: reels 1–2
  * can't bust, so any base bump at the FREQUENT risk-free totals (esp. 20, ~10.3% of
  * hands) is amplified by the multiplier/Charlie factors and adds several % RTP —
- * bumping 20 to 2 forces ~+12% RTP and (offsetting it with BUST) would crush the
- * Five-Card Charlie below ~0.6%. Climbing ONLY the rarer top (21 ≈ 4.8%, of which a
- * NATURAL is the cheapest premium of all) buys a vivid 1→3→4 reward ladder for a
- * modest +12% RTP, offset by a few extra BUSTs that keep the Charlie at ~1.06%
- * (≈27% of the return) and the reel roles + ×5/×10 signature intact.
+ * bumping 20 to 2 forces several extra % RTP and (offsetting it with BUST) would
+ * crush the Five-Card Charlie. Climbing ONLY the rarer top (21, of which a NATURAL
+ * is the cheapest premium of all) buys a vivid 1→3→5 reward ladder for a modest RTP
+ * cost, offset by the escalating BUST that keeps the Charlie near ~0.77% (a rare
+ * jackpot-frequency event) and the reel roles + ×5/×10 signature intact.
  *
  * Integer-credit invariant: handPayout = base × max(1,multSum) × charlieMultiplier
  *   × ante is always a WHOLE number of credits because every paytable[].pay,
@@ -48,24 +53,27 @@ import type { BlackjackReelMachineDef } from '../engine/types'
  *   integers). Verified: 0 fractional payouts over 4M optimal-policy hands with
  *   varying ante.
  *
- * ── Calibration (2026-06-15, blackjackReelExactRtp, optimal stopping) ────────
- * Paytable (per-coin): totals 15–20 pay 1; 21 pays 3.  naturalPay = 4 (> 21).
- * charlieMultiplier = 3 (Five-Card Charlie scales the whole payout).
+ * ── Calibration (2026-06-16, blackjackReelExactRtp, optimal stopping) ────────
+ * Paytable (per-coin): totals 15–20 pay 1; 21 pays 3.  naturalPay = 5 (> 21).
+ * charlieMultiplier = 3 (Five-Card Charlie scales the whole payout). Reels
+ * recalibrated for escalation + scattered BUST (Task 6): BUST 6 → 13 → 20 and
+ * max-mult ×3 → ×5 → ×10 across reels 3 → 4 → 5; the natural now ends the hand
+ * into the fair double-or-nothing bonus (Tasks 1–5), which is RTP-neutral.
  *
  * Frozen exact-math figures (see tests/machines-blackjack.test.ts):
- *   rtpPerCoin      = 0.9008462712680554   (≈ 90.08%)
- *   hitFrequency    = 0.5204396594571127   (≈ 52.04%)
- *   variancePerCoin = 8.627557473749649    (high-volatility, Charlie-driven)
- *   bustRate        = 0.47956034054288743  (≈ 47.96%)  [P(bust terminal)]
- *   charlieRate     = 0.010635737888485142 (≈  1.06%)  [P(Five-Card Charlie)]
+ *   rtpPerCoin      = 0.9002547143073755   (≈ 90.03%)
+ *   hitFrequency    = 0.5175336121913153   (≈ 51.75%)
+ *   variancePerCoin = 7.751122922982434    (high-volatility, Charlie-driven)
+ *   bustRate        = 0.48246638780868467  (≈ 48.25%)  [P(bust terminal)]
+ *   charlieRate     = 0.00772969062268782  (≈  0.77%)  [P(Five-Card Charlie)]
  *
- * EV breakdown (per-coin contribution): the 1.06% Charlie hands carry ~27.3% of
- * the return (avg ≈ 23 per coin via stacked multipliers × the ×3 Charlie); a 21
- * pays 3 and a two-card natural pays 4 (~21.4% of the return — virtually all 21
- * cashes are naturals, since reaching 21 AFTER the deal means surviving the BUST
- * reels and drawing exactly right, which optimal play almost never waits for); the
- * frequent total-15..20 cashes pay 1 each; 47.96% bust to 0. Cross-validated by
- * pnpm verify (sim RTP vs the exact DP inside its 3.5σ band).
+ * EV breakdown (per-coin contribution): the 0.77% Charlie hands carry a large
+ * slice of the return via stacked multipliers × the ×3 Charlie; a 21 pays 3 and a
+ * two-card natural pays 5 (virtually all 21 cashes are naturals, since reaching 21
+ * AFTER the deal means surviving the BUST reels and drawing exactly right, which
+ * optimal play almost never waits for); the frequent total-15..20 cashes pay 1
+ * each; ~48.25% bust to 0. Cross-validated by pnpm verify (sim RTP vs the exact DP
+ * inside its 3.5σ band).
  */
 export const LUCKY_21: BlackjackReelMachineDef = {
   id: 'lucky-21',
@@ -101,18 +109,21 @@ export const LUCKY_21: BlackjackReelMachineDef = {
     // ── Reel 2 — deal card 2 (pure cards) ───────────────────────────────
     ['CARD', 'CARD', 'CARD', 'CARD', 'CARD', 'CARD', 'CARD', 'CARD', 'CARD', 'CARD'],
 
-    // ── Reel 3 — lock-in bonus, NO cards ────────────────────────────────
-    // 8 BUST + MX2 + MX3 + MM3. BUST density here is the primary RTP dial
-    // (one extra BUST vs the flat curve, to offset the climbing 21/natural).
-    ['BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'MX2', 'MX3', 'MM3'],
+    // ── Reel 3 — FRIENDLIER lock-in bonus, NO cards ─────────────────────
+    // 6 BUST (scattered) + MX2 + MX3 + MM3 = 9. Fewest BUST of the special
+    // reels: the gentlest gate. BUSTs interleaved, never a contiguous wall.
+    ['MX2', 'BUST', 'BUST', 'MM3', 'BUST', 'MX3', 'BUST', 'BUST', 'BUST'],
 
-    // ── Reel 4 — mix, cards return ──────────────────────────────────────
-    // 2 cards + 9 BUST + MX3 + MM3.
-    ['CARD', 'CARD', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'MX3', 'MM3'],
+    // ── Reel 4 — mix, cards return, bigger bonus ────────────────────────
+    // 2 cards + 13 BUST (scattered) + MX3 + MX5 + MM3 = 18. The ×5 enters here;
+    // danger steps up from reel 3. BUSTs evenly interleaved (no run > 3).
+    ['BUST', 'BUST', 'CARD', 'BUST', 'BUST', 'MX3', 'BUST', 'BUST', 'CARD', 'BUST', 'BUST', 'MX5', 'BUST', 'BUST', 'MM3', 'BUST', 'BUST', 'BUST'],
 
-    // ── Reel 5 — the big one: ×5/×10 over a wall of BUST, NO minus ───────
-    // 2 cards + 11 BUST + MX5 + MX5 + MX10 (the signature ×5/×10 lives here).
-    ['CARD', 'CARD', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'BUST', 'MX5', 'MX10', 'MX5']
+    // ── Reel 5 — the big one: ×5/×10 over the densest BUST, NO minus ─────
+    // 2 cards + 20 BUST (scattered) + MX5 + MX5 + MX10 = 25 (the signature
+    // ×5/×10 lives here). Danger peaks. Only 5 non-BUST faces split the 20 BUST,
+    // so the tightest even spread is runs of 3–4 — interleaved, never a wall.
+    ['BUST', 'BUST', 'BUST', 'CARD', 'BUST', 'BUST', 'BUST', 'BUST', 'MX5', 'BUST', 'BUST', 'BUST', 'CARD', 'BUST', 'BUST', 'BUST', 'BUST', 'MX10', 'BUST', 'BUST', 'BUST', 'MX5', 'BUST', 'BUST', 'BUST']
   ],
 
   /**
@@ -135,8 +146,12 @@ export const LUCKY_21: BlackjackReelMachineDef = {
   ],
 
   qualifyMin: 15,
-  /** a 2-card 21 (natural) pays a strict premium over a built-up 21 (4 > paytable[21] = 3) */
-  naturalPay: 4,
+  /**
+   * A 2-card 21 (natural) pays a strict premium over a built-up 21
+   * (5 > paytable[21] = 3) and ENDS the hand into the fair double-or-nothing
+   * bonus (Tasks 1–5); the bonus is RTP-neutral so this stays the DP value.
+   */
+  naturalPay: 5,
   /** ×3 the whole payout for surviving all five reels (Five-Card Charlie) */
   charlieMultiplier: 3,
 
