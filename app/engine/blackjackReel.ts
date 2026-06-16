@@ -12,6 +12,9 @@ import type {
 import type { RandomFn } from './rng'
 import { buildDeck, shuffle, cardValue, isAce } from './deck'
 
+/** Blackjack-bonus double-or-nothing cap: at most 3 doubles before auto-collect. */
+const GAMBLE_CAP = 3
+
 // ---------- accumulator ----------
 
 export interface HandAcc {
@@ -275,4 +278,47 @@ export function cashOut(
   bj.phase = 'resolved'
   const pay = handPayout(def, bj)
   return outcome(def, bj, bj.ante, 0, [{ type: 'cash-out', bestTotal: bj.bestTotal, payout: pay }], pay)
+}
+
+/**
+ * Blackjack-bonus: STOP the spinning double-or-nothing reel — an honest 50/50.
+ * Win (rand < 0.5) doubles the amount and increments the rung; at GAMBLE_CAP it
+ * auto-resolves. Lose zeroes the amount and resolves. RTP-neutral by construction.
+ */
+export function gambleStop(
+  def: BlackjackReelMachineDef,
+  state: MachineSessionState,
+  rand: RandomFn
+): SpinOutcome {
+  const bj = state.blackjackReel
+  if (bj === null) throw new Error(`${def.id}: gambleStop with no hand`)
+  if (bj.phase !== 'gamble') throw new Error(`${def.id}: gambleStop in phase ${bj.phase}`)
+  if (bj.gambleCount >= GAMBLE_CAP) throw new Error(`${def.id}: gambleStop past the cap`)
+  const won = rand() < 0.5
+  if (!won) {
+    bj.gambleAmount = 0
+    bj.phase = 'resolved'
+    return outcome(def, bj, bj.ante, 0, [{ type: 'gamble', outcome: 'bust', amount: 0, count: bj.gambleCount }], 0)
+  }
+  bj.gambleAmount *= 2
+  bj.gambleCount += 1
+  const capped = bj.gambleCount >= GAMBLE_CAP
+  if (capped) bj.phase = 'resolved'
+  return outcome(
+    def, bj, bj.ante, 0,
+    [{ type: 'gamble', outcome: 'double', amount: bj.gambleAmount, count: bj.gambleCount }],
+    capped ? bj.gambleAmount : 0
+  )
+}
+
+/** Blackjack-bonus: keep the guaranteed amount without spinning. Resolves. */
+export function gambleCashOut(
+  def: BlackjackReelMachineDef,
+  state: MachineSessionState
+): SpinOutcome {
+  const bj = state.blackjackReel
+  if (bj === null) throw new Error(`${def.id}: gambleCashOut with no hand`)
+  if (bj.phase !== 'gamble') throw new Error(`${def.id}: gambleCashOut in phase ${bj.phase}`)
+  bj.phase = 'resolved'
+  return outcome(def, bj, bj.ante, 0, [{ type: 'gamble', outcome: 'collect', amount: bj.gambleAmount, count: bj.gambleCount }], bj.gambleAmount)
 }

@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest'
 import { exactRtp } from '../app/engine/exactRtp'
 import { blackjackReelExactRtp, makeOptimalStopFn } from '../app/engine/blackjackReelRtp'
 import { validateMachineDef } from '../app/engine/validate'
-import { dealReels, stopReel, cashOut, freshBlackjackState } from '../app/engine/blackjackReel'
+import { dealReels, stopReel, cashOut, freshBlackjackState, gambleStop, gambleCashOut } from '../app/engine/blackjackReel'
 import { mulberry32 } from '../app/engine/rng'
 import { LUCKY_21 } from '../app/machines/lucky-21'
 import type { MachineSessionState } from '../app/engine/types'
@@ -175,5 +175,69 @@ describe('blackjack bonus — natural enters gamble', () => {
     expect(bj.gambleAmount).toBe(LUCKY_21.naturalPay * 1) // ante = 1
     expect(bj.gambleCount).toBe(0)
     expect(bj.landed.slice(0, 2)).toEqual(['AS', 'TH'])
+  })
+})
+
+function naturalState(): MachineSessionState {
+  const state = freshState()
+  dealReels(LUCKY_21, state, 1, seq([0]))
+  const bj = state.blackjackReel!
+  bj.reelStrips[0] = ['AS']
+  bj.reelStrips[1] = ['TH']
+  stopReel(LUCKY_21, state, seq([0]))
+  stopReel(LUCKY_21, state, seq([0])) // now phase 'gamble', gambleAmount = naturalPay
+  return state
+}
+
+describe('blackjack bonus — gamble resolution', () => {
+  it('cash out keeps the guaranteed amount and resolves', () => {
+    const state = naturalState()
+    const out = gambleCashOut(LUCKY_21, state)
+    expect(state.blackjackReel!.phase).toBe('resolved')
+    expect(out.totalPayout).toBe(LUCKY_21.naturalPay)
+  })
+
+  it('STOP win doubles and keeps spinning until the cap', () => {
+    const state = naturalState()
+    const base = LUCKY_21.naturalPay
+    gambleStop(LUCKY_21, state, seq([0.0])) // rand<0.5 => win (double)
+    expect(state.blackjackReel!.phase).toBe('gamble')
+    expect(state.blackjackReel!.gambleAmount).toBe(base * 2)
+    expect(state.blackjackReel!.gambleCount).toBe(1)
+  })
+
+  it('STOP win at the cap (3 doubles) auto-resolves paying base x 8', () => {
+    const state = naturalState()
+    const base = LUCKY_21.naturalPay
+    gambleStop(LUCKY_21, state, seq([0.0]))
+    gambleStop(LUCKY_21, state, seq([0.0]))
+    const out = gambleStop(LUCKY_21, state, seq([0.0]))
+    expect(state.blackjackReel!.gambleCount).toBe(3)
+    expect(state.blackjackReel!.phase).toBe('resolved')
+    expect(out.totalPayout).toBe(base * 8)
+  })
+
+  it('STOP loss zeroes the amount and resolves', () => {
+    const state = naturalState()
+    const out = gambleStop(LUCKY_21, state, seq([0.9])) // rand>=0.5 => bust
+    expect(state.blackjackReel!.phase).toBe('resolved')
+    expect(state.blackjackReel!.gambleAmount).toBe(0)
+    expect(out.totalPayout).toBe(0)
+  })
+
+  it('payout stays a whole number of credits across antes and rungs', () => {
+    for (const ante of [1, 3, 5]) {
+      const state = freshState()
+      dealReels(LUCKY_21, state, ante, seq([0]))
+      const bj = state.blackjackReel!
+      bj.reelStrips[0] = ['AS']
+      bj.reelStrips[1] = ['TH']
+      stopReel(LUCKY_21, state, seq([0]))
+      stopReel(LUCKY_21, state, seq([0]))
+      gambleStop(LUCKY_21, state, seq([0.0]))
+      const out = gambleCashOut(LUCKY_21, state)
+      expect(Number.isInteger(out.totalPayout)).toBe(true)
+      expect(out.totalPayout).toBe(LUCKY_21.naturalPay * ante * 2)
+    }
   })
 })
