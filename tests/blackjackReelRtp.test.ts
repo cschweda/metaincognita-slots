@@ -334,8 +334,7 @@ describe('regression: minus recompute+ratchet bestTotal', () => {
             const g = gambleCashOut(allCardDef, state)
             totalPayout += g.totalPayout
             break
-          }
-          if (state.blackjackReel!.phase === 'resolved') {
+          } else if (state.blackjackReel!.phase === 'resolved') {
             totalPayout += out.totalPayout
             break
           }

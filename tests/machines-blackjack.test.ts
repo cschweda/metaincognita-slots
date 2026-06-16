@@ -98,13 +98,24 @@ describe('lucky-21 — machine integrity', () => {
       const coins = 1 + Math.floor(rand() * LUCKY_21.maxCoins)
       dealReels(LUCKY_21, state, coins, rand)
       let out = stopReel(LUCKY_21, state, rand)
-      if (state.blackjackReel!.phase !== 'resolved') out = stopReel(LUCKY_21, state, rand)
+      if (state.blackjackReel!.phase === 'gamble') {
+        out = gambleCashOut(LUCKY_21, state)
+      } else if (state.blackjackReel!.phase !== 'resolved') {
+        out = stopReel(LUCKY_21, state, rand)
+        if (state.blackjackReel!.phase === 'gamble') {
+          out = gambleCashOut(LUCKY_21, state)
+        }
+      }
       while (state.blackjackReel!.phase === 'spinning') {
         if (policy(state.blackjackReel!) === 'cash') {
           out = cashOut(LUCKY_21, state)
           break
         }
         out = stopReel(LUCKY_21, state, rand)
+        if (state.blackjackReel!.phase === 'gamble') {
+          out = gambleCashOut(LUCKY_21, state)
+          break
+        }
       }
       expect(Number.isInteger(out.totalPayout), `non-integer payout ${out.totalPayout} (coins ${coins})`).toBe(true)
     }

@@ -13,7 +13,7 @@ import type { RandomFn } from './rng'
 import { buildDeck, shuffle, cardValue, isAce } from './deck'
 
 /** Blackjack-bonus double-or-nothing cap: at most 3 doubles before auto-collect. */
-const GAMBLE_CAP = 3
+export const GAMBLE_CAP = 3
 
 // ---------- accumulator ----------
 
