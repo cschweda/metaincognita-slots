@@ -10,7 +10,8 @@ import {
   handPayout,
   dealReels,
   stopReel,
-  cashOut
+  cashOut,
+  gambleCashOut
 } from '../app/engine/blackjackReel'
 import type { EvalCfg } from '../app/engine/blackjackReel'
 import { mulberry32 } from '../app/engine/rng'
@@ -453,9 +454,10 @@ describe('lucky-21 step functions', () => {
 
   // ── Natural → cashOut pays naturalPay, no Charlie multiplier ──────────────
 
-  it('cashOut after natural (AC+KC) pays naturalPay × ante, not Charlie multiplier', () => {
+  it('natural (AC+KC) opens the gamble at naturalPay × ante; gambleCashOut banks it, not Charlie', () => {
     // Drive two stopReel calls: AC then KC → 2-card 21, natural=true, charlie=false.
-    // cashOut at that point: naturalPay=12, mult=max(1,0)=1, charlieMul=1, ante=1 → 12.
+    // A natural now ENDS the hand and opens the double-or-nothing bonus at the
+    // guaranteed naturalPay × ante (no multiplier, no Charlie); gambleCashOut banks it.
     const def = mkDef([['AC'], ['KC'], ['5D'], ['3H'], ['2C']])
     const state = mkState(def)
     const bj = freshBlackjackState()
@@ -465,14 +467,17 @@ describe('lucky-21 step functions', () => {
     state.blackjackReel = bj
 
     stopReel(def, state, zeroRand) // AC, total 11
-    stopReel(def, state, zeroRand) // KC, total 21 — natural=true
+    stopReel(def, state, zeroRand) // KC, total 21 — natural → gamble
     expect(bj.natural).toBe(true)
     expect(bj.charlie).toBe(false)
+    expect(bj.phase).toBe('gamble')
+    // guaranteed = naturalPay=12, mult=max(1,0)=1, charlieMul=1, ante=1 → 12
+    expect(bj.gambleAmount).toBe(def.naturalPay)
 
-    const out = cashOut(def, state)
-    // naturalPay=12, mult=max(1,0)=1, charlieMul=1 (charlie=false), ante=1 → 12
+    const out = gambleCashOut(def, state)
     expect(out.totalPayout).toBe(12)
     expect(out.totalPayout).toBe(def.naturalPay)
+    expect(bj.phase).toBe('resolved')
   })
 })
 

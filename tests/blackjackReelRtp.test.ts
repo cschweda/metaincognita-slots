@@ -15,7 +15,7 @@ import {
   decisionEvs,
   strategyMatrixCell
 } from '../app/engine/blackjackReelRtp'
-import { freshBlackjackState, dealReels, stopReel, cashOut } from '../app/engine/blackjackReel'
+import { freshBlackjackState, dealReels, stopReel, cashOut, gambleCashOut } from '../app/engine/blackjackReel'
 import { mulberry32 } from '../app/engine/rng'
 import { initMachineState } from '../app/engine/index'
 import type { BlackjackReelMachineDef, BlackjackReelSessionState } from '../app/engine/types'
@@ -328,6 +328,13 @@ describe('regression: minus recompute+ratchet bestTotal', () => {
           break
         } else {
           const out = stopReel(allCardDef, state, rand)
+          if (state.blackjackReel!.phase === 'gamble') {
+            // Natural → guaranteed bonus; collect it (the gamble is EV-neutral)
+            // so the sim matches the DP, which values a natural at naturalPay.
+            const g = gambleCashOut(allCardDef, state)
+            totalPayout += g.totalPayout
+            break
+          }
           if (state.blackjackReel!.phase === 'resolved') {
             totalPayout += out.totalPayout
             break

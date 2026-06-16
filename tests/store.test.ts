@@ -697,7 +697,9 @@ describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
       busted: false,
       bustBySymbol: false,
       charlie: false,
-      ante: 2
+      ante: 2,
+      gambleAmount: 0,
+      gambleCount: 0
     }
     a.machineStates['lucky-21']!.blackjackReel = midHandState
     a.saveToLocalStorage()
@@ -839,7 +841,9 @@ describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
       busted: true,
       bustBySymbol: true,
       charlie: false,
-      ante: 5
+      ante: 5,
+      gambleAmount: 0,
+      gambleCount: 0
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
