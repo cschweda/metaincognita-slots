@@ -281,7 +281,7 @@ export interface BlackjackReelMachineDef extends MachineDefBase {
 }
 
 export interface BlackjackReelSessionState {
-  phase: 'idle' | 'spinning' | 'resolved'
+  phase: 'idle' | 'spinning' | 'resolved' | 'gamble'
   /** the dealt strips for this hand (CARD tokens resolved to concrete deck ids) */
   reelStrips: SymbolId[][]
   /** landed symbol per reel; null until that reel is stopped */
@@ -299,6 +299,10 @@ export interface BlackjackReelSessionState {
   bustBySymbol: boolean // true if the loss was a BUST symbol (vs over-21)
   charlie: boolean // survived all five reels
   ante: number // coins wagered (locks the payout scale)
+  /** Blackjack-bonus double-or-nothing: credits currently on the line. */
+  gambleAmount: number
+  /** Doubles taken so far (0..GAMBLE_CAP). */
+  gambleCount: number
 }
 
 export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef | BlackjackReelMachineDef
@@ -429,6 +433,8 @@ export type FeatureEvent
     | { type: 'bust', reel: number, bySymbol: boolean }
     | { type: 'charlie', cards: SymbolId[] }
     | { type: 'cash-out', bestTotal: number, payout: number }
+    | { type: 'blackjack-bonus', amount: number }
+    | { type: 'gamble', outcome: 'double' | 'bust' | 'collect', amount: number, count: number }
 
 export interface SpinOutcome {
   machineId: string

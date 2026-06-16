@@ -306,7 +306,9 @@ function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionStat
       busted: bj.busted as boolean,
       bustBySymbol: bj.bustBySymbol as boolean,
       charlie: bj.charlie as boolean,
-      ante: ante
+      ante: ante,
+      gambleAmount: 0,
+      gambleCount: 0
     }
   }
 

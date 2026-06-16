@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest'
 import { exactRtp } from '../app/engine/exactRtp'
 import { blackjackReelExactRtp, makeOptimalStopFn } from '../app/engine/blackjackReelRtp'
 import { validateMachineDef } from '../app/engine/validate'
-import { dealReels, stopReel, cashOut } from '../app/engine/blackjackReel'
+import { dealReels, stopReel, cashOut, freshBlackjackState } from '../app/engine/blackjackReel'
 import { mulberry32 } from '../app/engine/rng'
 import { LUCKY_21 } from '../app/machines/lucky-21'
 import type { MachineSessionState } from '../app/engine/types'
@@ -138,5 +138,14 @@ describe('lucky-21 — FROZEN calibration (optimal stopping)', () => {
     const contribSum = report.breakdown.reduce((a, b) => a + b.contribution, 0)
     expect(contribSum).toBeCloseTo(report.rtpPerCoin, 10)
     expect(bust + charlie + cash).toBeCloseTo(1, 10)
+  })
+})
+
+describe('blackjack bonus — fresh state', () => {
+  it('defaults the gamble fields', () => {
+    const s = freshBlackjackState()
+    expect(s.phase).toBe('idle')
+    expect(s.gambleAmount).toBe(0)
+    expect(s.gambleCount).toBe(0)
   })
 })

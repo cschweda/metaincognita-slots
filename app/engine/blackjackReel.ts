@@ -110,7 +110,9 @@ export function freshBlackjackState(): BlackjackReelSessionState {
     busted: false,
     bustBySymbol: false,
     charlie: false,
-    ante: 0
+    ante: 0,
+    gambleAmount: 0,
+    gambleCount: 0
   }
 }
 
