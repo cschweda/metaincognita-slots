@@ -246,10 +246,7 @@ export function useBlackjackReel() {
         gamble: true,
         sub: won
           ? `BLACKJACK${doubled} — kept ${gambleDollars}`
-          : 'gambled the blackjack and busted',
-        bustLabel: 'Blackjack bonus',
-        bustValue: 'BUST',
-        bustResult: '$0.00'
+          : 'gambled the blackjack and busted'
       }
     }
 

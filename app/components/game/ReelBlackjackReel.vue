@@ -4,6 +4,7 @@
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useBlackjackReel } from '~/composables/useBlackjackReel'
+import { GAMBLE_CAP } from '~/engine/blackjackReel'
 import type { BlackjackReelMachineDef } from '~/engine'
 
 const store = useSlotsStore()
@@ -403,11 +404,14 @@ const REEL_COCKTAILS: CocktailTag[][] = [
         class="l21-gamble-backdrop"
         role="dialog"
         aria-modal="true"
-        aria-label="Blackjack bonus — double or nothing"
+        aria-labelledby="l21-gamble-title"
         data-test="gamble-overlay"
       >
         <div class="l21-gamble">
-          <div class="l21-gamble-title">
+          <div
+            id="l21-gamble-title"
+            class="l21-gamble-title"
+          >
             BLACKJACK!
           </div>
           <div class="l21-gamble-online">
@@ -443,7 +447,7 @@ const REEL_COCKTAILS: CocktailTag[][] = [
             aria-hidden="true"
           >
             <span
-              v-for="r in 4"
+              v-for="r in (GAMBLE_CAP + 1)"
               :key="r"
               class="l21-rung"
               :class="{ 'l21-rung-on': (r - 1) === bj.gambleCount.value }"

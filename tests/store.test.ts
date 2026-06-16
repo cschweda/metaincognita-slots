@@ -10,6 +10,7 @@ import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
 // Lucky 21: imported for the skip-guarded blackjack-reel tests below (Tasks 8/9 rewrite them
 // against the real Lucky 21 store actions; left skipped here — see describe.skip blocks).
 import { LUCKY_21 } from '../app/machines/lucky-21'
+import { GAMBLE_CAP } from '../app/engine/blackjackReel'
 
 function freshStore() {
   setActivePinia(createPinia())
@@ -734,7 +735,8 @@ describe('blackjack-reel gamble actions — Lucky 21', () => {
       expect(store.history.length).toBe(histBefore) // not resolved yet; no new record
     } else {
       expect(bj.phase).toBe('resolved')
-      // bust → no record added yet (spinning gate still up); win at cap → record added
+      // bust resolves immediately and books a record; win at cap also resolves and books
+      expect(store.history.length).toBe(histBefore + 1)
     }
     expect(store.spinning).toBe(true)
   })
@@ -1044,7 +1046,7 @@ describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
     expect(store.resume()).toBe(true)
     const bj = store.machineStates['lucky-21']!.blackjackReel!
     expect(bj.phase).toBe('gamble')
-    expect(bj.gambleCount).toBe(3) // clamped to GAMBLE_CAP
+    expect(bj.gambleCount).toBe(GAMBLE_CAP) // clamped to GAMBLE_CAP
     expect(bj.gambleAmount).toBe(5)
   })
 })
