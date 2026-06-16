@@ -12,7 +12,7 @@ const MODULES: Record<string, () => Promise<{ default: Component }>> = {
   'sevens-ablaze': () => import('./SevensAblazeChrome.vue'),
   'series-e-3line': () => import('./SeriesE3LineChrome.vue'),
   'series-e-multiplier': () => import('./SeriesEMultiplierChrome.vue'),
-  'hit-or-bust': () => import('./BlackjackReelChrome.vue')
+  'lucky-21': () => import('./BlackjackReelChrome.vue')
 }
 
 const cache: Record<string, Component> = {}

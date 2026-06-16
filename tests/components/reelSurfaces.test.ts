@@ -46,9 +46,9 @@ describe('Reel surfaces', () => {
   it('blackjack-reel idle attract renders bounded strip-card slots (no empty strips)', () => {
     const wrapper = withMachine(ReelBlackjackReel, 'lucky-21')
     // Idle attract strips are built from the reel composition (not the empty dealt strips).
-    // Each reel has ≥1 bj-strip-card slot; total across 5 reels × 2 loop passes must be
+    // Each reel has ≥1 l21-strip-card slot; total across 5 reels × 2 loop passes must be
     // bounded (≤ 5 reels × 16 tokens × 2 passes = 160). Verifies no empty/runaway strips.
-    const slots = wrapper.findAll('.bj-strip-card')
+    const slots = wrapper.findAll('.l21-strip-card')
     expect(slots.length).toBeGreaterThan(0)
     expect(slots.length).toBeLessThanOrEqual(160)
   })

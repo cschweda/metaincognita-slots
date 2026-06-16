@@ -1,5 +1,6 @@
 <!-- app/components/game/CardFace.vue -->
-<!-- Renders a single Lucky 21 reel symbol as a playing-card tile. -->
+<!-- Renders a single Lucky 21 reel symbol as a playing-card tile.
+     Dimensions and styling match lucky21-playable-v7.html exactly (60×86 px). -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import { cardRank, cardSuit, cardColor } from '~/engine/deck'
@@ -49,54 +50,54 @@ const minusN = computed(() => {
 </script>
 
 <template>
-  <!-- Deck card (standard or ace) -->
+  <!-- Deck card (standard or ace) — matches demo .pcard.red / .pcard.blk -->
   <div
     v-if="isDeckCard"
-    class="card-face card-deck"
-    :class="color === 'red' ? 'card-red' : 'card-black'"
+    class="pcard"
+    :class="color === 'red' ? 'pcard-red' : 'pcard-blk'"
   >
     <span
-      class="card-rank card-tl"
+      class="pr tl"
       aria-hidden="true"
     >{{ rank }}</span>
     <span
-      class="card-suit-center"
+      class="ps"
       aria-hidden="true"
     >{{ suit }}</span>
     <span
-      class="card-rank card-br"
+      class="pr br"
       aria-hidden="true"
     >{{ rank }}</span>
   </div>
 
-  <!-- Multiplier -->
+  <!-- Multiplier — matches demo .pcard.sp.mult / .pcard.sp.special -->
   <div
     v-else-if="isMult"
-    class="card-face card-special card-mult"
-    :class="multN >= 5 ? 'card-mult-big' : ''"
+    class="pcard pcard-sp"
+    :class="multN >= 5 ? 'pcard-special' : 'pcard-mult'"
   >
-    <span class="card-special-big">×{{ multN }}</span>
-    <span class="card-special-lab">{{ multN >= 5 ? 'BIG MULT' : 'MULTIPLY' }}</span>
+    <span class="sp-big">×{{ multN }}</span>
+    <span class="sp-lab">{{ multN >= 5 ? 'BIG MULT' : 'MULTIPLY' }}</span>
   </div>
 
-  <!-- Minus -->
+  <!-- Minus — matches demo .pcard.sp.minus -->
   <div
     v-else-if="isMinus"
-    class="card-face card-special card-minus"
+    class="pcard pcard-sp pcard-minus"
   >
-    <span class="card-special-big">−{{ minusN }}</span>
-    <span class="card-special-lab">TAKE OFF</span>
+    <span class="sp-big">−{{ minusN }}</span>
+    <span class="sp-lab">TAKE OFF</span>
   </div>
 
-  <!-- Bust -->
+  <!-- Bust — matches demo .pcard.sp.bust + SVG polygon explosion -->
   <div
     v-else-if="isBust"
-    class="card-face card-special card-bust"
+    class="pcard pcard-sp pcard-bust"
     role="img"
     aria-label="BUST"
   >
     <svg
-      class="card-boom motion-reduce:hidden"
+      class="boom"
       viewBox="0 0 48 48"
       aria-hidden="true"
       focusable="false"
@@ -112,12 +113,13 @@ const minusN = computed(() => {
         fill="#7a0f20"
       />
     </svg>
-    <span class="card-special-lab">BUST</span>
+    <span class="sp-lab">BUST</span>
   </div>
 </template>
 
 <style scoped>
-.card-face {
+/* Base card tile — 60×86 exactly as in the demo */
+.pcard {
   width: 60px;
   height: 86px;
   border-radius: 9px;
@@ -128,52 +130,61 @@ const minusN = computed(() => {
   justify-content: center;
   box-shadow: 0 3px 9px rgba(0,0,0,.45);
 }
-.card-deck {
+
+/* Deck card (standard + ace) */
+.pcard:not(.pcard-sp) {
   background: linear-gradient(180deg, #fbf7ec, #eadfc6);
-  flex-direction: column;
 }
-.card-red { color: #c0202f; }
-.card-black { color: #16110a; }
-.card-rank {
+.pcard-red { color: #c0202f; }
+.pcard-blk { color: #16110a; }
+
+/* Rank pip at top-left and bottom-right */
+.pr {
   position: absolute;
-  font-family: 'Orbitron', 'Segoe UI', monospace;
+  font-family: 'Orbitron', monospace;
   font-weight: 800;
   font-size: 14px;
   line-height: 1;
 }
-.card-tl { top: 6px; left: 7px; }
-.card-br { bottom: 6px; right: 7px; transform: rotate(180deg); }
-.card-suit-center { font-size: 32px; }
+.tl { top: 6px; left: 7px; }
+.br { bottom: 6px; right: 7px; transform: rotate(180deg); }
 
-.card-special {
+/* Center suit glyph */
+.ps { font-size: 32px; }
+
+/* Special card base */
+.pcard-sp {
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   color: #fff;
 }
-.card-mult { background: linear-gradient(180deg, #c79bff, #7e43cf); }
-.card-mult-big { background: linear-gradient(180deg, #ffe98a, #e0a512); color: #3a2400; }
-.card-minus { background: linear-gradient(180deg, #8fd4ff, #2f86d6); }
-.card-bust { background: linear-gradient(180deg, #ff7d92, #cf1c39); }
 
-.card-special-big {
-  font-family: 'Orbitron', 'Segoe UI', monospace;
+/* Special variants matching demo */
+.pcard-mult    { background: linear-gradient(180deg, #c79bff, #7e43cf); }
+.pcard-special { background: linear-gradient(180deg, #ffe98a, #e0a512); color: #3a2400; }
+.pcard-minus   { background: linear-gradient(180deg, #8fd4ff, #2f86d6); }
+.pcard-bust    { background: linear-gradient(180deg, #ff7d92, #cf1c39); }
+
+/* Big number label on special cards */
+.sp-big {
+  font-family: 'Orbitron', monospace;
   font-weight: 900;
-  font-size: 22px;
+  font-size: 25px;
   line-height: 1;
 }
-.card-special-lab {
+
+/* Small label below the big number */
+.sp-lab {
   font-size: 8px;
   letter-spacing: 1.5px;
-  opacity: 0.9;
+  opacity: .9;
   text-transform: uppercase;
 }
-.card-boom {
+
+/* Explosion starburst SVG on BUST card */
+.boom {
   width: 36px;
   height: 36px;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
-}
-/* reduced-motion: hide the spinning animation on the reel strip; bust card is static, ok. */
-@media (prefers-reduced-motion: reduce) {
-  .card-boom { /* static is fine already */ }
 }
 </style>

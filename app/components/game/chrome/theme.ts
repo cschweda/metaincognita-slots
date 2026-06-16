@@ -15,7 +15,7 @@ const CHROME_THEME: Record<string, ChromeTheme> = {
   'series-e-3line': { accent: '#d4a017', secondary: '#f5e6c8', glow: '#e7c14a', backdrop: '#1a1208' },
   'series-e-multiplier': { accent: '#2dd4bf', secondary: '#94a3b8', glow: '#5eead4', backdrop: '#0a1a1a' },
   'stock-rush': { accent: '#fb923c', secondary: '#ec4899', glow: '#22d3ee', backdrop: '#0a0a12' },
-  'hit-or-bust': { accent: '#d4a017', secondary: '#0e6b3d', glow: '#fbbf24', backdrop: '#06150d' }
+  'lucky-21': { accent: '#d4a017', secondary: '#0e6b3d', glow: '#fbbf24', backdrop: '#06150d' }
 }
 
 const FALLBACK: ChromeTheme = { accent: '#94a3b8', secondary: '#64748b', glow: '#cbd5e1', backdrop: '#0a0a0a' }

@@ -1,5 +1,5 @@
 <!-- app/components/game/ReelBlackjackReel.vue -->
-<!-- Lucky 21 — stop-the-reels reel surface (Task 9). -->
+<!-- Lucky 21 — stop-the-reels reel surface. Visuals match lucky21-playable-v7.html demo. -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
@@ -23,34 +23,57 @@ const showModal = computed(() => bj.phase.value === 'resolved')
 <template>
   <div
     v-if="def"
-    class="bj-surface"
+    class="l21-surface"
     data-test="bj-surface"
   >
-    <!-- ── Score + Cash Out displays ─────────────────────────────── -->
-    <div class="bj-displays">
-      <div class="bj-panel bj-panel-score">
-        <div class="bj-panel-cap">
+    <!-- ── Bulb row ────────────────────────────────────────────────── -->
+    <div
+      class="l21-bulbs"
+      aria-hidden="true"
+    >
+      <span
+        v-for="b in 11"
+        :key="b"
+        class="l21-bulb"
+      />
+    </div>
+
+    <!-- ── LUCKY 21 Marquee ─────────────────────────────────────────── -->
+    <div
+      class="l21-marquee"
+      aria-label="Lucky 21"
+    >
+      LUCKY&nbsp;21
+    </div>
+    <div class="l21-sub">
+      What's on the line is what you get
+    </div>
+
+    <!-- ── Score + Cash Out displays ────────────────────────────────── -->
+    <div class="l21-displays">
+      <div class="l21-panel l21-panel-total">
+        <div class="l21-cap">
           Score
         </div>
         <!-- eslint-disable-next-line vue/no-v-html -->
         <div
-          class="bj-panel-num"
+          class="l21-num"
           data-test="score-display"
           v-html="scoreDisplay"
         />
       </div>
-      <div class="bj-panel bj-panel-bank">
-        <div class="bj-panel-cap">
+      <div class="l21-panel l21-panel-bank">
+        <div class="l21-cap">
           Cash Out value
         </div>
         <div
-          class="bj-panel-num"
+          class="l21-num"
           data-test="cash-display"
         >
           {{ cashDollars }}
         </div>
         <div
-          class="bj-betref"
+          class="l21-betref"
           data-test="cash-ref"
         >
           {{ cashAtZero ? 'reach 15 to win' : 'from your bet' }}
@@ -58,62 +81,55 @@ const showModal = computed(() => bj.phase.value === 'resolved')
       </div>
     </div>
 
-    <!-- ── 5 Reel Windows ────────────────────────────────────────── -->
+    <!-- ── 5 Reel Windows ─────────────────────────────────────────── -->
     <div
-      class="bj-reels"
+      class="l21-reels"
       role="group"
       aria-label="Lucky 21 reels"
     >
       <div
         v-for="i in 5"
         :key="i - 1"
-        class="bj-reel"
+        class="l21-reel"
         :class="{
-          'bj-reel-next': bj.phase.value === 'spinning' && bj.idx.value === (i - 1) && bj.landed.value[i - 1] === null,
-          'bj-reel-locked': bj.landed.value[i - 1] !== null,
-          'bj-reel-dead': bj.phase.value === 'resolved' && bj.landed.value[i - 1] === null
+          'l21-reel-next': bj.phase.value === 'spinning' && bj.idx.value === (i - 1) && bj.landed.value[i - 1] === null,
+          'l21-reel-locked': bj.landed.value[i - 1] !== null,
+          'l21-reel-dead': bj.phase.value === 'resolved' && bj.landed.value[i - 1] === null
         }"
       >
         <!-- Reel label -->
-        <div class="bj-reel-name">
+        <div class="l21-reel-name">
           Reel {{ i }}
         </div>
 
         <!-- Reel window -->
         <div
-          class="bj-window"
+          class="l21-window"
+          :class="{ 'l21-window-dead': bj.phase.value === 'resolved' && bj.landed.value[i - 1] === null }"
           :aria-label="`Reel ${i}${bj.landed.value[i-1] !== null ? ': locked' : (bj.phase.value === 'resolved' ? ': not reached' : '')}`"
           role="img"
         >
-          <!-- Gold payline bar -->
+          <!-- Gold payline bar (shown only while spinning/unlocked) -->
           <div
             v-if="bj.landed.value[i - 1] === null && bj.phase.value !== 'resolved'"
-            class="bj-payline"
+            class="l21-payline"
             aria-hidden="true"
           />
 
           <!-- Locked symbol display -->
           <div
             v-if="bj.landed.value[i - 1] !== null"
-            class="bj-locked-card"
+            class="l21-locked-card"
             data-test="locked-card"
           >
             <GameCardFace :symbol="bj.landed.value[i - 1]!" />
           </div>
 
-          <!-- Dead reel (busted/not reached) -->
-          <div
-            v-else-if="bj.phase.value === 'resolved'"
-            class="bj-dead-overlay"
-            aria-hidden="true"
-          />
-
           <!-- Spinning strip (active during a hand) -->
           <div
             v-else-if="bj.phase.value === 'spinning' && bj.reelStrips.value[i - 1]"
-            class="bj-strip motion-safe:bj-strip-spin"
+            class="l21-strip motion-safe:l21-strip-spin"
           >
-            <!-- Two passes of the strip for seamless loop -->
             <template
               v-for="pass in 2"
               :key="pass"
@@ -121,20 +137,19 @@ const showModal = computed(() => bj.phase.value === 'resolved')
               <div
                 v-for="(sym, si) in bj.reelStrips.value[i - 1]"
                 :key="`${pass}-${si}`"
-                class="bj-strip-card"
+                class="l21-strip-card"
               >
                 <GameCardFace :symbol="sym" />
               </div>
             </template>
           </div>
 
-          <!-- Idle attract spin — uses reel composition, not the empty dealt strips -->
+          <!-- Idle attract spin — uses reel composition -->
           <div
             v-else-if="bj.phase.value === 'idle'"
-            class="bj-strip motion-safe:bj-strip-spin"
+            class="l21-strip motion-safe:l21-strip-spin"
             aria-hidden="true"
           >
-            <!-- Two passes for seamless loop; content from reel composition -->
             <template
               v-for="pass in 2"
               :key="pass"
@@ -142,7 +157,7 @@ const showModal = computed(() => bj.phase.value === 'resolved')
               <div
                 v-for="(sym, si) in bj.attractStrips.value[i - 1]"
                 :key="`${pass}-${si}`"
-                class="bj-strip-card"
+                class="l21-strip-card"
               >
                 <GameCardFace :symbol="sym" />
               </div>
@@ -150,35 +165,35 @@ const showModal = computed(() => bj.phase.value === 'resolved')
           </div>
         </div>
 
-        <!-- Cocktail tags (reel composition hints) -->
+        <!-- Cocktail tags placeholder (keeps layout height) -->
         <div
           v-if="bj.phase.value !== 'idle'"
-          class="bj-cocktail"
+          class="l21-cocktail"
         />
       </div>
     </div>
 
-    <!-- ── Result Modal ───────────────────────────────────────────── -->
-    <Transition name="bj-modal">
+    <!-- ── Result Modal ──────────────────────────────────────────────── -->
+    <Transition name="l21-modal">
       <div
         v-if="showModal"
-        class="bj-modal-backdrop"
+        class="l21-modal-backdrop"
         role="dialog"
         aria-modal="true"
         :aria-label="bj.modalOutcome.value?.kind === 'bust' ? 'BUST — hand lost' : 'Hand result'"
         data-test="result-modal"
       >
         <div
-          class="bj-modal-card"
+          class="l21-rcard"
           :class="{
-            'bj-modal-win': bj.modalOutcome.value?.kind === 'win',
-            'bj-modal-bust': bj.modalOutcome.value?.kind === 'bust',
-            'bj-modal-charlie': bj.modalOutcome.value?.kind === 'charlie'
+            'l21-rcard-win': bj.modalOutcome.value?.kind === 'win',
+            'l21-rcard-bust': bj.modalOutcome.value?.kind === 'bust',
+            'l21-rcard-charlie': bj.modalOutcome.value?.kind === 'charlie'
           }"
         >
           <!-- Title -->
           <div
-            class="bj-modal-title"
+            class="l21-rtitle"
             data-test="modal-title"
           >
             <template v-if="bj.modalOutcome.value?.kind === 'charlie'">
@@ -194,24 +209,24 @@ const showModal = computed(() => bj.phase.value === 'resolved')
 
           <!-- 5-reel recap row -->
           <div
-            class="bj-recap"
+            class="l21-recap"
             aria-label="Hand recap"
             data-test="modal-recap"
           >
             <div
               v-for="ri in 5"
               :key="ri"
-              class="bj-recap-reel"
+              class="l21-rr"
             >
-              <span class="bj-recap-n">{{ ri }}</span>
+              <span class="l21-rrn">{{ ri }}</span>
               <GameCardFace
                 v-if="bj.landed.value[ri - 1] !== null"
                 :symbol="bj.landed.value[ri - 1]!"
-                class="bj-recap-card"
+                class="l21-recap-card"
               />
               <div
                 v-else
-                class="bj-recap-none"
+                class="l21-recap-none"
                 aria-label="Not reached"
               >
                 –
@@ -221,56 +236,56 @@ const showModal = computed(() => bj.phase.value === 'resolved')
 
           <!-- Breakdown chips -->
           <div
-            class="bj-flow"
+            class="l21-flow"
             data-test="modal-flow"
           >
             <template v-if="bj.modalOutcome.value?.kind !== 'bust'">
-              <div class="bj-fchip">
-                <div class="bj-fl">
+              <div class="l21-fchip">
+                <div class="l21-fl">
                   {{ bj.modalOutcome.value?.kind === 'charlie' ? '5-card survival' : `Hand ${bj.modalOutcome.value?.best} pays` }}
                 </div>
-                <div class="bj-fv">
+                <div class="l21-fv">
                   ${{ bj.modalOutcome.value?.baseDollars?.toFixed(2) }}
                 </div>
               </div>
               <template v-if="(bj.modalOutcome.value?.mult ?? 1) > 1">
-                <span class="bj-fop">×</span>
-                <div class="bj-fchip bj-fchip-mult">
-                  <div class="bj-fl">
+                <span class="l21-fop">×</span>
+                <div class="l21-fchip l21-fchip-mult">
+                  <div class="l21-fl">
                     Multiplier
                   </div>
-                  <div class="bj-fv">
+                  <div class="l21-fv">
                     ×{{ bj.modalOutcome.value?.mult }}
                   </div>
                 </div>
               </template>
               <template v-if="bj.modalOutcome.value?.kind === 'charlie'">
-                <span class="bj-fop">×</span>
-                <div class="bj-fchip bj-fchip-charlie">
-                  <div class="bj-fl">
+                <span class="l21-fop">×</span>
+                <div class="l21-fchip l21-fchip-charlie">
+                  <div class="l21-fl">
                     5-Card Charlie
                   </div>
-                  <div class="bj-fv">
+                  <div class="l21-fv">
                     ×{{ def?.charlieMultiplier }}
                   </div>
                 </div>
               </template>
             </template>
             <template v-else>
-              <div class="bj-fchip bj-fchip-danger">
-                <div class="bj-fl">
+              <div class="l21-fchip l21-fchip-danger">
+                <div class="l21-fl">
                   {{ bj.modalOutcome.value?.bustLabel }}
                 </div>
-                <div class="bj-fv">
+                <div class="l21-fv">
                   {{ bj.modalOutcome.value?.bustValue }}
                 </div>
               </div>
-              <span class="bj-fop">→</span>
-              <div class="bj-fchip bj-fchip-danger">
-                <div class="bj-fl">
+              <span class="l21-fop">→</span>
+              <div class="l21-fchip l21-fchip-danger">
+                <div class="l21-fl">
                   Result
                 </div>
-                <div class="bj-fv">
+                <div class="l21-fv">
                   {{ bj.modalOutcome.value?.bustResult }}
                 </div>
               </div>
@@ -279,14 +294,14 @@ const showModal = computed(() => bj.phase.value === 'resolved')
 
           <!-- Dollar payout hero -->
           <div
-            class="bj-ramount"
+            class="l21-ramount"
             data-test="modal-amount"
           >
             {{ bj.modalOutcome.value?.kind === 'bust' ? '$0' : bj.modalOutcome.value?.totalDollars }}
           </div>
 
           <!-- Sub caption -->
-          <div class="bj-rsub">
+          <div class="l21-rsub">
             {{ bj.modalOutcome.value?.sub }}
           </div>
         </div>
@@ -296,168 +311,376 @@ const showModal = computed(() => bj.phase.value === 'resolved')
 </template>
 
 <style scoped>
-.bj-surface {
-  padding: 12px;
+/* ── CSS custom props (matches demo palette) ── */
+.l21-surface {
+  --gold:    #ffd24a;
+  --gold-dk: #b8860b;
+  --felt:    #0c4a37;
+  --felt-dk: #04221a;
+  --cyan:    #38e8ff;
+  --red:     #ff3b5c;
+  --green:   #46e08a;
+
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 12px 12px 18px;
   position: relative;
+  background: linear-gradient(180deg, #15392e, #0a2a20);
+  border-radius: 22px;
+  border: 3px solid var(--gold-dk);
+  box-shadow: 0 0 0 6px #1c1206, 0 0 60px rgba(0,0,0,.6), inset 0 0 80px rgba(0,0,0,.45);
 }
 
-/* ── Score / bank panels ── */
-.bj-displays { display: flex; gap: 10px; margin-bottom: 12px; }
-.bj-panel {
-  flex: 1; border: 2px solid #11352a; border-radius: 14px; padding: 9px 14px 11px;
-  min-height: 80px;
+/* ── Bulb row ── */
+.l21-bulbs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 2px 0 6px;
+}
+.l21-bulb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff6c8, var(--gold) 45%, var(--gold-dk));
+  box-shadow: 0 0 8px var(--gold);
+  animation: l21-tw 1.2s infinite alternate;
+}
+.l21-bulb:nth-child(2n) { animation-delay: .3s; }
+.l21-bulb:nth-child(3n) { animation-delay: .6s; }
+@keyframes l21-tw {
+  from { opacity: .35; }
+  to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .l21-bulb { animation: none !important; }
+}
+
+/* ── LUCKY 21 marquee ── */
+.l21-marquee {
+  font-family: 'Bungee', sans-serif;
+  text-align: center;
+  font-size: clamp(34px, 8vw, 62px);
+  line-height: 1;
+  letter-spacing: 2px;
+  background: linear-gradient(180deg, #fff6c8, var(--gold) 45%, var(--gold-dk));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 #5a3c00);
+  animation: l21-glow 2.2s ease-in-out infinite alternate;
+}
+@keyframes l21-glow {
+  from { filter: drop-shadow(0 2px 0 #5a3c00) drop-shadow(0 0 6px rgba(255,210,74,.4)); }
+  to   { filter: drop-shadow(0 2px 0 #5a3c00) drop-shadow(0 0 22px rgba(255,210,74,.85)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .l21-marquee { animation: none !important; filter: drop-shadow(0 2px 0 #5a3c00); }
+}
+
+.l21-sub {
+  text-align: center;
+  letter-spacing: 4px;
+  font-size: 11px;
+  color: var(--gold);
+  opacity: .85;
+  margin: 2px 0 12px;
+  text-transform: uppercase;
+}
+
+/* ── Display panels ── */
+.l21-displays {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.l21-panel {
+  flex: 1;
+  border: 2px solid #11352a;
+  border-radius: 14px;
+  padding: 9px 16px 13px;
+  min-height: 84px;
   background: linear-gradient(180deg, #05140f, #020a07);
+  box-shadow: inset 0 0 26px rgba(0,0,0,.8);
 }
-.bj-panel-cap {
-  font-size: 10px; letter-spacing: 3px; color: #7fd9bf; text-transform: uppercase;
-  opacity: .8; margin-bottom: 4px;
+.l21-cap {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #7fd9bf;
+  text-transform: uppercase;
+  opacity: .8;
+  margin-bottom: 4px;
 }
-.bj-panel-num {
-  font-family: 'Orbitron', monospace; font-weight: 700; font-size: clamp(22px, 4vw, 34px);
-  letter-spacing: 2px; color: #eafff9;
-  text-shadow: 0 0 7px rgba(56,232,255,.4); line-height: 1.15;
+.l21-num {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  line-height: 1.12;
 }
-.bj-panel-bank { border-color: #b8860b; background: linear-gradient(180deg, #2a1c02, #120c00); }
-.bj-panel-bank .bj-panel-cap { color: #ffd24a; }
-.bj-panel-bank .bj-panel-num {
-  font-weight: 900; font-size: clamp(26px, 5vw, 44px);
-  background: linear-gradient(180deg, #fff6c8, #ffd24a 50%, #b8860b);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+.l21-panel-total .l21-num {
+  font-size: clamp(26px, 5vw, 40px);
+  letter-spacing: 3px;
+  color: #eafff9;
+  text-shadow: 0 0 7px rgba(56,232,255,.5);
 }
-.bj-betref { font-size: 10px; color: #d8b86a; letter-spacing: 1.2px; margin-top: 3px; text-transform: uppercase; }
+/* Demo: .alt class on the soft "or 17" span */
+.l21-panel-total .l21-num :deep(.alt) {
+  color: #8fefff;
+  opacity: .8;
+  letter-spacing: 1px;
+}
+.l21-panel-bank {
+  border-color: var(--gold-dk);
+  background: linear-gradient(180deg, #2a1c02, #120c00);
+}
+.l21-panel-bank .l21-cap { color: var(--gold); }
+.l21-panel-bank .l21-num {
+  font-weight: 900;
+  font-size: clamp(30px, 7vw, 52px);
+  letter-spacing: 1px;
+  background: linear-gradient(180deg, #fff6c8, var(--gold) 50%, var(--gold-dk));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.l21-betref {
+  font-size: 10px;
+  color: #d8b86a;
+  letter-spacing: 1.5px;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
 
-/* ── 5 reels ── */
-.bj-reels {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+/* ── 5 reel grid ── */
+.l21-reels {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 9px;
 }
-.bj-reel {
-  background: #02100c; border: 2px solid #1d4a3b; border-radius: 12px;
-  padding: 6px 4px; display: flex; flex-direction: column; align-items: center;
-  gap: 6px; transition: opacity .3s;
+.l21-reel {
+  background: #02100c;
+  border: 2px solid #1d4a3b;
+  border-radius: 12px;
+  padding: 7px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  transition: opacity .3s;
 }
-.bj-reel-next { border-color: #ffd24a; box-shadow: 0 0 14px rgba(255,210,74,.45); }
-.bj-reel-dead { opacity: .22; }
-.bj-reel-name {
-  font-size: 9px; letter-spacing: .5px; color: #86b9aa;
-  text-transform: uppercase; text-align: center; min-height: 20px;
-  display: flex; align-items: center;
+.l21-reel-next  { border-color: var(--gold); box-shadow: 0 0 16px rgba(255,210,74,.5); }
+.l21-reel-dead  { opacity: .22; }
+.l21-reel-name {
+  font-size: 9px;
+  letter-spacing: .5px;
+  color: #86b9aa;
+  text-transform: uppercase;
+  min-height: 20px;
+  text-align: center;
+  display: flex;
+  align-items: center;
 }
-.bj-reel-next .bj-reel-name { color: #ffd24a; }
+.l21-reel-next .l21-reel-name { color: var(--gold); }
 
-.bj-window {
-  width: 100%; height: 108px; border-radius: 8px; background: #05100d;
-  position: relative; overflow: hidden;
+/* ── Reel window ── */
+.l21-window {
+  width: 100%;
+  height: 118px;
+  border-radius: 8px;
+  background: #05100d;
+  position: relative;
+  overflow: hidden;
   box-shadow: inset 0 0 16px rgba(0,0,0,.9);
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.bj-reel-locked .bj-window {
-  box-shadow: inset 0 0 0 2px #ffd24a, inset 0 0 16px rgba(255,210,74,.3);
+.l21-reel-locked .l21-window {
+  box-shadow: inset 0 0 0 2px var(--gold), inset 0 0 18px rgba(255,210,74,.35);
+}
+.l21-window-dead {
+  box-shadow: inset 0 0 22px #000;
+  background: #030a08;
 }
 
-.bj-payline {
-  position: absolute; left: 6px; right: 6px; top: 50%; height: 2px;
+/* Gold center payline */
+.l21-payline {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 50%;
+  height: 2px;
   transform: translateY(-1px);
   background: linear-gradient(90deg, transparent, rgba(255,210,74,.55), transparent);
-  z-index: 3; pointer-events: none;
-}
-.bj-locked-card { display: flex; align-items: center; justify-content: center; }
-.bj-dead-overlay {
-  position: absolute; inset: 0;
-  background: rgba(0,0,0,.65); border-radius: 6px;
+  z-index: 3;
+  pointer-events: none;
 }
 
-/* Spinning strip */
-.bj-strip {
-  position: absolute; top: 0; left: 0; width: 100%;
-  display: flex; flex-direction: column; align-items: center;
+.l21-locked-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.bj-strip-card { margin-bottom: 10px; }
 
-/* CSS keyframe spin */
-@keyframes lucky21-scroll {
+/* ── Spinning strip ── */
+.l21-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: blur(.3px);
+}
+.l21-strip-card { margin-bottom: 12px; }
+
+@keyframes l21-scroll {
   from { transform: translateY(0); }
   to   { transform: translateY(-50%); }
 }
-.bj-strip-spin {
-  animation: lucky21-scroll 2.1s linear infinite;
-  filter: blur(.2px);
+.l21-strip-spin {
+  animation: l21-scroll 2.1s linear infinite;
 }
-/* Reduced-motion: freeze the strip in place (both attract and active spin). */
 @media (prefers-reduced-motion: reduce) {
-  .bj-strip-spin { animation: none !important; filter: none; }
+  .l21-strip-spin { animation: none !important; filter: none; }
 }
+
+/* cocktail placeholder */
+.l21-cocktail { min-height: 18px; }
 
 /* ── Result Modal ── */
-.bj-modal-backdrop {
-  position: fixed; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(2,10,7,.82); backdrop-filter: blur(4px);
-  z-index: 50; padding: 20px;
+.l21-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2,10,7,.82);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  padding: 20px;
 }
-.bj-modal-enter-active, .bj-modal-leave-active { transition: opacity .25s; }
-.bj-modal-enter-from, .bj-modal-leave-to { opacity: 0; }
+.l21-modal-enter-active,
+.l21-modal-leave-active { transition: opacity .25s; }
+.l21-modal-enter-from,
+.l21-modal-leave-to { opacity: 0; }
 
-.bj-modal-card {
-  max-width: 560px; width: 100%; border-radius: 22px; padding: 26px 22px;
-  text-align: center; border: 3px solid #b8860b;
+.l21-rcard {
+  max-width: 580px;
+  width: 100%;
+  border-radius: 22px;
+  padding: 28px 24px;
+  text-align: center;
+  border: 3px solid var(--gold-dk);
   background: linear-gradient(180deg, #15392e, #0a2a20);
   box-shadow: 0 0 0 5px #1c1206, 0 0 70px rgba(0,0,0,.7);
 }
-.bj-modal-win { border-color: #46e08a; }
-.bj-modal-bust { border-color: #ff3b5c; }
-.bj-modal-charlie { border-color: #ffd24a; }
+.l21-rcard-win     { border-color: var(--green); }
+.l21-rcard-bust    { border-color: var(--red); }
+.l21-rcard-charlie { border-color: var(--gold); }
 
-.bj-modal-title {
-  font-family: 'Bungee', 'Segoe UI', sans-serif;
-  font-size: clamp(28px, 7vw, 52px); line-height: 1.05; margin-bottom: 6px;
+.l21-rtitle {
+  font-family: 'Bungee', sans-serif;
+  font-size: clamp(32px, 8vw, 56px);
+  line-height: 1.05;
+  margin-bottom: 6px;
   color: #eafff9;
 }
-.bj-modal-win .bj-modal-title { color: #46e08a; text-shadow: 0 0 20px rgba(70,224,138,.6); }
-.bj-modal-bust .bj-modal-title { color: #ff3b5c; text-shadow: 0 0 20px rgba(255,59,92,.6); }
-.bj-modal-charlie .bj-modal-title { color: #ffd24a; text-shadow: 0 0 24px rgba(255,210,74,.7); }
+.l21-rcard-win     .l21-rtitle { color: var(--green); text-shadow: 0 0 20px rgba(70,224,138,.6); }
+.l21-rcard-bust    .l21-rtitle { color: var(--red);   text-shadow: 0 0 20px rgba(255,59,92,.6); }
+.l21-rcard-charlie .l21-rtitle { color: var(--gold);  text-shadow: 0 0 24px rgba(255,210,74,.7); }
 
-/* 5-reel recap */
-.bj-recap {
-  display: flex; justify-content: center; gap: 6px; margin: 14px 0 6px; flex-wrap: wrap;
+/* Recap row */
+.l21-recap {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 14px 0 4px;
+  flex-wrap: wrap;
 }
-.bj-recap-reel { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.bj-recap-n { font-size: 9px; color: #7fd9bf; letter-spacing: 1px; opacity: .8; }
-.bj-recap-card { transform: scale(0.72); transform-origin: top center; }
-.bj-recap-none {
-  width: 44px; height: 62px; border-radius: 6px; border: 2px dashed #234b3e;
-  display: flex; align-items: center; justify-content: center; color: #3a6155; font-size: 16px;
+.l21-rr { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.l21-rrn { font-size: 9px; color: #7fd9bf; letter-spacing: 1px; opacity: .8; }
+
+/* Recap cards scaled to 44×62 as in demo */
+.l21-recap-card {
+  /* The demo uses 44×62 recap cards: 44/60 = 0.733 scale of the full 60×86 card */
+  transform: scale(0.733);
+  transform-origin: top center;
+}
+.l21-recap-none {
+  width: 44px;
+  height: 62px;
+  border-radius: 6px;
+  border: 2px dashed #234b3e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3a6155;
+  font-size: 16px;
 }
 
 /* Breakdown chips */
-.bj-flow {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
-  gap: 9px; margin: 14px 0 8px;
+.l21-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin: 16px 0 10px;
 }
-.bj-fchip {
-  border-radius: 12px; padding: 8px 12px; background: #02100c;
-  border: 2px solid #1d4a3b; min-width: 68px;
+.l21-fchip {
+  border-radius: 12px;
+  padding: 9px 13px;
+  background: #02100c;
+  border: 2px solid #1d4a3b;
+  min-width: 74px;
 }
-.bj-fchip-mult { border-color: #4a2a6b; }
-.bj-fchip-charlie { border-color: #b8860b; }
-.bj-fchip-danger { border-color: #5a2230; }
-.bj-fl { font-size: 9px; letter-spacing: 1.2px; color: #7fd9bf; text-transform: uppercase; }
-.bj-fv { font-family: 'Orbitron', monospace; font-weight: 800; font-size: 19px; color: #eafff9; }
-.bj-fchip-mult .bj-fv { color: #d9b3ff; }
-.bj-fchip-charlie .bj-fv { color: #ffd24a; }
-.bj-fchip-danger .bj-fv { color: #ff6478; }
-.bj-fop { font-family: 'Orbitron', monospace; font-weight: 900; font-size: 18px; color: #9fd9c8; }
+.l21-fchip-mult    { border-color: #4a2a6b; }
+.l21-fchip-charlie { border-color: var(--gold-dk); }
+.l21-fchip-danger  { border-color: #5a2230; }
+.l21-fl {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: #7fd9bf;
+  text-transform: uppercase;
+}
+.l21-fv {
+  font-family: 'Orbitron', monospace;
+  font-weight: 800;
+  font-size: 21px;
+  color: #eafff9;
+}
+.l21-fchip-mult    .l21-fv { color: #d9b3ff; }
+.l21-fchip-charlie .l21-fv { color: var(--gold); }
+.l21-fchip-danger  .l21-fv { color: #ff6478; }
+.l21-fop {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: 20px;
+  color: #9fd9c8;
+}
 
-/* Dollar hero */
-.bj-ramount {
-  font-family: 'Orbitron', monospace; font-weight: 900;
-  font-size: clamp(40px, 12vw, 80px); line-height: 1; margin: 6px 0 2px;
+/* Dollar payout hero */
+.l21-ramount {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: clamp(48px, 14vw, 88px);
+  line-height: 1;
+  margin: 6px 0 2px;
 }
-.bj-modal-win .bj-ramount,
-.bj-modal-charlie .bj-ramount {
-  background: linear-gradient(180deg, #fff6c8, #ffd24a 50%, #b8860b);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+.l21-rcard-win .l21-ramount,
+.l21-rcard-charlie .l21-ramount {
+  background: linear-gradient(180deg, #fff6c8, var(--gold) 50%, var(--gold-dk));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
-.bj-modal-bust .bj-ramount { color: #ff6478; }
+.l21-rcard-bust .l21-ramount { color: #ff6478; }
 
-.bj-rsub { font-size: 12px; color: #9fd9c8; margin-bottom: 4px; letter-spacing: 1px; }
+.l21-rsub {
+  font-size: 12px;
+  color: #9fd9c8;
+  margin-bottom: 20px;
+  letter-spacing: 1px;
+}
 </style>
