@@ -6,7 +6,7 @@ import { useBlackjackReel } from '~/composables/useBlackjackReel'
 const store = useSlotsStore()
 const route = useRoute()
 const parOpen = ref(false)
-const { canDeal, canHit, canStand, deal, hit, stand } = useBlackjackReel()
+const { phase, canStop, canCash, stop, cashOut, playAgain } = useBlackjackReel()
 
 function onKeydown(e: KeyboardEvent) {
   if (e.repeat) return
@@ -18,9 +18,9 @@ function onKeydown(e: KeyboardEvent) {
   if (store.currentDef?.family === 'pachislo') return // pachislo spins via its own controls
   if (store.currentDef?.family === 'blackjack-reel') {
     e.preventDefault()
-    if (isEnter && canStand.value) stand()
-    else if (canHit.value) hit()
-    else if (canDeal.value) deal()
+    if (phase.value === 'resolved') playAgain()
+    else if (isEnter && canCash.value) cashOut()
+    else if (canStop.value) stop()
     return
   }
   if (!isSpace) return

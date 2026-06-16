@@ -369,6 +369,15 @@ const REEL_COCKTAILS: CocktailTag[][] = [
           <div class="l21-rsub">
             {{ bj.modalOutcome.value?.sub }}
           </div>
+
+          <!-- Play Again — dismiss the modal and return to idle attract -->
+          <button
+            class="l21-btn l21-btn-again"
+            data-test="play-again"
+            @click="bj.playAgain()"
+          >
+            Play Again
+          </button>
         </div>
       </div>
     </Transition>
@@ -823,6 +832,16 @@ const REEL_COCKTAILS: CocktailTag[][] = [
   background: linear-gradient(180deg, #7bffb0, #16a85a);
   color: #04240f;
   box-shadow: 0 4px 0 #0a5e30, 0 0 26px rgba(40,220,120,.5);
+}
+
+/* Play Again (in the result modal) — blue, matches the demo's .btn.again */
+.l21-btn-again {
+  flex: 0 0 auto;
+  min-width: 220px;
+  margin-top: 4px;
+  background: linear-gradient(180deg, #cfe7ff, #6aa6e6);
+  color: #06243f;
+  box-shadow: 0 4px 0 #1d4f86;
 }
 
 /* ── Foot explainer ── */

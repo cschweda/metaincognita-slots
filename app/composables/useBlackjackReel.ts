@@ -185,6 +185,12 @@ export function useBlackjackReel() {
     store.revealDone()
   }
 
+  // Dismiss the result modal and return to the idle attract, ready to play again.
+  function playAgain() {
+    store.resetHand()
+    store.revealDone()
+  }
+
   // ── modal outcome (only valid when phase === 'resolved') ────────────────────
   const modalOutcome = computed((): ModalOutcome | null => {
     const bj = bjState.value
@@ -264,6 +270,7 @@ export function useBlackjackReel() {
     deal,
     stop,
     cashOut,
+    playAgain,
     modalOutcome,
     // backward compat for pages/game.vue key handler
     canHit: canStop,

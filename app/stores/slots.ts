@@ -715,6 +715,25 @@ export const useSlotsStore = defineStore('slots', {
       this.saveToLocalStorage()
     },
 
+    /**
+     * Return a resolved Lucky 21 hand to idle (the attract spin), ready for a
+     * fresh deal — powers the result modal's "Play Again". No charge: the next
+     * STOP deals and charges the ante (matches the demo's reset()).
+     */
+    resetHand(): void {
+      const def = this.currentDef
+      const state = this.currentState
+      if (
+        def === null || state === null
+        || this.phase !== 'playing' || this.spinning
+        || def.family !== 'blackjack-reel'
+        || state.blackjackReel === null
+        || state.blackjackReel.phase !== 'resolved'
+      ) return
+      state.blackjackReel = freshBlackjackState()
+      this.saveToLocalStorage()
+    },
+
     describeOutcome(def: MachineDef, out: SpinOutcome): string {
       const parts: string[] = []
       if (out.totalPayout > 0) {
