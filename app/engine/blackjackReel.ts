@@ -243,8 +243,14 @@ export function stopReel(
   }
   // Ratchet: only advance bestTotal upward
   if (bt.total > bj.bestTotal) bj.bestTotal = bt.total
-  // Natural: 2-card 21
-  if (r === 1 && bt.total === 21) bj.natural = true // second reel = 2-card 21 → natural
+  // Natural: a 2-card 21 ENDS the hand and opens the double-or-nothing bonus.
+  if (r === 1 && bt.total === 21) {
+    bj.natural = true
+    bj.phase = 'gamble'
+    bj.gambleAmount = handPayout(def, bj) // base = naturalPay, multSum 0, charlie false → naturalPay × ante
+    bj.gambleCount = 0
+    return outcome(def, bj, bj.ante, 0, [{ type: 'blackjack-bonus', amount: bj.gambleAmount }])
+  }
   // Five-Card Charlie: survived all five reels
   if (bj.idx === 5) {
     bj.charlie = true

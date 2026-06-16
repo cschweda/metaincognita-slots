@@ -14,6 +14,12 @@ import { mulberry32 } from '../app/engine/rng'
 import { LUCKY_21 } from '../app/machines/lucky-21'
 import type { MachineSessionState } from '../app/engine/types'
 
+// Deterministic RNG helper: returns the given sequence then 0s.
+function seq(values: number[]) {
+  let i = 0
+  return () => (i < values.length ? values[i++]! : 0)
+}
+
 /** Split the optimal-policy terminal distribution into bust / charlie / cash mass. */
 function rates() {
   const r = blackjackReelExactRtp(LUCKY_21)
@@ -147,5 +153,27 @@ describe('blackjack bonus — fresh state', () => {
     expect(s.phase).toBe('idle')
     expect(s.gambleAmount).toBe(0)
     expect(s.gambleCount).toBe(0)
+  })
+})
+
+function freshState(): MachineSessionState {
+  return { progressive: null, videoFeature: null, pachislo: null, blackjackReel: null }
+}
+
+describe('blackjack bonus — natural enters gamble', () => {
+  it('a 2-card 21 ends spinning and opens the gamble at naturalPay x ante', () => {
+    const state = freshState()
+    // Force reel strips so reel 1 -> Ace, reel 2 -> a ten-value card.
+    dealReels(LUCKY_21, state, 1, seq([0]))
+    const bj = state.blackjackReel!
+    bj.reelStrips[0] = ['AS']
+    bj.reelStrips[1] = ['TH']
+    stopReel(LUCKY_21, state, seq([0])) // lock reel 1 -> AS
+    stopReel(LUCKY_21, state, seq([0])) // lock reel 2 -> TH => natural 21
+    expect(bj.natural).toBe(true)
+    expect(bj.phase).toBe('gamble')
+    expect(bj.gambleAmount).toBe(LUCKY_21.naturalPay * 1) // ante = 1
+    expect(bj.gambleCount).toBe(0)
+    expect(bj.landed.slice(0, 2)).toEqual(['AS', 'TH'])
   })
 })
