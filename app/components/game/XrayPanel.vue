@@ -96,6 +96,7 @@ const bjOdds = computed(() => {
   if (d === null || d.family !== 'blackjack-reel') return null
   const bj = store.currentState?.blackjackReel
   if (bj?.phase === 'spinning') return null // EV panel takes over
+  if (bj?.phase === 'gamble') return null // gamble fair-EV panel takes over
   const report = blackjackReelExactRtp(d as BlackjackReelMachineDef)
   const charlieBucket = report.breakdown.find(b => b.entryId === 'charlie')
   const bustBucket = report.breakdown.find(b => b.entryId === 'bust')
@@ -103,6 +104,21 @@ const bjOdds = computed(() => {
     bustRate: bustBucket?.probability ?? 0,
     charlieRate: charlieBucket?.probability ?? 0,
     rtpPerCoin: report.rtpPerCoin
+  }
+})
+
+/**
+ * Blackjack double-or-nothing bonus: the fair-EV honesty surface. The gamble is
+ * a true 50/50, so EV(stop) == the amount on the line — no edge, only variance.
+ * Shown only during the 'gamble' phase.
+ */
+const bjGamble = computed(() => {
+  const d = def.value
+  if (d === null || d.family !== 'blackjack-reel') return null
+  const bj = store.currentState?.blackjackReel
+  if (bj === null || bj === undefined || bj.phase !== 'gamble') return null
+  return {
+    evDollars: `$${(bj.gambleAmount * d.denominationCents / 100).toFixed(2)}`
   }
 })
 </script>
@@ -287,9 +303,38 @@ const bjOdds = computed(() => {
       </table>
     </div>
 
+    <!-- Blackjack double-or-nothing bonus: fair-EV honesty surface -->
+    <div
+      v-if="bjGamble"
+      class="space-y-1"
+      data-test="bj-gamble-panel"
+    >
+      <div class="text-[10px] text-amber-400 uppercase tracking-wider">
+        Double-or-nothing — fair 50/50
+      </div>
+      <table class="w-full font-mono text-[11px]">
+        <tbody class="divide-y divide-neutral-800/50">
+          <tr>
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
+              EV of stopping
+            </th>
+            <td class="py-0.5 text-right text-emerald-400 font-bold">
+              {{ bjGamble.evDollars }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="text-[10px] text-neutral-400">
+        The casino's gamble feature adds no edge — it only adds variance.
+      </p>
+    </div>
+
     <!-- Blackjack-reel: live EV(hit) vs EV(stand) during 'spinning' phase -->
     <div
-      v-if="bjEv"
+      v-else-if="bjEv"
       class="space-y-1"
       data-test="bj-ev-panel"
     >
