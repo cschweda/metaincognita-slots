@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { addCoinToProgressive, freshBlackjackState, initMachineState, nextSpinCost, spin, validateMachineDef } from '~/engine'
 import type { BlackjackReelMachineDef, MachineDef, MachineSessionState, PachisloFlag, PachisloBonusState, SpinOutcome } from '~/engine'
 import { spinPachislo } from '~/engine/pachislo'
-import { dealReels, stopReel, cashOut as bjCashOut } from '~/engine/blackjackReel'
+import { dealReels, stopReel, cashOut as bjCashOut, gambleStop as bjGambleStop, gambleCashOut as bjGambleCashOut, GAMBLE_CAP } from '~/engine/blackjackReel'
 import { FLOOR } from '~/machines'
 import { liveRand } from '~/utils/liveRand'
 
@@ -205,7 +205,7 @@ function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionStat
       typeof s === 'string' && (deckIds.has(s) || specialIds.has(s))
 
     const phase = bj.phase
-    if (phase !== 'idle' && phase !== 'spinning' && phase !== 'resolved') {
+    if (phase !== 'idle' && phase !== 'spinning' && phase !== 'resolved' && phase !== 'gamble') {
       fresh.blackjackReel = freshBlackjackState()
       return fresh
     }
@@ -293,7 +293,7 @@ function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionStat
     }
 
     fresh.blackjackReel = {
-      phase: phase as 'idle' | 'spinning' | 'resolved',
+      phase: phase as 'idle' | 'spinning' | 'resolved' | 'gamble',
       reelStrips: reelStrips as string[][],
       landed: landed as (string | null)[],
       idx: idx as number,
@@ -307,8 +307,8 @@ function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionStat
       bustBySymbol: bj.bustBySymbol as boolean,
       charlie: bj.charlie as boolean,
       ante: ante,
-      gambleAmount: 0,
-      gambleCount: 0
+      gambleAmount: asNonNegativeInt(bj.gambleAmount, 0),
+      gambleCount: Math.min(asNonNegativeInt(bj.gambleCount, 0), GAMBLE_CAP)
     }
   }
 
@@ -711,6 +711,48 @@ export const useSlotsStore = defineStore('slots', {
 
       this.spinning = true
       const out = bjCashOut(def as BlackjackReelMachineDef, state)
+      this.bookOutcome(def, out)
+      this.lastOutcome = out
+      this.liveAnnouncement = this.describeOutcome(def, out)
+      this.saveToLocalStorage()
+    },
+
+    /** Blackjack-bonus: STOP the double-or-nothing reel (fair 50/50). */
+    gambleStop(): void {
+      const def = this.currentDef
+      const state = this.currentState
+      if (
+        def === null || state === null
+        || this.phase !== 'playing' || this.spinning
+        || def.family !== 'blackjack-reel'
+        || state.blackjackReel === null
+        || state.blackjackReel.phase !== 'gamble'
+        || state.blackjackReel.gambleCount >= GAMBLE_CAP
+      ) return
+      this.spinning = true
+      const out = bjGambleStop(def as BlackjackReelMachineDef, state, liveRand)
+      this.lastOutcome = out
+      const bjPhaseAfterGamble: string = state.blackjackReel!.phase
+      if (bjPhaseAfterGamble === 'resolved') {
+        this.bookOutcome(def, out)
+        this.liveAnnouncement = this.describeOutcome(def, out)
+      }
+      this.saveToLocalStorage()
+    },
+
+    /** Blackjack-bonus: keep the guaranteed amount without spinning. */
+    gambleCashOut(): void {
+      const def = this.currentDef
+      const state = this.currentState
+      if (
+        def === null || state === null
+        || this.phase !== 'playing' || this.spinning
+        || def.family !== 'blackjack-reel'
+        || state.blackjackReel === null
+        || state.blackjackReel.phase !== 'gamble'
+      ) return
+      this.spinning = true
+      const out = bjGambleCashOut(def as BlackjackReelMachineDef, state)
       this.bookOutcome(def, out)
       this.lastOutcome = out
       this.liveAnnouncement = this.describeOutcome(def, out)
