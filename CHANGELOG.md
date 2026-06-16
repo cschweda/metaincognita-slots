@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.0] - 2026-06-16
+
+### Added
+- **Lucky 21 — Blackjack Bonus**: a true 2-card natural (A + ten-value) ends the
+  hand into an optional double-or-nothing gamble on a spinning chromed reel:
+  - **STOP** spins the reel for a fair 50/50 outcome: ×2 doubles the amount on
+    the line, BUST forfeits it all.
+  - **CASH OUT** locks the guaranteed natural payout without risking the gamble.
+  - Capped at 3 consecutive doubles (×1 → ×2 → ×4 → ×8); a ladder rung lights
+    at each successful double so the player always sees their position.
+  - The bonus is RTP-neutral: the fair coin-flip EV equals the forfeited amount,
+    so it neither raises nor lowers the machine's RTP.
+  - A result-modal gamble chip confirms the final outcome (BUST or the doubled
+    amount); X-ray labels the natural correctly throughout the sequence.
+
+### Changed
+- **Lucky 21 reel escalation rebalance**: danger and bonuses now scale correctly
+  3→4→5, with BUST symbols scattered for drama rather than front-loaded:
+  - Reel 3 (lock-in bonus, no cards): 6 BUST + ×2/×3 multipliers + −3 safe room.
+  - Reel 4 (mix): 13 BUST + ×3/×5 multipliers + −3 safe room + cards.
+  - Reel 5 (big): 20 BUST + ×5/×10 multipliers + cards; surviving reel 5 qualifies
+    for Five-Card Charlie.
+- **Recalibration**: RTP 90.0255% (was 89.9977%), `naturalPay` 5, Five-Card
+  Charlie ≈ 0.77%, house edge ≈ 9.97%. The `blackjackReelExactRtp` DP covers the
+  gamble branch; seeded sim cross-check converges within the 3.5σ band.
+
 ## [0.8.0] - 2026-06-15
 
 ### Added
