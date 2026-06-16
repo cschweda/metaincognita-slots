@@ -25,8 +25,8 @@ const REEL_NAMES = [
   'Reel 1 · cards',
   'Reel 2 · cards',
   'Reel 3 · LOCK-IN BONUS · no cards',
-  'Reel 4 · MIX · fewer BUST',
-  'Reel 5 · BIG · more cards'
+  'Reel 4 · MIX · ×3/×5',
+  'Reel 5 · BIG · ×5/×10'
 ] as const
 
 type CocktailTag = { text: string, tone: '' | 'good' | 'danger' | 'charlie' }

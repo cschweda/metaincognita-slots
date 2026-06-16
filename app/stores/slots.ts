@@ -623,7 +623,7 @@ export const useSlotsStore = defineStore('slots', {
       }
     },
 
-    // ── Hit or Bust interactive actions ──────────────────────────────────────
+    // ── Lucky 21 interactive actions ──────────────────────────────────────
 
     /**
      * Deal two cards for the current blackjack-reel machine. Only fires when:
