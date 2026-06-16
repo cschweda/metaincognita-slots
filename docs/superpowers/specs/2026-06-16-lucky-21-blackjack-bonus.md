@@ -62,14 +62,18 @@ A built-up 21 or a Five-Card Charlie never triggers the bonus.
    **strong premium**: `naturalPay` is raised to a clear premium over a regular
    21 (target 5–6; exact value fixed by the calibration in Feature 2 to hold
    ~90% RTP).
-3. The player is offered the gamble. A **chromed bonus reel** appears (placement
-   + look finalized in the visual companion): half its faces are **×2 (DOUBLE)**,
-   half are **BUST**. Two controls:
-   - **Collect** → resolve the hand at the current amount.
-   - **Gamble** → spin the chromed reel. 50/50:
-     - **Win** → amount doubles; `gambleCount += 1`. If `gambleCount` reaches the
-       cap (**3**), auto-collect; else offer Collect/Gamble again.
-     - **Lose** → amount becomes 0; resolve (lost). The "nothing" half.
+3. The bonus is offered as a **center-spotlight overlay** (the cabinet dims): a
+   single **chromed reel spins** at the same rate as the main reels (2.1s),
+   scrolling **×2 (DOUBLE)** and **BUST** faces 50/50 past a gold payline. Two
+   controls, reusing the game's verbs:
+   - **CASH OUT** → keep the guaranteed amount, no spin (the safe choice).
+   - **STOP** → stop the spinning reel; where it lands on the payline is the
+     result — an honest uniform 50/50 (no skill), exactly like the main reels:
+     - **×2** → amount doubles; `gambleCount += 1`; if `gambleCount` reaches the
+       cap (**3**) auto-collect, else the reel keeps spinning for another
+       STOP/CASH OUT decision.
+     - **BUST** → amount becomes 0; resolve (lost). The "nothing" half.
+   Nothing is locked until the player STOPs (win or lose) or CASHes OUT.
 4. Resolution books the final amount (which is always a whole number of credits:
    `naturalPay × ante × 2^k`, all integers — the integer-credit invariant holds).
 
@@ -86,13 +90,14 @@ Add a fourth phase and gamble fields:
 - `stopReel` change: when reel 2 forms a natural, set `phase = 'gamble'`,
   `gambleAmount = naturalPay × ante`, `gambleCount = 0`, and DO NOT advance into
   reels 3–5. (This is the only new branch in the existing left-to-right stop.)
-- `collect()` — only valid in `'gamble'`: books `gambleAmount`, sets
-  `phase = 'resolved'` (a win resolution).
-- `gamble()` — only valid in `'gamble'` and `gambleCount < 3`: draw a fair bit
-  from the live RNG; win → `gambleAmount *= 2`, `gambleCount += 1`, auto-collect
-  if at cap; lose → `gambleAmount = 0`, resolve (busted-by-gamble).
+- `gambleCashOut()` — valid in `'gamble'`: keep the guaranteed `gambleAmount`,
+  set `phase = 'resolved'` (a win). Bound to the overlay's **CASH OUT**.
+- `gambleStop()` — valid in `'gamble'` and `gambleCount < 3`: draw a fair bit
+  from the live RNG (the honest 50/50 stop); ×2 → `gambleAmount *= 2`,
+  `gambleCount += 1`, auto-resolve at the cap; BUST → `gambleAmount = 0`, resolve
+  (busted-by-gamble). Bound to the overlay's **STOP**.
 - Composable exposes `phase === 'gamble'`, `gambleAmount`, `gambleCount`,
-  `canGamble`, `collect()`, `gamble()`.
+  `canGambleStop`, `gambleStop()`, `gambleCashOut()`.
 
 ### RTP-neutrality (why the gamble does not enter the calibration)
 A fair 50/50 double-or-nothing has EV equal to the amount staked
@@ -156,8 +161,9 @@ exact DP must agree inside the 3.5σ band (`pnpm verify`).
 - `app/stores/slots.ts` — `collect()` / `gamble()` actions; restore handles the
   `'gamble'` phase.
 - `app/composables/useBlackjackReel.ts` — gamble state + actions + X-ray EV.
-- `app/components/game/ReelBlackjackReel.vue` — chromed bonus reel + Collect/
-  Gamble UI in the `'gamble'` phase; "BLACKJACK!" banner; scattered reels.
+- `app/components/game/ReelBlackjackReel.vue` — center-overlay chromed bonus reel
+  (spinning ×2/BUST strip, gold payline) with STOP / CASH OUT in the `'gamble'`
+  phase; "BLACKJACK!" banner; cabinet dims behind; scattered reels.
 - `app/components/game/XrayPanel.vue` (or PAR) — show the gamble's fair EV.
 
 ## Testing
@@ -175,11 +181,14 @@ exact DP must agree inside the 3.5σ band (`pnpm verify`).
 - a11y 100/100 (chromed reel decorative/aria, Collect/Gamble reachable + labeled,
   reduced-motion safe); production-CSP clean.
 
-## Open detail (visual companion)
+## Resolved visual (locked in the visual companion)
 
-The chromed bonus reel's exact look and placement (offset above the cabinet;
-chrome to match the gold/felt frame; ×2 vs BUST face art; the Collect/Gamble
-button treatment) is finalized in the visual companion before build.
+Center-spotlight overlay (the cabinet dims behind). A single chromed reel
+(metallic silver frame, gold payline) spins at the main-reel rate (2.1s),
+scrolling ×2 (green DOUBLE) and BUST (red burst) faces 50/50. A ladder shows the
+rungs (guaranteed → ×2 → ×4 → ×8, capped at 3 doubles), current rung lit. STOP
+(red) and CASH OUT (green) buttons below; nothing locks until STOP or CASH OUT.
+Mockup: `.superpowers/brainstorm/7354-1781626731/content/bonus-reel-spin.html`.
 
 ## Constraints (standing)
 
