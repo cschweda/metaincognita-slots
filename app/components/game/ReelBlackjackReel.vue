@@ -21,9 +21,11 @@ const cashAtZero = computed(() => bj.cashValueCents.value === 0)
 const showModal = computed(() => bj.phase.value === 'resolved')
 
 // ─── per-reel spin speed (visual escalation; does not affect the draw) ────────
-// Reel 1–2 stay at base 2.1 s; reels 3–5 get progressively faster.
+// Reels 1–2 (pure cards) spin calmly and readably at base 2.1 s; reels 3–5 spin
+// much faster so their dense BUST symbols blur past rather than reading as a
+// "wall of BUST". Visual only — STOP is still a uniform draw, RTP is unchanged.
 // Reduced-motion's `animation: none !important` wins over inline animation-duration.
-const REEL_SPIN_MS = [2100, 2100, 1800, 1500, 1250] as const
+const REEL_SPIN_MS = [2100, 2100, 1000, 750, 550] as const
 
 // ─── reel labels + cocktail tags (presentation; matches the demo verbatim) ────
 const REEL_NAMES = [
