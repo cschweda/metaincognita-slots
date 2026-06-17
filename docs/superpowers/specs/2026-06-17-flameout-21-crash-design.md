@@ -51,7 +51,7 @@ Only two cards are ever drawn (the deal); reels 3–5 are climb/crash, no cards 
 
 ## UI
 
-The crash displays — **Velocity** (from the hand), **Multiplier** (big, climbing), **Cash Out value** (bet × multiplier). Reels 1–2 show dealt cards; reels 3–5 show CLIMB/CRASH tiles. The multiplier climbs from reel 1; the natural launch pops; a crash blows it; cash out any reel. The bet-selector chip row + "Same Bet". Enlarged reel-status labels. An **in-page result card** (not a modal — see below) shows the outcome (Cashed Out / CRASH / Topped Out) with Play Again. Flameout 21 marquee + rebranded chrome. The X-ray shows the optimal cash/push EV.
+The crash displays — **Velocity** (from the hand), **Multiplier** (big, climbing), **Cash Out value** (bet × multiplier). Reels 1–2 show dealt cards; reels 3–5 show CLIMB/CRASH tiles. The multiplier climbs from reel 1; the natural launch pops; a crash blows it; cash out any reel. The bet-selector chip row + "Same Bet". Enlarged reel-status labels. An **in-page result card** (not a modal — see below) shows the outcome (Cashed Out / CRASH / Topped Out) with Play Again. Flameout 21 marquee + rebranded chrome. The X-ray shows the optimal cash/push EV and the projected altitude for each remaining reel (the same ladder the side-rail marks visualize).
 
 ## Chrome — dynamic rocket sides (new)
 
@@ -60,8 +60,9 @@ Flameout 21's bespoke cabinet chrome (the per-machine `<GameMachineChrome>` fram
 - The rockets **rise with the multiplier** — each reel you survive lifts them a notch up a tall side gauge, so the cabinet itself shows how high you've flown (altitude ∝ multiplier). A natural's big launch sends them up immediately.
 - On a **CRASH**, the rockets **explode** — an SVG flameout burst at their current height.
 - On **cash out / topped out**, they hold at the banked height (a satisfying "you got out here" mark).
+- The side gauge carries a **rung for each climb reel — 3, 4, and 5** — at its projected altitude: where a successful climb on that reel would land the rocket (`launch × velocity`, `× velocity²`, `× velocity³`, labelled with the cash value `bet × that multiplier`). The deal reels (1–2) set the base and get no rung. As the player stops each climb reel the rocket rises to that reel's rung, and the rungs still above show the unclaimed height — so deciding whether to cash after reel 3, they *see* the reel 4 and reel 5 marks waiting overhead. The rungs **escalate in danger styling** (reel 3 → 4 → 5, amber → red) so the rising reward visibly carries rising crash risk. The marks are a glanceable echo of the X-ray's exact cash-vs-push EV.
 
-This is the project's first **state-driven** chrome (prior per-machine chrome was static-decorative); it reads the live multiplier/phase via the composable. It stays **decorative + `aria-hidden`**, **CSP-clean** (inline SVG/CSS, no external assets, no inline scripts), and **reduced-motion-safe** (rockets jump to their height with no animated ascent, and the crash shows a static burst, under `prefers-reduced-motion`). It reinforces the vertical-climb-then-flameout theme without touching the game logic.
+This is the project's first **state-driven** chrome (prior per-machine chrome was static-decorative); it reads the live multiplier/phase via the composable. It stays **decorative + `aria-hidden`** (the projected-altitude ladder it draws is also stated as text in the X-ray, so hiding the chrome from assistive tech withholds no information), **CSP-clean** (inline SVG/CSS, no external assets, no inline scripts), and **reduced-motion-safe** (rockets jump to their height with no animated ascent, and the crash shows a static burst, under `prefers-reduced-motion`). It reinforces the vertical-climb-then-flameout theme without touching the game logic.
 
 ## Result card — rocket payoff, not a modal (new)
 
