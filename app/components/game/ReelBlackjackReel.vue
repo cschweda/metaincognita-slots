@@ -20,6 +20,11 @@ const cashAtZero = computed(() => bj.cashValueCents.value === 0)
 // ─── result modal open/close ──────────────────────────────────────────────────
 const showModal = computed(() => bj.phase.value === 'resolved')
 
+// ─── per-reel spin speed (visual escalation; does not affect the draw) ────────
+// Reel 1–2 stay at base 2.1 s; reels 3–5 get progressively faster.
+// Reduced-motion's `animation: none !important` wins over inline animation-duration.
+const REEL_SPIN_MS = [2100, 2100, 1800, 1500, 1250] as const
+
 // ─── reel labels + cocktail tags (presentation; matches the demo verbatim) ────
 const REEL_NAMES = [
   'Reel 1 · cards',
@@ -148,6 +153,7 @@ const REEL_COCKTAILS: CocktailTag[][] = [
           <div
             v-else-if="bj.phase.value === 'spinning' && bj.reelStrips.value[i - 1]"
             class="l21-strip l21-strip-spin"
+            :style="{ animationDuration: `${REEL_SPIN_MS[i - 1]}ms` }"
           >
             <template
               v-for="pass in 2"
@@ -167,6 +173,7 @@ const REEL_COCKTAILS: CocktailTag[][] = [
           <div
             v-else-if="bj.phase.value === 'idle'"
             class="l21-strip l21-strip-spin"
+            :style="{ animationDuration: `${REEL_SPIN_MS[i - 1]}ms` }"
             aria-hidden="true"
           >
             <template

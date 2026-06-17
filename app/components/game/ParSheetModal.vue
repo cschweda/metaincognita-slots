@@ -386,6 +386,25 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
             <!-- Lucky 21 strategy matrix: rebuilt in Task 12 -->
           </template>
         </div>
+        <!-- PAR sheet explainer — always visible below the tab content -->
+        <div class="pt-4 mt-2 border-t border-neutral-800/60 space-y-1">
+          <p class="text-[11px] font-semibold text-neutral-300 uppercase tracking-widest">
+            What's a PAR sheet?
+          </p>
+          <p class="text-[11px] text-neutral-400 leading-relaxed">
+            <strong class="text-neutral-300">PAR</strong> stands for
+            <strong class="text-neutral-300">Paytable And Reels</strong>
+            (also called a <strong class="text-neutral-300">Probability Accounting Report</strong>).
+            It's a slot machine's internal specification: the reel strips (every symbol and how often it appears),
+            the paytable (what each outcome pays), and the resulting math —
+            <strong class="text-neutral-300">RTP</strong> (return to player),
+            <strong class="text-neutral-300">hit frequency</strong>, and
+            <strong class="text-neutral-300">volatility</strong>.
+            Manufacturers file it with gaming regulators to certify the machine; it's normally
+            <strong class="text-neutral-300">confidential</strong> — players never see it.
+            This simulator shows it so you can see exactly the math a real casino keeps hidden.
+          </p>
+        </div>
       </div>
     </template>
   </UModal>

@@ -99,14 +99,26 @@ function play() {
 }
 
 .feat-eyebrow {
-  display: block;
+  display: inline-block;
   font-family: 'Orbitron', monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 3px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 4px;
   text-transform: uppercase;
-  color: #ffd24a;
-  margin-bottom: 8px;
+  padding: 6px 20px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff6c8, #ffd24a 50%, #b8860b);
+  color: #2a1500;
+  box-shadow: 0 0 16px rgba(255,210,74,.65), 0 2px 0 #7a4f00;
+  margin-bottom: 12px;
+  animation: feat-badge-pulse 2.4s ease-in-out infinite alternate;
+}
+@keyframes feat-badge-pulse {
+  from { box-shadow: 0 0 10px rgba(255,210,74,.45), 0 2px 0 #7a4f00; }
+  to   { box-shadow: 0 0 28px rgba(255,210,74,.85), 0 2px 0 #7a4f00; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feat-eyebrow { animation: none !important; }
 }
 
 .feat-bulbs {
