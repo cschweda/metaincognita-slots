@@ -35,9 +35,9 @@ Calibrated to **~90% RTP** with an exact DP. A crash game is clean to balance: R
 
 ## Kept / dropped
 
-**Kept:** the bespoke cabinet/chrome (felt/gold/Bungee), stop-the-reels one-by-one, the honest stop (a uniform strip draw *is* the result), the per-reel spin-speed gradient, the Featured card on the floor, the floor-card chrome, the result modal + Play Again, and the X-ray (now showing the climb EV / the optimal cash-vs-push call — "the casino never shows you this").
+**Kept:** the bespoke cabinet/chrome (felt/gold/Bungee), stop-the-reels one-by-one, the honest stop (a uniform strip draw *is* the result), the per-reel spin-speed gradient, the Featured card on the floor, the floor-card chrome, Play Again, and the X-ray (now showing the climb EV / the optimal cash-vs-push call — "the casino never shows you this").
 
-**Dropped / replaced:** the blackjack press-your-luck economy (base-by-total paytable, additive multipliers, the ×3 Five-Card Charlie, the qualify-at-15 floor), the over-21 bust, and the Blackjack-Bonus double-or-nothing (the crash loop *is* the gamble now; a natural gets the launch multiplier instead).
+**Dropped / replaced:** the blackjack press-your-luck economy (base-by-total paytable, additive multipliers, the ×3 Five-Card Charlie, the qualify-at-15 floor), the over-21 bust, the Blackjack-Bonus double-or-nothing (the crash loop *is* the gamble now; a natural gets the launch multiplier instead), and the result **modal** (replaced by an in-page result card — see below).
 
 ## Engine (simpler than the current blackjack-reel)
 
@@ -51,7 +51,7 @@ Only two cards are ever drawn (the deal); reels 3–5 are climb/crash, no cards 
 
 ## UI
 
-The crash displays — **Velocity** (from the hand), **Multiplier** (big, climbing), **Cash Out value** (bet × multiplier). Reels 1–2 show dealt cards; reels 3–5 show CLIMB/CRASH tiles. The multiplier climbs from reel 1; the natural launch pops; a crash blows it; cash out any reel. The bet-selector chip row + "Same Bet". Enlarged reel-status labels. Result modal (Cashed Out / CRASH / Topped Out) + Play Again. Flameout 21 marquee + rebranded chrome. The X-ray shows the optimal cash/push EV.
+The crash displays — **Velocity** (from the hand), **Multiplier** (big, climbing), **Cash Out value** (bet × multiplier). Reels 1–2 show dealt cards; reels 3–5 show CLIMB/CRASH tiles. The multiplier climbs from reel 1; the natural launch pops; a crash blows it; cash out any reel. The bet-selector chip row + "Same Bet". Enlarged reel-status labels. An **in-page result card** (not a modal — see below) shows the outcome (Cashed Out / CRASH / Topped Out) with Play Again. Flameout 21 marquee + rebranded chrome. The X-ray shows the optimal cash/push EV.
 
 ## Chrome — dynamic rocket sides (new)
 
@@ -63,12 +63,22 @@ Flameout 21's bespoke cabinet chrome (the per-machine `<GameMachineChrome>` fram
 
 This is the project's first **state-driven** chrome (prior per-machine chrome was static-decorative); it reads the live multiplier/phase via the composable. It stays **decorative + `aria-hidden`**, **CSP-clean** (inline SVG/CSS, no external assets, no inline scripts), and **reduced-motion-safe** (rockets jump to their height with no animated ascent, and the crash shows a static burst, under `prefers-reduced-motion`). It reinforces the vertical-climb-then-flameout theme without touching the game logic.
 
+## Result card — rocket payoff, not a modal (new)
+
+The run's outcome is shown **in-page on a result card** docked directly **below the cabinet** — no modal overlay to dismiss. The slot is **reserved during play** (neutral/empty, so there's no layout shift) and fills when a run ends:
+
+- **Cashed out / topped out:** the rockets are shown **glowing and triumphant at altitude** with the banked amount (`bet × multiplier`) and the final multiplier — echoing the side-rail rockets at their final height.
+- **Crash:** the card shows the **flamed-out rocket** (wreckage + smoke) with "flamed out — $0" — echoing the side-rail explosion.
+- The card carries the **Play Again** button; the X-ray stays reachable.
+
+Replacing the modal **keeps the side-rail rockets visible at the payoff** — a centered modal would obscure the vertical rocket chrome exactly when it matters most (the rockets holding at their banked altitude, or the flameout burst). It also lands the rocket theme at the climax and is friendlier for a11y: the card is an **`aria-live` region** that announces the outcome + amount as text (no focus-trap), while the rocket art itself is decorative (`aria-hidden`). It shares the rocket art language with the side-rail chrome.
+
 ## Testing
 
 - **Eval/step units:** launch reflects the hand (a higher total launches higher); natural 21 → the special launch; velocity from the 2-card total; climb multiplies by velocity; crash → payout 0; cash → `round(anteCents × multiplier)`; cent-rounding is exact; bet selector sets the ante; over-21 does not bust.
 - **DP:** RTP ≈ 90% (frozen figure) under the optimal policy; the policy + per-state EV match the live X-ray.
 - **Convergence:** `pnpm verify` — the sim tracks the exact DP inside the 3.5σ band.
-- **Browser smoke:** multiplier climbs from reel 1; hand-driven launch (a 19 launches higher than a 12); natural ×5; crash → $0; cash mid-climb; topped out; bet chips + Same Bet; Play Again.
+- **Browser smoke:** multiplier climbs from reel 1; hand-driven launch (a 19 launches higher than a 12); natural ×5; crash → $0; cash mid-climb; topped out; bet chips + Same Bet; the in-page result card shows the triumphant rockets on a cash/top-out and the flamed-out rocket on a crash (no modal); Play Again.
 - **a11y** 100/100; **production-CSP** clean.
 
 ## Rename
