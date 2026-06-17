@@ -53,6 +53,16 @@ Only two cards are ever drawn (the deal); reels 3–5 are climb/crash, no cards 
 
 The crash displays — **Velocity** (from the hand), **Multiplier** (big, climbing), **Cash Out value** (bet × multiplier). Reels 1–2 show dealt cards; reels 3–5 show CLIMB/CRASH tiles. The multiplier climbs from reel 1; the natural launch pops; a crash blows it; cash out any reel. The bet-selector chip row + "Same Bet". Enlarged reel-status labels. Result modal (Cashed Out / CRASH / Topped Out) + Play Again. Flameout 21 marquee + rebranded chrome. The X-ray shows the optimal cash/push EV.
 
+## Chrome — dynamic rocket sides (new)
+
+Flameout 21's bespoke cabinet chrome (the per-machine `<GameMachineChrome>` frame) gets a **rocket ship climbing each side rail** that visualizes the run's altitude — because the whole game is about going vertical:
+
+- The rockets **rise with the multiplier** — each reel you survive lifts them a notch up a tall side gauge, so the cabinet itself shows how high you've flown (altitude ∝ multiplier). A natural's big launch sends them up immediately.
+- On a **CRASH**, the rockets **explode** — an SVG flameout burst at their current height.
+- On **cash out / topped out**, they hold at the banked height (a satisfying "you got out here" mark).
+
+This is the project's first **state-driven** chrome (prior per-machine chrome was static-decorative); it reads the live multiplier/phase via the composable. It stays **decorative + `aria-hidden`**, **CSP-clean** (inline SVG/CSS, no external assets, no inline scripts), and **reduced-motion-safe** (rockets jump to their height with no animated ascent, and the crash shows a static burst, under `prefers-reduced-motion`). It reinforces the vertical-climb-then-flameout theme without touching the game logic.
+
 ## Testing
 
 - **Eval/step units:** launch reflects the hand (a higher total launches higher); natural 21 → the special launch; velocity from the 2-card total; climb multiplies by velocity; crash → payout 0; cash → `round(anteCents × multiplier)`; cent-rounding is exact; bet selector sets the ante; over-21 does not bust.
