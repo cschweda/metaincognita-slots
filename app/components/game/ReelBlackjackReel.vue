@@ -315,7 +315,50 @@ function isCard(sym: string | null | undefined): boolean {
           <div
             class="l21-rocket-slot"
             aria-hidden="true"
-          />
+          >
+            <svg
+              v-if="fo.resultOutcome.value.kind === 'crash'"
+              class="l21-result-rocket l21-result-rocket-crash"
+              viewBox="0 0 48 48"
+              width="46"
+              height="46"
+            >
+              <polygon
+                points="24,1 28,16 40,8 34,21 47,24 34,27 40,40 28,32 24,47 20,32 8,40 14,27 1,24 14,21 8,8 20,16"
+                fill="#ff7d4a"
+              />
+              <circle
+                cx="24"
+                cy="24"
+                r="6"
+                fill="#7a0f20"
+              />
+            </svg>
+            <svg
+              v-else
+              class="l21-result-rocket l21-result-rocket-win"
+              viewBox="0 0 24 50"
+              width="30"
+              height="60"
+            >
+              <path
+                d="M12 0 C18 8 19 20 19 30 L5 30 C5 20 6 8 12 0 Z"
+                fill="#fff6c8"
+                stroke="#b8860b"
+                stroke-width="1"
+              />
+              <circle
+                cx="12"
+                cy="16"
+                r="3.5"
+                fill="#46e08a"
+              />
+              <path
+                d="M5 30 L1 40 L7 33 Z M19 30 L23 40 L17 33 Z"
+                fill="#16a85a"
+              />
+            </svg>
+          </div>
           <div
             class="l21-rtitle"
             data-test="result-title"
@@ -708,7 +751,9 @@ function isCard(sym: string | null | undefined): boolean {
 .l21-rcard-win { border-color: var(--green); }
 .l21-rcard-topped { border-color: var(--gold); }
 .l21-rcard-crash { border-color: var(--red); }
-.l21-rocket-slot { position: absolute; inset: 0; pointer-events: none; }
+.l21-rocket-slot { position: absolute; top: -34px; left: 50%; transform: translateX(-50%); pointer-events: none; }
+.l21-result-rocket-win { filter: drop-shadow(0 0 14px rgba(70, 224, 138, .85)); }
+.l21-result-rocket-crash { filter: drop-shadow(0 0 14px rgba(255, 124, 74, .8)); }
 .l21-rtitle { font-family: 'Bungee', sans-serif; font-size: clamp(28px, 7vw, 48px); line-height: 1.05; }
 .l21-rcard-win .l21-rtitle { color: var(--green); }
 .l21-rcard-topped .l21-rtitle { color: var(--gold); }

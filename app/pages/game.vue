@@ -55,6 +55,8 @@ onUnmounted(() => {
     v-if="store.currentDef && store.currentDef.family === 'blackjack-reel'"
     class="l21-page"
   >
+    <GameChromeFlameoutChrome side="left" />
+    <GameChromeFlameoutChrome side="right" />
     <div class="l21-page-grid">
       <div class="l21-page-main">
         <GameReelBlackjackReel :key="store.currentMachineId ?? ''" />
@@ -162,6 +164,7 @@ onUnmounted(() => {
 <style scoped>
 /* Lucky 21 — full-bleed felt page (the demo's body background) */
 .l21-page {
+  position: relative;
   min-height: 100%;
   padding: 24px 14px 40px;
   background: radial-gradient(120% 90% at 50% 0%, #15725a 0%, #0c4a37 38%, #04221a 100%);
