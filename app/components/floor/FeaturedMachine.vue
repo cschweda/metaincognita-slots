@@ -1,6 +1,6 @@
 <!-- app/components/floor/FeaturedMachine.vue -->
 <!-- Big, visual "Featured machine" card for the floor select screen.
-     Styled to preview the Lucky 21 cabinet (felt + gold + Bungee marquee). -->
+     Styled to preview the Flameout 21 crash cabinet (felt + gold + Bungee marquee). -->
 <script setup lang="ts">
 import { useSlotsStore } from '~/stores/slots'
 import { formatCents } from '~/utils/format'
@@ -9,14 +9,19 @@ import type { MachineDef, SymbolId } from '~/engine'
 const props = defineProps<{ def: MachineDef }>()
 const store = useSlotsStore()
 
-// Decorative 5-reel motif — a representative stopped hand (not live state).
-const MOTIF: SymbolId[] = ['KH', '7S', 'MX3', 'QD', 'MX5']
+// Decorative 5-reel motif — a representative crash row (deal + climb + crash).
+const MOTIF: SymbolId[] = ['KH', 'AS', 'CLIMB', 'CLIMB', 'CRASH']
+
+// GameCardFace only renders deck cards; CLIMB/CRASH use the inline reel tile.
+function isSpecial(sym: SymbolId): sym is 'CLIMB' | 'CRASH' {
+  return sym === 'CLIMB' || sym === 'CRASH'
+}
 
 const FACTS = [
   '5 reels — stop them one by one',
-  'Reels 1–2 deal your hand',
-  '×5 / ×10 buried in reel 5',
-  'Five-Card Charlie ×3'
+  'Your hand sets launch + climb speed',
+  'Cash out before it crashes',
+  '~97% RTP — true crash-game odds'
 ] as const
 
 function play() {
@@ -44,8 +49,8 @@ function play() {
       />
     </span>
 
-    <span class="feat-title">LUCKY&nbsp;21</span>
-    <span class="feat-tag">Stop the reels. Bank your hand. Push your luck to 21.</span>
+    <span class="feat-title">FLAMEOUT&nbsp;21</span>
+    <span class="feat-tag">Climb to multiply. Crash and lose it all.</span>
 
     <span
       class="feat-reels"
@@ -56,7 +61,18 @@ function play() {
         :key="i"
         class="feat-window"
       >
-        <GameCardFace :symbol="sym" />
+        <span
+          v-if="isSpecial(sym)"
+          class="feat-tile"
+          :class="sym === 'CRASH' ? 'feat-tile-crash' : 'feat-tile-climb'"
+        >
+          <span class="feat-tile-glyph">{{ sym === 'CRASH' ? '💥' : '▲' }}</span>
+          <span class="feat-tile-lab">{{ sym }}</span>
+        </span>
+        <GameCardFace
+          v-else
+          :symbol="sym"
+        />
       </span>
     </span>
 
@@ -69,8 +85,8 @@ function play() {
     </span>
 
     <span class="feat-cta">
-      <span class="feat-play">▶ Play Lucky 21</span>
-      <span class="feat-meta">{{ formatCents(def.denominationCents) }}/credit · honest 52-card shuffle</span>
+      <span class="feat-play">▶ Play Flameout 21</span>
+      <span class="feat-meta">{{ formatCents(def.denominationCents) }}/credit · climb-or-crash</span>
     </span>
   </button>
 </template>
@@ -182,6 +198,25 @@ function play() {
   transform-origin: top left;
   box-shadow: none;
 }
+
+/* CLIMB / CRASH tiles — the same look as the in-game reel tiles, sized to the
+   featured motif window (GameCardFace only knows deck cards). */
+.feat-tile {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 6px;
+  font-family: 'Orbitron', monospace;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, .5);
+}
+.feat-tile-glyph { font-size: 18px; line-height: 1; }
+.feat-tile-lab { font-size: 7px; letter-spacing: 1px; font-family: 'Bungee', sans-serif; }
+.feat-tile-climb { background: linear-gradient(180deg, #7bffb0, #0f8f48); color: #04240f; }
+.feat-tile-crash { background: linear-gradient(180deg, #ff7d92, #cf1c39); color: #fff; }
 
 .feat-facts {
   display: flex;

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { floorIntel } from '~/utils/floorIntel'
+import { payTag } from '~/utils/payTag'
 import { formatCents, formatOdds, formatPercent } from '~/utils/format'
 import type { MachineDef } from '~/engine'
 
@@ -9,16 +10,16 @@ const props = defineProps<{ def: MachineDef }>()
 const store = useSlotsStore()
 
 const FAMILY_LABEL: Record<MachineDef['family'], string> = {
-  'video': 'Video', 'stepper': 'Stepper', 'bally-em': 'Vintage Bally', 'pachislo': 'Pachislo', 'blackjack-reel': 'Blackjack reel'
+  'video': 'Video', 'stepper': 'Stepper', 'bally-em': 'Vintage Bally', 'pachislo': 'Pachislo', 'blackjack-reel': 'Crash reel'
 }
 
-// Per-family top accent colors — light tint that reads clearly on neutral-900
+// Per-family neon accent colors — drives the bulb trim, glyph glow, and border
 const FAMILY_COLOR: Record<MachineDef['family'], string> = {
   'video': '#6366f1',
   'stepper': '#f59e0b',
   'bally-em': '#ec4899',
   'pachislo': '#22d3ee',
-  'blackjack-reel': '#46e08a'
+  'blackjack-reel': '#ff7d4a'
 }
 
 // Per-family decorative glyph (pure text, no external assets, CSP-clean)
@@ -27,8 +28,11 @@ const FAMILY_GLYPH: Record<MachineDef['family'], string> = {
   'stepper': '⚙',
   'bally-em': '★',
   'pachislo': '◎',
-  'blackjack-reel': '♠'
+  'blackjack-reel': '🚀'
 }
+
+// Floor-card payline / ways signpost
+const tag = computed(() => payTag(props.def))
 
 const jackpotCents = computed<number | null>(() => {
   const state = store.machineStates[props.def.id]
@@ -59,7 +63,7 @@ function play() {
 
 <template>
   <button
-    class="mc-card rounded-xl border border-neutral-800 bg-neutral-900/70 hover:border-amber-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 transition-all p-4 text-left space-y-2"
+    class="mc-card rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 p-4 text-left space-y-2"
     :style="{ '--mc-accent': FAMILY_COLOR[def.family] }"
     :aria-label="`Play ${def.name}`"
     @click="play"
@@ -69,6 +73,24 @@ function play() {
       class="mc-rail"
       aria-hidden="true"
     />
+    <!-- Chase-light bulb strip -->
+    <div
+      class="mc-bulbs"
+      aria-hidden="true"
+    >
+      <span
+        v-for="b in 9"
+        :key="b"
+        class="mc-bulb"
+      />
+    </div>
+    <!-- Big decorative family glyph -->
+    <div
+      class="mc-glyph"
+      aria-hidden="true"
+    >
+      {{ FAMILY_GLYPH[def.family] }}
+    </div>
     <div class="flex items-start justify-between gap-2">
       <div>
         <div class="font-bold text-neutral-100">
@@ -79,9 +101,9 @@ function play() {
         </div>
       </div>
       <span
-        class="mc-glyph"
-        aria-hidden="true"
-      >{{ FAMILY_GLYPH[def.family] }}</span>
+        class="mc-paytag"
+        :data-test="`paytag-${def.id}`"
+      >{{ tag }}</span>
     </div>
     <div
       v-if="jackpotCents !== null"
@@ -105,18 +127,20 @@ function play() {
 </template>
 
 <style scoped>
-/* ── Machine card chrome ── */
+/* ── Machine card chrome (Vegas kitsch) ── */
 .mc-card {
   --mc-accent: #6366f1; /* fallback; overridden per-family via inline style */
   position: relative;
   overflow: hidden;
-  background: linear-gradient(160deg, rgba(255,255,255,.03) 0%, transparent 60%);
+  border: 2px solid color-mix(in srgb, var(--mc-accent) 55%, #1e293b);
+  background: linear-gradient(160deg, #0b1220, #060912);
   box-shadow: 0 1px 4px rgba(0,0,0,.45);
-  transition: box-shadow .18s, border-color .18s, background .18s;
+  transition: transform .14s, box-shadow .18s, border-color .18s;
 }
-.mc-card:hover {
-  box-shadow: 0 2px 12px rgba(0,0,0,.6), 0 0 0 1px var(--mc-accent, #6366f1);
-  background: linear-gradient(160deg, rgba(255,255,255,.05) 0%, transparent 60%);
+.mc-card:hover, .mc-card:focus-within {
+  transform: translateY(-4px);
+  border-color: var(--mc-accent);
+  box-shadow: 0 0 0 1px var(--mc-accent), 0 0 26px color-mix(in srgb, var(--mc-accent) 60%, transparent);
 }
 
 /* Thin top accent rail tinted per machine family */
@@ -132,18 +156,57 @@ function play() {
   pointer-events: none;
 }
 
-/* Decorative family glyph — replaces the UIcon play arrow */
-.mc-glyph {
-  font-size: 16px;
-  line-height: 1;
-  opacity: .45;
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--mc-accent, #6366f1);
-  transition: opacity .18s;
-  user-select: none;
+/* Chase-light bulb strip */
+.mc-bulbs {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  padding: 6px 0 2px;
 }
-.mc-card:hover .mc-glyph {
-  opacity: .85;
+.mc-bulb {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--mc-accent) 55%, transparent);
+  box-shadow: 0 0 6px var(--mc-accent);
+  animation: mc-tw 1.3s infinite alternate;
+}
+.mc-bulb:nth-child(2n) { animation-delay: .35s; }
+.mc-bulb:nth-child(3n) { animation-delay: .7s; }
+@keyframes mc-tw {
+  from { opacity: .35; }
+  to   { opacity: 1; }
+}
+
+/* Big decorative family glyph */
+.mc-glyph {
+  text-align: center;
+  font-size: 34px;
+  line-height: 1;
+  margin: 2px 0 4px;
+  user-select: none;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--mc-accent) 70%, transparent));
+}
+
+/* Paylines / ways badge */
+.mc-paytag {
+  display: inline-block;
+  flex-shrink: 0;
+  font-family: 'Orbitron', monospace;
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #fff;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--mc-accent) 22%, #0b1220);
+  border: 1px solid color-mix(in srgb, var(--mc-accent) 60%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-bulb { animation: none !important; }
+  .mc-card { transition: box-shadow .18s, border-color .18s; }
+  .mc-card:hover, .mc-card:focus-within { transform: none; }
 }
 </style>
