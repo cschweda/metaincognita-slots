@@ -32,6 +32,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   grid with chase-light bulb trim, per-family accents, big glyphs, hover
   lift+glow, and paylines/ways badges; Flameout 21 is the featured machine.
 
+### Fixed
+- **Sim Lab now runs Flameout 21.** `simulateSession` implements the
+  `blackjack-reel` (crash) family instead of throwing — one paid spin per hand,
+  the ante charged once, and the closed-form optimal cash/climb policy driving
+  the run (mirroring the convergence sim). Picking Flameout 21 in the Sim Lab
+  produces full risk-of-ruin / survival / drawdown / sample-trajectory output;
+  its empirical RTP tracks the exact 96.9591% DP behind the house-edge figure.
+
 ## [0.9.0] - 2026-06-16
 
 ### Added
