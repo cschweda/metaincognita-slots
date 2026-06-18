@@ -3,7 +3,7 @@ import { addCoinToProgressive, freshBlackjackState, initMachineState, nextSpinCo
 import type { BlackjackReelMachineDef, MachineDef, MachineSessionState, PachisloFlag, PachisloBonusState, SpinOutcome } from '~/engine'
 import { spinPachislo } from '~/engine/pachislo'
 import { dealReels, stopReel, cashOut as bjCashOut } from '~/engine/blackjackReel'
-import { FLOOR } from '~/machines'
+import { ALL_MACHINES } from '~/machines'
 import { liveRand } from '~/utils/liveRand'
 
 export const STORAGE_KEY = 'slots-simulator-session'
@@ -44,7 +44,8 @@ interface SlotsSettings {
   betsByMachine: Record<string, number>
 }
 
-const MACHINES = new Map<string, MachineDef>(FLOOR.map(def => [def.id, def]))
+// Resolve every machine (floor + parked) so a parked game can still be loaded.
+const MACHINES = new Map<string, MachineDef>(ALL_MACHINES.map(def => [def.id, def]))
 
 function emptyStats(): SessionStats {
   return { spins: 0, totalInCents: 0, totalOutCents: 0, netPeakCents: 0, maxDrawdownCents: 0 }
@@ -53,7 +54,7 @@ function emptyStats(): SessionStats {
 function defaultSettings(): SlotsSettings {
   return {
     xray: false,
-    betsByMachine: Object.fromEntries(FLOOR.map(def => [def.id, def.family === 'blackjack-reel' ? 1 : def.maxCoins]))
+    betsByMachine: Object.fromEntries(ALL_MACHINES.map(def => [def.id, def.family === 'blackjack-reel' ? 1 : def.maxCoins]))
   }
 }
 
@@ -441,7 +442,7 @@ export const useSlotsStore = defineStore('slots', {
         const rawSettings = (data.settings ?? {}) as Record<string, unknown>
         const bets = defaultSettings().betsByMachine
         const rawBets = (rawSettings.betsByMachine ?? {}) as Record<string, unknown>
-        for (const def of FLOOR) {
+        for (const def of ALL_MACHINES) {
           if (def.family === 'pachislo' || (def.family === 'video' && def.fixedBet)) continue
           const candidate = rawBets[def.id]
           if (Number.isInteger(candidate) && (candidate as number) >= 1 && (candidate as number) <= def.maxCoins) {

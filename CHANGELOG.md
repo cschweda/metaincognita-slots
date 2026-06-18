@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.10.1] - 2026-06-18
+
+### Changed
+- **Flameout 21 parked — the floor is back to nine machines.** The
+  blackjack-meets-crash game was a good exercise but isn't fun as a slot: a
+  risk-free cashable launch at a real (sub-100%) RTP forces low payoff for high
+  risk (surviving the whole gauntlet on a weak hand nets a few cents), which
+  doesn't read as Vegas-y. It's removed from the selection screen, the Sim Lab
+  list, and `verify`.
+- **The code is kept, not deleted.** Flameout 21 stays in the repo and is still
+  resolvable + covered by its tests (the store resolves a new `ALL_MACHINES` =
+  `FLOOR` + `PARKED`); it's simply off the floor. A fuller rework (every launch
+  ≥ ×1.0, cash-out gated to reel 3, reworked DP, rocket chrome, sidebar result
+  card) is preserved on the `flameout-21-parked` branch for a possible revisit.
+- og-image, social meta, and the README updated to nine machines.
+
+### Lesson
+- The stop-the-reels dynamic (constantly spinning reels you stop yourself) is
+  fine and reusable — see pachislo (Stock Rush). What failed was pairing it with
+  a crash economy: at a real RTP, "climb then lose it all" can't pay off the risk.
+  A future stop-the-reels game should pair the dynamic with a *collecting* payoff
+  (hold-and-spin lock, line wins, a real bonus), not a lose-it-all gamble.
+
 ## [0.10.0] - 2026-06-17
 
 ### Changed

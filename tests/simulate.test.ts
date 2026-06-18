@@ -10,9 +10,9 @@ import { STOCK_RUSH } from '../app/machines/stock-rush'
 import { mulberry32 } from '../app/engine/rng'
 
 describe('FLOOR', () => {
-  it('contains the Plan-1+2+5+7 machines (ten total), all valid', () => {
+  it('contains the nine floor machines (Flameout 21 is parked), all valid', () => {
     expect(FLOOR.map(m => m.id).sort()).toEqual([
-      'canal-royale', 'diamond-doubler', 'dragons-hoard', 'flameout-21', 'ruby-of-gargoyle', 'series-e-3line', 'series-e-multiplier', 'sevens-ablaze', 'stock-rush', 'thunder-vault'
+      'canal-royale', 'diamond-doubler', 'dragons-hoard', 'ruby-of-gargoyle', 'series-e-3line', 'series-e-multiplier', 'sevens-ablaze', 'stock-rush', 'thunder-vault'
     ])
   })
 })

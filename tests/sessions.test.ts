@@ -1,11 +1,12 @@
 // tests/sessions.test.ts
 import { describe, expect, it } from 'vitest'
 import { mulberry32 } from '../app/engine'
-import { FLOOR } from '../app/machines'
+import { ALL_MACHINES } from '../app/machines'
 import { deriveSeed, simulateSession } from '../app/engine/sessions'
 import type { SessionOptions } from '../app/engine/sessions'
 
-const byId = (id: string) => FLOOR.find(m => m.id === id)!
+// resolve from ALL_MACHINES so the parked Flameout 21 (off the floor) still resolves
+const byId = (id: string) => ALL_MACHINES.find(m => m.id === id)!
 
 function opts(over: Partial<SessionOptions> = {}): SessionOptions {
   return { startCredits: 200, bet: 1, spinCap: 200, progressiveMode: 'static', ...over }
