@@ -34,6 +34,9 @@ const SYMBOL_ART: Record<string, SymbolArt> = {
   'minus-2': { kind: 'svg', body: '<rect x="3" y="3" width="18" height="18" rx="3" fill="#0f766e"/><text x="12" y="16.5" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="10" fill="#ccfbf1">−2</text>' },
   'minus-3': { kind: 'svg', body: '<rect x="3" y="3" width="18" height="18" rx="3" fill="#155e75"/><text x="12" y="16.5" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="10" fill="#cffafe">−3</text>' },
   'bust': { kind: 'svg', body: '<circle cx="12" cy="12" r="9" fill="#b91c1c"/><circle cx="12" cy="12" r="9" fill="none" stroke="#7f1d1d" stroke-width="1.5"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="#fee2e2" stroke-width="2.4" stroke-linecap="round"/>' },
+  // ---- Flameout 21 (crash) climb / crash ----
+  'climb': { kind: 'svg', body: '<rect x="3" y="3" width="18" height="18" rx="3" fill="#0f8f48"/><path d="M12 6l6 9H6z" fill="#7bffb0"/><path d="M12 6l6 9h-3l-3-5z" fill="#34d399"/>' },
+  'crash': { kind: 'svg', body: '<rect x="3" y="3" width="18" height="18" rx="3" fill="#cf1c39"/><path d="M12 4l1.8 6.4 5-3.2-2.6 5.6 5.6.8-5.6 1.6 2.6 5.6-5-3.2L12 20l-1.8-6.4-5 3.2 2.6-5.6L2.2 13l5.6-1.6L5.2 5.8l5 3.2z" fill="#fff"/><circle cx="12" cy="12" r="2.6" fill="#7a0f20"/>' },
   'seven': { kind: 'text', text: '7', variant: 'seven', color: '#f59e0b' },
   'seven-red': { kind: 'text', text: '7', variant: 'seven', color: '#ef4444' },
   'seven-flame': { kind: 'text', text: '7', variant: 'seven', color: '#fb923c' },

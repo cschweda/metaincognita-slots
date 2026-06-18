@@ -26,8 +26,8 @@ describe('stock-rush — machine integrity', () => {
     expect(FLOOR.map(m => m.family)).toEqual([
       'video', 'video', 'video', 'video', 'stepper', 'stepper', 'bally-em', 'bally-em', 'pachislo', 'blackjack-reel'
     ])
-    // Lucky 21 (blackjack-reel) is back on the floor in the last slot.
-    expect(FLOOR.at(-1)!.id).toBe('lucky-21')
-    expect(FLOOR.at(-1)!.name).toBe('Lucky 21')
+    // Flameout 21 (blackjack-reel crash) is on the floor in the last slot.
+    expect(FLOOR.at(-1)!.id).toBe('flameout-21')
+    expect(FLOOR.at(-1)!.name).toBe('Flameout 21')
   })
 })

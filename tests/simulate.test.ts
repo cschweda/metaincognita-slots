@@ -12,7 +12,7 @@ import { mulberry32 } from '../app/engine/rng'
 describe('FLOOR', () => {
   it('contains the Plan-1+2+5+7 machines (ten total), all valid', () => {
     expect(FLOOR.map(m => m.id).sort()).toEqual([
-      'canal-royale', 'diamond-doubler', 'dragons-hoard', 'lucky-21', 'ruby-of-gargoyle', 'series-e-3line', 'series-e-multiplier', 'sevens-ablaze', 'stock-rush', 'thunder-vault'
+      'canal-royale', 'diamond-doubler', 'dragons-hoard', 'flameout-21', 'ruby-of-gargoyle', 'series-e-3line', 'series-e-multiplier', 'sevens-ablaze', 'stock-rush', 'thunder-vault'
     ])
   })
 })
