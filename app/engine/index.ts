@@ -6,7 +6,7 @@ import { spinBallyEm } from './ballyEm'
 import { spinVideo } from './video'
 import { spinPachislo } from './pachislo'
 import { initProgressiveState, addCoinToProgressive } from './progressive'
-import { freshBlackjackState, dealReels, stopReel, cashOut, gambleCashOut } from './blackjackReel'
+import { freshBlackjackState, dealReels, stopReel, cashOut } from './blackjackReel'
 import { makeOptimalStopFn } from './blackjackReelRtp'
 
 export * from './types'
@@ -130,10 +130,11 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
   const rand = mulberry32(opts.seed)
   const state = initMachineState(def)
 
-  // ── blackjack-reel (Lucky 21): optimal-policy Monte-Carlo ──────────────────
+  // ── blackjack-reel (Flameout 21 crash): optimal-policy Monte-Carlo ─────────
   // Each cycle = one hand. dealReels charges the ante once (coinsIn = opts.coins);
-  // stopReel and cashOut are free. The optimal stop/continue decision is driven
-  // by a solver built once for def, not rebuilt per decision (performance).
+  // stopReel and cashOut are free. The optimal cash/climb decision is driven by a
+  // closed-form policy built once for def. optStop returns 'continue' for the deal
+  // reels (the deal is always drawn) and cashOut is only ever called at idx >= 2.
   // jackpotHits is always 0 (blackjack-reel has no progressive; progressive: null).
   if (def.family === 'blackjack-reel') {
     const optStop = makeOptimalStopFn(def)
@@ -147,33 +148,16 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
     const byEntry: Record<string, number> = {}
 
     while (cycles < opts.spins) {
-      // Deal charges the ante; stopReel / cashOut are free.
       const dealOut = dealReels(def, state, opts.coins, rand)
-      totalIn += dealOut.coinsIn // = opts.coins
-
-      // Play the hand under the optimal cash/continue policy.
+      totalIn += dealOut.coinsIn
       let handPay = dealOut.totalPayout
       for (const w of dealOut.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
       const bj = state.blackjackReel!
-
       while (bj.phase === 'spinning') {
-        let out: SpinOutcome
-        if (optStop(bj) === 'cash') {
-          out = cashOut(def, state)
-        } else {
-          out = stopReel(def, state, rand)
-        }
+        const out = optStop(bj) === 'cash' ? cashOut(def, state) : stopReel(def, state, rand)
         handPay += out.totalPayout
         for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-        if (state.blackjackReel!.phase === 'gamble') {
-          // Natural bonus: collect the guaranteed (the gamble is EV-neutral), so
-          // the simulated RTP matches the DP, which values a natural at naturalPay.
-          out = gambleCashOut(def, state)
-          handPay += out.totalPayout
-          for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-        }
       }
-
       totalOut += handPay
       net += handPay - opts.coins
       if (net > peak) peak = net

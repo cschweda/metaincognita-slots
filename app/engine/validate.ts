@@ -252,57 +252,41 @@ export function validateMachineDef(def: MachineDef): void {
       break
     }
     case 'blackjack-reel': {
-      // Lucky 21 (blackjack-reel) full validation.
+      // Flameout 21 (crash) validation.
       if (def.reels.length !== 5) errors.push(`blackjack-reel needs 5 reels, got ${def.reels.length}`)
-      if (!known.has(def.bustSymbol)) errors.push(`bustSymbol "${def.bustSymbol}" not declared in symbols`)
-      // Reels 1 and 2 are the deal reels and must be ALL 'CARD' (two dealt cards).
+      if (!known.has(def.climbSymbol)) errors.push(`climbSymbol "${def.climbSymbol}" not declared in symbols`)
+      if (!known.has(def.crashSymbol)) errors.push(`crashSymbol "${def.crashSymbol}" not declared in symbols`)
+      if (def.climbSymbol === def.crashSymbol) errors.push('climbSymbol and crashSymbol must differ')
+      // Reels 0–1 are the deal: all 'CARD'.
       ;[0, 1].forEach((r) => {
         const reel = def.reels[r]
-        if (reel && reel.some(s => s !== 'CARD')) {
-          errors.push(`reels[${r}]: deal reel must be all 'CARD' tokens`)
-        }
+        if (reel && reel.some(s => s !== 'CARD')) errors.push(`reels[${r}]: deal reel must be all 'CARD' tokens`)
       })
-      // Every non-CARD token in any reel must be in multiplierSymbols, minusSymbols, or equal bustSymbol.
-      def.reels.forEach((reel, r) => {
-        reel.forEach((s) => {
-          if (s === 'CARD') return
-          if (!known.has(s)) {
-            errors.push(`reels[${r}]: unknown symbol "${s}"`)
-          } else if (
-            !(s in def.multiplierSymbols)
-            && !(s in def.minusSymbols)
-            && s !== def.bustSymbol
-          ) {
-            errors.push(`reels[${r}]: non-CARD token "${s}" not in multiplierSymbols, minusSymbols, or bustSymbol`)
-          }
+      // Reels 2–4 are the climb: only climb/crash symbols, at least one of each.
+      ;[2, 3, 4].forEach((r) => {
+        const reel = def.reels[r]
+        if (!reel) return
+        if (reel.length === 0) errors.push(`reels[${r}]: climb reel must not be empty`)
+        if (reel.some(s => s !== def.climbSymbol && s !== def.crashSymbol)) {
+          errors.push(`reels[${r}]: climb reel may contain only climbSymbol/crashSymbol`)
+        }
+        if (!reel.includes(def.climbSymbol)) errors.push(`reels[${r}]: needs at least one CLIMB`)
+        if (!reel.includes(def.crashSymbol)) errors.push(`reels[${r}]: needs at least one CRASH`)
+      })
+      // launchTable / velocityTable: non-empty, positive mults, catch-all (atLeast <= 0).
+      const checkTable = (table: { atLeast: number, mult: number }[], name: string): void => {
+        if (table.length === 0) {
+          errors.push(`${name} must not be empty`)
+          return
+        }
+        if (!table.some(e => e.atLeast <= 0)) errors.push(`${name} must include a catch-all entry (atLeast <= 0)`)
+        table.forEach((e, i) => {
+          if (!(e.mult > 0)) errors.push(`${name}[${i}]: mult must be > 0`)
         })
-      })
-      // Paytable: non-empty; every pay a positive integer; every total in [qualifyMin, 21];
-      // strictly ascending by total.
-      if (def.paytable.length === 0) errors.push('blackjack-reel paytable must not be empty')
-      let prevTotal = -Infinity
-      def.paytable.forEach((e, i) => {
-        if (!Number.isInteger(e.pay) || e.pay <= 0) {
-          errors.push(`paytable[${i}] (total ${e.total}): pay must be a positive integer`)
-        }
-        if (e.total < def.qualifyMin || e.total > 21) {
-          errors.push(`paytable[${i}]: total ${e.total} out of range [${def.qualifyMin}, 21]`)
-        }
-        if (e.total <= prevTotal) {
-          errors.push(`paytable[${i}]: totals must be strictly ascending (got ${e.total} after ${prevTotal})`)
-        }
-        prevTotal = e.total
-      })
-      // qualifyMin: integer in (0, 21]; naturalPay: positive integer; charlieMultiplier: integer >= 1.
-      if (!Number.isInteger(def.qualifyMin) || def.qualifyMin <= 0 || def.qualifyMin > 21) {
-        errors.push(`qualifyMin must be an integer in (0, 21], got ${def.qualifyMin}`)
       }
-      if (!Number.isInteger(def.naturalPay) || def.naturalPay <= 0) {
-        errors.push(`naturalPay must be a positive integer, got ${def.naturalPay}`)
-      }
-      if (!Number.isInteger(def.charlieMultiplier) || def.charlieMultiplier < 1) {
-        errors.push(`charlieMultiplier must be an integer >= 1, got ${def.charlieMultiplier}`)
-      }
+      checkTable(def.launchTable, 'launchTable')
+      checkTable(def.velocityTable, 'velocityTable')
+      if (!(def.naturalLaunch > 0)) errors.push(`naturalLaunch must be > 0, got ${def.naturalLaunch}`)
       break
     }
     default: {

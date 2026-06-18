@@ -261,48 +261,41 @@ export interface PachisloMachineDef extends MachineDefBase {
 
 export interface BlackjackReelMachineDef extends MachineDefBase {
   family: 'blackjack-reel'
-  /** 5 reel compositions; token 'CARD' = deal next deck card, else a special SymbolId */
+  /** 5 reels. Reels 0–1 are the deal: all 'CARD'. Reels 2–4 are the climb: 'CLIMB'/'CRASH' only. */
   reels: SymbolId[][]
-  /** special multiplier-card -> additive face (e.g. {MX2:2,MX3:3,MX5:5,MX10:10}) */
-  multiplierSymbols: Record<SymbolId, number>
-  /** minus-card -> points removed from the hard total (e.g. {MM2:2,MM3:3}) */
-  minusSymbols: Record<SymbolId, number>
-  /** instant-loss symbol */
-  bustSymbol: SymbolId
-  /** per-coin payout by best non-bust total; totals < qualifyMin are absent (=> 0) */
-  paytable: { total: number, pay: number }[]
-  /** minimum best total that pays anything (15) */
-  qualifyMin: number
-  /** per-coin base for a 2-card 21 (natural), replacing paytable(21) when it occurs in two cards */
-  naturalPay: number
-  /** multiplier applied to the whole payout for surviving all five reels (Five-Card Charlie) */
-  charlieMultiplier: number
+  /** the climb symbol id (a successful climb multiplies by velocity) */
+  climbSymbol: SymbolId
+  /** the crash symbol id (instant total loss) */
+  crashSymbol: SymbolId
+  /** launch multiplier by running total — descending atLeast thresholds; MUST include a catch-all (atLeast <= 0) */
+  launchTable: { atLeast: number, mult: number }[]
+  /** climb velocity by 2-card total — descending atLeast thresholds; MUST include a catch-all (atLeast <= 0) */
+  velocityTable: { atLeast: number, mult: number }[]
+  /** launch multiplier for a 2-card natural 21 (a premium over launchTable at 21) */
+  naturalLaunch: number
   progressive: null
 }
 
 export interface BlackjackReelSessionState {
-  phase: 'idle' | 'spinning' | 'resolved' | 'gamble'
-  /** the dealt strips for this hand (CARD tokens resolved to concrete deck ids) */
+  phase: 'idle' | 'spinning' | 'resolved'
+  /** the dealt strips for this hand (CARD resolved to deck ids; CLIMB/CRASH kept) */
   reelStrips: SymbolId[][]
   /** landed symbol per reel; null until that reel is stopped */
   landed: (SymbolId | null)[]
   /** index of the next reel to stop (0..5) */
   idx: number
-  /** symbols applied to the hand, in stop order (cards + specials) */
+  /** dealt cards in stop order (<= 2) */
   hand: SymbolId[]
-  hard: number // sum of value cards + 1 per ace, after minus subtractions (floored at 0)
-  aces: number // aces held (one may count as 11)
-  multSum: number // additive multiplier sum
-  bestTotal: number // high-water best total <=21 reached (drives the payout)
-  natural: boolean // a 2-card 21 was reached
-  busted: boolean
-  bustBySymbol: boolean // true if the loss was a BUST symbol (vs over-21)
-  charlie: boolean // survived all five reels
-  ante: number // coins wagered (locks the payout scale)
-  /** Blackjack-bonus double-or-nothing: credits currently on the line. */
-  gambleAmount: number
-  /** Doubles taken so far (0..GAMBLE_CAP). */
-  gambleCount: number
+  /** climb rate per surviving climb reel (set when reel 1 locks); 0 before */
+  velocity: number
+  /** current multiplier (float): 1 idle, launch after the deal, x velocity per climb */
+  multiplier: number
+  /** a climb reel landed CRASH (terminal loss) */
+  crashed: boolean
+  /** a 2-card 21 (natural) — drives the special launch + display */
+  natural: boolean
+  /** coins wagered (the ante; locks the payout scale) */
+  ante: number
 }
 
 export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef | BlackjackReelMachineDef
@@ -427,14 +420,14 @@ export type FeatureEvent
     | { type: 'interlude-started', index: 1 | 2 }
     | { type: 'interlude-ended', index: 1 | 2, bells: number }
     | { type: 'bonus-ended', bonus: 'reg' | 'big' }
-    // blackjack-reel (Lucky 21) events
+    // blackjack-reel (Flameout 21 crash) events
     | { type: 'cards-dealt', strips: SymbolId[][] }
     | { type: 'reel-stopped', reel: number, symbol: SymbolId }
-    | { type: 'bust', reel: number, bySymbol: boolean }
-    | { type: 'charlie', cards: SymbolId[] }
-    | { type: 'cash-out', bestTotal: number, payout: number }
-    | { type: 'blackjack-bonus', amount: number }
-    | { type: 'gamble', outcome: 'double' | 'bust' | 'collect', amount: number, count: number }
+    | { type: 'launch', reel: number, total: number, multiplier: number, velocity: number, natural: boolean }
+    | { type: 'climb', reel: number, multiplier: number }
+    | { type: 'crash', reel: number, multiplier: number }
+    | { type: 'cash-out', reel: number, multiplier: number, payout: number }
+    | { type: 'topped-out', multiplier: number, payout: number }
 
 export interface SpinOutcome {
   machineId: string

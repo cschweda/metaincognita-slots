@@ -1,4 +1,10 @@
-// Lucky 21 engine — hand evaluation (Task 3) + step functions + payout (Task 4).
+// Flameout 21 engine — a crash game on the stop-the-reels chassis.
+//
+// The `blackjack-reel` family now implements the Flameout 21 crash model:
+// reels 0–1 deal two cards (never crash) and set a LAUNCH multiplier + a climb
+// VELOCITY from the hand; reels 2–4 either CLIMB (multiplier ×= velocity) or
+// CRASH (lose everything). Cash out any reel after the first card to bank
+// bet × multiplier. A 2-card 21 (natural) launches to a special multiplier.
 
 import type {
   BlackjackReelMachineDef,
@@ -12,91 +18,45 @@ import type {
 import type { RandomFn } from './rng'
 import { buildDeck, shuffle, cardValue, isAce } from './deck'
 
-/** Blackjack-bonus double-or-nothing cap: at most 3 doubles before auto-collect. */
-export const GAMBLE_CAP = 3
+// ---------- launch / velocity helpers ----------
 
-// ---------- accumulator ----------
-
-export interface HandAcc {
-  hard: number
-  aces: number
-  multSum: number
+/** The mult of the entry with the greatest atLeast <= total (order-independent). */
+export function tableLookup(table: { atLeast: number, mult: number }[], total: number): number {
+  let mult = 1
+  let bestAtLeast = -Infinity
+  for (const e of table) {
+    if (total >= e.atLeast && e.atLeast > bestAtLeast) {
+      bestAtLeast = e.atLeast
+      mult = e.mult
+    }
+  }
+  return mult
 }
 
-export function freshAcc(): HandAcc {
-  return { hard: 0, aces: 0, multSum: 0 }
+export function launchFor(def: BlackjackReelMachineDef, total: number): number {
+  return tableLookup(def.launchTable, total)
 }
 
-// ---------- types ----------
-
-export type EvalCfg = Pick<BlackjackReelMachineDef, 'multiplierSymbols' | 'minusSymbols' | 'bustSymbol'>
-
-export interface HandEval {
-  total: number
-  isSoft: boolean
-  softLow: number
-  busted: boolean
-  multSum: number
+export function velocityFor(def: BlackjackReelMachineDef, total: number): number {
+  return tableLookup(def.velocityTable, total)
 }
 
-// ---------- helpers ----------
-
-/**
- * Fold one symbol into the accumulator.
- * BUST is never passed here — the step function handles instant loss.
- * Multiplier symbols add to multSum and contribute 0 to the hard total.
- * Minus symbols subtract from the hard total, floored at 0.
- * Aces count as 1 in the hard total; a single ace may be promoted to 11 by bestTotal.
- */
-export function applySymbol(acc: HandAcc, def: EvalCfg, sym: SymbolId): HandAcc {
-  if (sym in def.multiplierSymbols) {
-    acc.multSum += def.multiplierSymbols[sym]!
-    return acc
+/** Best blackjack total of the dealt cards: sum of values, one ace promoted 1->11 when it fits. */
+export function handTotal(cards: readonly SymbolId[]): number {
+  let hard = 0
+  let aces = 0
+  for (const c of cards) {
+    if (isAce(c)) {
+      aces += 1
+      hard += 1
+    } else {
+      hard += cardValue(c)
+    }
   }
-  if (sym in def.minusSymbols) {
-    acc.hard = Math.max(0, acc.hard - def.minusSymbols[sym]!)
-    return acc
-  }
-  if (isAce(sym)) {
-    acc.aces++
-    acc.hard += 1
-    return acc
-  }
-  acc.hard += cardValue(sym)
-  return acc
+  return aces > 0 && hard + 10 <= 21 ? hard + 10 : hard
 }
 
-/**
- * Compute the best total ≤ 21, promoting at most one ace from 1 → 11 when it fits.
- * Returns the all-hard value as softLow (the "dual display" low number, e.g. "7 or 17").
- */
-export function bestTotal(
-  hard: number,
-  aces: number
-): { total: number, isSoft: boolean, softLow: number } {
-  if (aces > 0 && hard + 10 <= 21) {
-    return { total: hard + 10, isSoft: true, softLow: hard }
-  }
-  return { total: hard, isSoft: false, softLow: hard }
-}
-
-/** Evaluate a complete sequence of symbols and return the hand result. */
-export function evaluateHand(def: EvalCfg, syms: readonly SymbolId[]): HandEval {
-  const acc = freshAcc()
-  for (const s of syms) {
-    applySymbol(acc, def, s)
-  }
-  const bt = bestTotal(acc.hard, acc.aces)
-  return {
-    total: bt.total,
-    isSoft: bt.isSoft,
-    softLow: bt.softLow,
-    busted: bt.total > 21,
-    multSum: acc.multSum
-  }
-}
-
-// ---------- Task 4: fresh session state ----------
+// ---------- fresh session state ----------
 
 export function freshBlackjackState(): BlackjackReelSessionState {
   return {
@@ -105,75 +65,35 @@ export function freshBlackjackState(): BlackjackReelSessionState {
     landed: [null, null, null, null, null],
     idx: 0,
     hand: [],
-    hard: 0,
-    aces: 0,
-    multSum: 0,
-    bestTotal: 0,
+    velocity: 0,
+    multiplier: 1,
+    crashed: false,
     natural: false,
-    busted: false,
-    bustBySymbol: false,
-    charlie: false,
-    ante: 0,
-    gambleAmount: 0,
-    gambleCount: 0
+    ante: 0
   }
 }
 
-// ---------- Task 4: payout ----------
-
-/** Look up a total in the paytable; returns 0 when absent. */
-export function payEntry(paytable: { total: number, pay: number }[], total: number): number {
-  return paytable.find(e => e.total === total)?.pay ?? 0
-}
-
-/**
- * Best-total paytable × additive multiplier × Charlie ×, with the qualify
- * floor and natural premium. Returns whole credits.
- */
-export function handPayout(def: BlackjackReelMachineDef, bj: BlackjackReelSessionState): number {
-  if (bj.busted) return 0
-  const mult = Math.max(1, bj.multSum)
-  let base: number
-  if (bj.charlie) {
-    base = Math.max(payEntry(def.paytable, bj.bestTotal), payEntry(def.paytable, def.qualifyMin))
-  } else {
-    base = payEntry(def.paytable, bj.bestTotal)
-  }
-  // natural (2-card 21) and charlie (survived all 5) are mutually exclusive; guard so a
-  // future variant can't let the natural premium silently bypass the Charlie multiplier.
-  if (bj.natural && !bj.charlie && bj.bestTotal === 21) base = def.naturalPay
-  const charlieMul = bj.charlie ? def.charlieMultiplier : 1
-  return base * mult * charlieMul * bj.ante
-}
-
-// ---------- Task 4: internal outcome builder ----------
+// ---------- outcome builder ----------
 
 function outcome(
   def: BlackjackReelMachineDef,
   bj: BlackjackReelSessionState,
-  coins: number,
   coinsIn: number,
   featureEvents: FeatureEvent[],
   payout = 0,
   gameKind: GameKind = 'base'
 ): SpinOutcome {
+  const entryId = bj.crashed ? 'crash' : bj.idx >= 5 ? 'topped' : 'cash'
   return {
     machineId: def.id,
     family: 'blackjack-reel',
-    coins,
+    coins: bj.ante,
     gameKind,
     coinsIn,
     stops: [],
     grid: bj.landed.map(s => (s !== null ? [s] : [])),
     wins: payout > 0
-      ? [{
-          line: 'hand',
-          entryId: bj.charlie ? 'charlie' : `total-${bj.bestTotal}`,
-          symbols: [...bj.hand],
-          payCredits: payout,
-          wildCount: 0,
-          progressive: false
-        }]
+      ? [{ line: 'hand', entryId, symbols: [...bj.hand], payCredits: payout, wildCount: 0, progressive: false }]
       : [],
     totalPayout: payout,
     progressiveEvents: [],
@@ -182,12 +102,9 @@ function outcome(
   }
 }
 
-// ---------- Task 4: step functions ----------
+// ---------- step functions ----------
 
-/**
- * Deal phase: builds dealt reel strips (resolving 'CARD' tokens to unique deck
- * cards), locks ante, transitions to 'spinning'.
- */
+/** Deal: build the dealt strips (CARD -> deck card; CLIMB/CRASH kept), lock the ante, start spinning. */
 export function dealReels(
   def: BlackjackReelMachineDef,
   state: MachineSessionState,
@@ -199,16 +116,15 @@ export function dealReels(
   bj.phase = 'spinning'
   const deck = shuffle(buildDeck(), rand)
   let di = 0
-  bj.reelStrips = def.reels.map(slots =>
-    slots.map(tok => (tok === 'CARD' ? deck[di++]! : tok)))
+  bj.reelStrips = def.reels.map(slots => slots.map(tok => (tok === 'CARD' ? deck[di++]! : tok)))
   state.blackjackReel = bj
-  return outcome(def, bj, coins, coins, [{ type: 'cards-dealt', strips: bj.reelStrips.map(s => [...s]) }], 0, 'deal')
+  return outcome(def, bj, coins, [{ type: 'cards-dealt', strips: bj.reelStrips.map(s => [...s]) }], 0, 'deal')
 }
 
 /**
- * Stop the next reel: picks a uniform random symbol from that reel's dealt
- * strip, applies it to the hand, updates best total (ratchet), checks for
- * bust/BUST, natural, and Five-Card-Charlie auto-resolve.
+ * Stop the next reel. Reels 0–1 lock a card and set the launch multiplier (and,
+ * on reel 1, the velocity); they never crash. Reels 2–4 draw the strip: CLIMB
+ * (multiplier ×= velocity) or CRASH (lose). Climbing past reel 4 tops out.
  */
 export function stopReel(
   def: BlackjackReelMachineDef,
@@ -222,52 +138,37 @@ export function stopReel(
   const strip = bj.reelStrips[r]!
   const sym = strip[Math.floor(rand() * strip.length)]!
   bj.landed[r] = sym
+
+  if (r <= 1) {
+    bj.hand.push(sym)
+    const total = handTotal(bj.hand)
+    if (r === 1 && total === 21) {
+      bj.natural = true
+      bj.multiplier = def.naturalLaunch
+    } else {
+      bj.multiplier = launchFor(def, total)
+    }
+    if (r === 1) bj.velocity = velocityFor(def, total)
+    bj.idx = r + 1
+    return outcome(def, bj, 0, [{ type: 'launch', reel: r, total, multiplier: bj.multiplier, velocity: bj.velocity, natural: bj.natural }])
+  }
+
+  if (sym === def.crashSymbol) {
+    bj.crashed = true
+    bj.phase = 'resolved'
+    return outcome(def, bj, 0, [{ type: 'crash', reel: r, multiplier: bj.multiplier }], 0)
+  }
+  bj.multiplier *= bj.velocity
   bj.idx = r + 1
-  // BUST symbol: instant loss, no card added to hand
-  if (sym === def.bustSymbol) {
-    bj.busted = true
-    bj.bustBySymbol = true
+  if (bj.idx >= 5) {
     bj.phase = 'resolved'
-    return outcome(def, bj, bj.ante, 0, [{ type: 'bust', reel: r, bySymbol: true }])
+    const payout = bj.ante * bj.multiplier
+    return outcome(def, bj, 0, [{ type: 'topped-out', multiplier: bj.multiplier, payout }], payout)
   }
-  // Add symbol to hand and recompute
-  bj.hand.push(sym)
-  const acc = freshAcc()
-  for (const s of bj.hand) applySymbol(acc, def, s)
-  const bt = bestTotal(acc.hard, acc.aces)
-  bj.hard = acc.hard
-  bj.aces = acc.aces
-  bj.multSum = acc.multSum
-  // Over-21 bust
-  if (bt.total > 21) {
-    bj.busted = true
-    bj.phase = 'resolved'
-    return outcome(def, bj, bj.ante, 0, [{ type: 'bust', reel: r, bySymbol: false }])
-  }
-  // Ratchet: only advance bestTotal upward
-  if (bt.total > bj.bestTotal) bj.bestTotal = bt.total
-  // Natural: a 2-card 21 ENDS the hand and opens the double-or-nothing bonus.
-  if (r === 1 && bt.total === 21) {
-    bj.natural = true
-    bj.phase = 'gamble'
-    bj.gambleAmount = handPayout(def, bj) // base = naturalPay, multSum 0, charlie false → naturalPay × ante
-    bj.gambleCount = 0
-    return outcome(def, bj, bj.ante, 0, [{ type: 'blackjack-bonus', amount: bj.gambleAmount }])
-  }
-  // Five-Card Charlie: survived all five reels
-  if (bj.idx === 5) {
-    bj.charlie = true
-    bj.phase = 'resolved'
-    const pay = handPayout(def, bj)
-    return outcome(def, bj, bj.ante, 0, [{ type: 'charlie', cards: [...bj.hand] }], pay)
-  }
-  return outcome(def, bj, bj.ante, 0, [{ type: 'reel-stopped', reel: r, symbol: sym }])
+  return outcome(def, bj, 0, [{ type: 'climb', reel: r, multiplier: bj.multiplier }])
 }
 
-/**
- * Cash out: resolve the hand at its current best total. May be called at any
- * point while phase === 'spinning'.
- */
+/** Cash out: bank bet × multiplier. Valid once the first card has landed (idx >= 1). */
 export function cashOut(
   def: BlackjackReelMachineDef,
   state: MachineSessionState
@@ -275,50 +176,8 @@ export function cashOut(
   const bj = state.blackjackReel
   if (bj === null) throw new Error(`${def.id}: cashOut with no hand`)
   if (bj.phase !== 'spinning') throw new Error(`${def.id}: cashOut in phase ${bj.phase}`)
+  if (bj.idx < 1) throw new Error(`${def.id}: cashOut before the first card`)
   bj.phase = 'resolved'
-  const pay = handPayout(def, bj)
-  return outcome(def, bj, bj.ante, 0, [{ type: 'cash-out', bestTotal: bj.bestTotal, payout: pay }], pay)
-}
-
-/**
- * Blackjack-bonus: STOP the spinning double-or-nothing reel — an honest 50/50.
- * Win (rand < 0.5) doubles the amount and increments the rung; at GAMBLE_CAP it
- * auto-resolves. Lose zeroes the amount and resolves. RTP-neutral by construction.
- */
-export function gambleStop(
-  def: BlackjackReelMachineDef,
-  state: MachineSessionState,
-  rand: RandomFn
-): SpinOutcome {
-  const bj = state.blackjackReel
-  if (bj === null) throw new Error(`${def.id}: gambleStop with no hand`)
-  if (bj.phase !== 'gamble') throw new Error(`${def.id}: gambleStop in phase ${bj.phase}`)
-  if (bj.gambleCount >= GAMBLE_CAP) throw new Error(`${def.id}: gambleStop past the cap`)
-  const won = rand() < 0.5
-  if (!won) {
-    bj.gambleAmount = 0
-    bj.phase = 'resolved'
-    return outcome(def, bj, bj.ante, 0, [{ type: 'gamble', outcome: 'bust', amount: 0, count: bj.gambleCount }], 0)
-  }
-  bj.gambleAmount *= 2
-  bj.gambleCount += 1
-  const capped = bj.gambleCount >= GAMBLE_CAP
-  if (capped) bj.phase = 'resolved'
-  return outcome(
-    def, bj, bj.ante, 0,
-    [{ type: 'gamble', outcome: 'double', amount: bj.gambleAmount, count: bj.gambleCount }],
-    capped ? bj.gambleAmount : 0
-  )
-}
-
-/** Blackjack-bonus: keep the guaranteed amount without spinning. Resolves. */
-export function gambleCashOut(
-  def: BlackjackReelMachineDef,
-  state: MachineSessionState
-): SpinOutcome {
-  const bj = state.blackjackReel
-  if (bj === null) throw new Error(`${def.id}: gambleCashOut with no hand`)
-  if (bj.phase !== 'gamble') throw new Error(`${def.id}: gambleCashOut in phase ${bj.phase}`)
-  bj.phase = 'resolved'
-  return outcome(def, bj, bj.ante, 0, [{ type: 'gamble', outcome: 'collect', amount: bj.gambleAmount, count: bj.gambleCount }], bj.gambleAmount)
+  const payout = bj.ante * bj.multiplier
+  return outcome(def, bj, 0, [{ type: 'cash-out', reel: bj.idx, multiplier: bj.multiplier, payout }], payout)
 }
