@@ -3,9 +3,10 @@ import type { MachineDef, MachineSessionState } from './types'
 import type { RandomFn } from './rng'
 import { mulberry32 } from './rng'
 import { spin, nextSpinCost, initMachineState } from './index'
+import { dealReels, stopReel, cashOut } from './blackjackReel'
+import { makeOptimalStopFn } from './blackjackReelRtp'
 import { addCoinToProgressive } from './progressive'
 import { exactRtp } from './exactRtp'
-// Lucky 21 Task 1: blackjack-reel session simulation stubbed (engine lands in a later task).
 
 export interface SessionOptions {
   /** starting bankroll in CREDITS (1 credit = 1 coin = denominationCents) */
@@ -100,9 +101,35 @@ export function simulateSession(
   }
 
   if (def.family === 'blackjack-reel') {
-    // Lucky 21 Task 1: session simulation for blackjack-reel is stubbed.
-    // Real Lucky 21 session logic lands in a later task.
-    throw new Error('simulateSession: Lucky 21 blackjack-reel not yet implemented — later task')
+    // ── Flameout 21 (crash) ────────────────────────────────────────────────
+    // One "paid spin" is one hand. dealReels charges the ante (bet coins) once;
+    // stopReel/cashOut are free. The optimal cash/climb policy (closed-form,
+    // built once for def) drives the run — exactly as simulateMachine does.
+    // Payout is bet × multiplier in the multiplier domain with no per-hand cent
+    // rounding (that is the live store's concern), so the empirical RTP tracks
+    // the exact DP that the Sim Lab's house-edge figure comes from.
+    const optStop = makeOptimalStopFn(def)
+    while (paidSpins < opts.spinCap) {
+      if (balance < opts.bet) {
+        busted = true
+        break
+      }
+      const dealOut = dealReels(def, state, opts.bet, rand)
+      const handIn = dealOut.coinsIn
+      let handOut = dealOut.totalPayout
+      const bj = state.blackjackReel!
+      while (bj.phase === 'spinning') {
+        const out = optStop(bj) === 'cash' ? cashOut(def, state) : stopReel(def, state, rand)
+        handOut += out.totalPayout
+      }
+      totalIn += handIn
+      totalOut += handOut
+      balance += handOut - handIn
+      if (balance > peak) peak = balance
+      if (peak - balance > maxDrawdown) maxDrawdown = peak - balance
+      paidSpins++
+      if (recordTrajectory) traj.push(balance)
+    }
   } else {
     // ── all other families ─────────────────────────────────────────────────
     // Free video features have cost 0, so they replay inside this loop without

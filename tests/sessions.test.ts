@@ -111,3 +111,57 @@ describe('simulateSession', () => {
     expect(Number.isFinite(r.endBalance)).toBe(true)
   })
 })
+
+describe('simulateSession — flameout-21 (crash)', () => {
+  const def = byId('flameout-21')
+
+  it('is reproducible for the same seed', () => {
+    const a = simulateSession(def, opts({ startCredits: 100, bet: 5, spinCap: 200 }), mulberry32(deriveSeed(21, 0)))
+    const b = simulateSession(def, opts({ startCredits: 100, bet: 5, spinCap: 200 }), mulberry32(deriveSeed(21, 0)))
+    expect(a).toEqual(b)
+  })
+
+  it('charges exactly the ante per hand and never goes negative', () => {
+    for (let i = 0; i < 50; i++) {
+      const r = simulateSession(def, opts({ startCredits: 80, bet: 5, spinCap: 300 }), mulberry32(deriveSeed(22, i)))
+      expect(r.endBalance).toBeGreaterThanOrEqual(0)
+      expect(r.maxDrawdown).toBeGreaterThanOrEqual(0)
+      expect(r.peak).toBeGreaterThanOrEqual(r.endBalance)
+      expect(r.peak).toBeGreaterThanOrEqual(80) // peak is at least the starting bankroll
+      // each hand charges exactly `bet` coins, so coins-in is hands × bet
+      expect(r.totalIn).toBe(r.spinsPlayed * 5)
+    }
+  })
+
+  it('busts on a tiny bankroll against a huge cap (RTP < 1)', () => {
+    const r = simulateSession(def, opts({ startCredits: 5, bet: 1, spinCap: 1_000_000 }), mulberry32(deriveSeed(23, 0)))
+    expect(r.busted).toBe(true)
+    expect(r.spinsPlayed).toBeLessThan(1_000_000)
+    expect(r.endBalance).toBeLessThan(1) // couldn't afford the next 1-coin ante
+  })
+
+  it('survives (does not bust) when the cap is reached with a huge bankroll', () => {
+    const r = simulateSession(def, opts({ startCredits: 1_000_000, bet: 5, spinCap: 10 }), mulberry32(deriveSeed(24, 0)))
+    expect(r.busted).toBe(false)
+    expect(r.spinsPlayed).toBe(10)
+  })
+
+  it('records a trajectory only when asked', () => {
+    const off = simulateSession(def, opts({ startCredits: 100, bet: 5, spinCap: 100 }), mulberry32(deriveSeed(25, 0)), false)
+    const on = simulateSession(def, opts({ startCredits: 100, bet: 5, spinCap: 100 }), mulberry32(deriveSeed(25, 0)), true)
+    expect(off.trajectory).toEqual([])
+    expect(on.trajectory[0]).toBe(100) // starts at startCredits
+    expect(on.trajectory.length).toBeGreaterThan(1)
+    expect(on.trajectory.length).toBeLessThanOrEqual(80) // downsampled
+  })
+
+  it('empirical RTP over a long no-bust session tracks the exact ~96.96%', () => {
+    const r = simulateSession(def, opts({ startCredits: 5_000_000, bet: 5, spinCap: 40_000 }), mulberry32(deriveSeed(26, 0)))
+    expect(r.busted).toBe(false)
+    expect(r.spinsPlayed).toBe(40_000)
+    expect(r.totalIn).toBe(40_000 * 5)
+    const rtp = r.totalOut / r.totalIn
+    expect(rtp).toBeGreaterThan(0.92)
+    expect(rtp).toBeLessThan(1.02)
+  })
+})
