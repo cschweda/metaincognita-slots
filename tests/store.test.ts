@@ -7,10 +7,7 @@ import { STOCK_RUSH } from '../app/machines/stock-rush'
 import { mulberry32, simulateMachine } from '../app/engine'
 import { setLiveRand } from '../app/utils/liveRand'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
-// Lucky 21: imported for the skip-guarded blackjack-reel tests below (Tasks 8/9 rewrite them
-// against the real Lucky 21 store actions; left skipped here — see describe.skip blocks).
-import { LUCKY_21 } from '../app/machines/lucky-21'
-import { GAMBLE_CAP } from '../app/engine/blackjackReel'
+import { FLAMEOUT_21 } from '../app/machines/flameout-21'
 
 function freshStore() {
   setActivePinia(createPinia())
@@ -467,116 +464,139 @@ describe('describeOutcome — spoken net parity', () => {
 })
 
 // ---------------------------------------------------------------------------
-// blackjack-reel store actions: deal / stop / cashOut (Lucky 21)
+// blackjack-reel store actions: deal / stop / cashOut (Flameout 21 crash)
 // ---------------------------------------------------------------------------
 
-describe('blackjack-reel interactive actions — Lucky 21', () => {
+describe('blackjack-reel interactive actions — Flameout 21', () => {
+  // Flameout 21: denomination 100¢ ($1/coin), maxCoins 20.
+  const DENOM = FLAMEOUT_21.denominationCents
+
+  /** Deal, then force reels 0–1 to specific cards and stop them so a 2-card
+   *  hand sets launch + velocity. Returns the live bj state at idx=2 (climb). */
+  function dealHand(store: ReturnType<typeof useSlotsStore>, cards: [string, string]) {
+    store.deal()
+    const bj = store.machineStates['flameout-21']!.blackjackReel!
+    bj.reelStrips[0] = [cards[0]]
+    bj.reelStrips[1] = [cards[1]]
+    store.revealDone()
+    store.stop() // lock card 0 → reel 0
+    store.revealDone()
+    store.stop() // lock card 1 → reel 1 (sets launch + velocity)
+    store.revealDone()
+    return bj
+  }
+
   it('deal charges the ante, sets phase to spinning, books deal record', () => {
     setLiveRand(mulberry32(42))
     const store = freshStore()
-    store.startSession(100_000) // 100_000 cents = 4000 credits at 25¢
-    store.selectMachine('lucky-21')
+    store.startSession(100_000)
+    store.selectMachine('flameout-21')
     store.setBet(2) // 2-coin ante
     const before = store.bankrollCents
     store.deal()
 
-    // spinning gate should be raised
-    expect(store.spinning).toBe(true)
+    expect(store.spinning).toBe(true) // gate raised
 
-    // ante charged: 2 coins × 25¢ = 50¢; payout = 0
-    expect(store.bankrollCents).toBe(before - 50)
+    // ante charged: 2 coins × 100¢ = 200¢; payout = 0
+    expect(store.bankrollCents).toBe(before - 200)
 
-    // session state must be in spinning phase (deal transitions to spinning)
-    const bj = store.machineStates['lucky-21']!.blackjackReel!
+    const bj = store.machineStates['flameout-21']!.blackjackReel!
     expect(bj.phase).toBe('spinning')
     expect(bj.ante).toBe(2)
+    expect(bj.idx).toBe(0) // deal builds strips but stops no reels
 
-    // history record for the deal: coinsIn = 50¢, payout = 0
     expect(store.history).toHaveLength(1)
     const rec = store.history[0]!
-    expect(rec.machineId).toBe('lucky-21')
-    expect(rec.coinsInCents).toBe(50)
+    expect(rec.machineId).toBe('flameout-21')
+    expect(rec.coinsInCents).toBe(200)
     expect(rec.payoutCents).toBe(0)
 
-    // persisted to localStorage
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
     expect(saved.bankrollCents).toBe(store.bankrollCents)
   })
 
-  it('stop stops the next reel; on non-resolve keeps gate high, no new history', () => {
-    // dealReels builds strips and sets idx=0 (phase='spinning'); it does NOT stop
-    // any reel — every reel stop requires an explicit hitCard call.
+  it('deal → stop → cashOut banks round(ante × multiplier × denom)', () => {
     setLiveRand(mulberry32(7))
     const store = freshStore()
     store.startSession(100_000)
-    store.selectMachine('lucky-21')
-    store.setBet(1)
-    store.deal()
-    const bj = store.machineStates['lucky-21']!.blackjackReel!
+    store.selectMachine('flameout-21')
+    store.setBet(3) // ante = 3 coins = 300¢
+    const start = store.bankrollCents
+    const bj = dealHand(store, ['9S', '9D']) // total 18 → launch + velocity set
+
     expect(bj.phase).toBe('spinning')
-    expect(bj.idx).toBe(0) // no reels stopped yet after deal
-    store.revealDone()
-
-    // Stop reel 0 (always a CARD on Lucky 21, can't bust)
-    store.stop()
-    expect(bj.idx).toBe(1)
-    expect(bj.phase).toBe('spinning') // reel 0 = pure card, never resolves
-    expect(store.spinning).toBe(true)
-    const histAfterReel0 = store.history.length
-    store.revealDone()
-
-    // Stop reel 1 (also a CARD, can't bust)
-    store.stop()
     expect(bj.idx).toBe(2)
-    expect(bj.phase).toBe('spinning')
-    expect(store.history).toHaveLength(histAfterReel0) // no new record yet
-    store.revealDone()
+    const launchMult = bj.multiplier
+    const velocity = bj.velocity
+    expect(launchMult).toBeGreaterThan(0)
+    expect(velocity).toBeGreaterThan(0)
 
-    // Stop reel 2 (BUST-heavy: 8 BUST + MX2 + MX3 + MM3)
-    const histBefore = store.history.length
+    // Force reel 2 to CLIMB, stop it: multiplier ×= velocity, still spinning.
+    bj.reelStrips[2] = ['CLIMB']
     store.stop()
-    // Either still spinning (non-bust) or resolved (bust): both are valid
-    if (bj.phase === 'spinning') {
-      expect(bj.idx).toBe(3)
-      expect(store.history).toHaveLength(histBefore) // no extra record for non-resolve
-    } else {
-      expect(bj.phase).toBe('resolved')
-      expect(store.history.length).toBeGreaterThan(histBefore)
-    }
-    expect(store.spinning).toBe(true)
-  })
-
-  it('cashOut books payout and sets phase to resolved', () => {
-    setLiveRand(mulberry32(99))
-    const store = freshStore()
-    store.startSession(100_000)
-    store.selectMachine('lucky-21')
-    store.setBet(3)
-    store.deal()
+    expect(bj.phase).toBe('spinning')
+    expect(bj.idx).toBe(3)
+    expect(bj.multiplier).toBeCloseTo(launchMult * velocity, 10)
     store.revealDone()
 
-    const bj = store.machineStates['lucky-21']!.blackjackReel!
-    expect(bj.phase).toBe('spinning')
-
+    // Cash out: bank round(ante × multiplier × denom).
+    const expectedCents = Math.round(3 * bj.multiplier * DENOM)
     const bankBefore = store.bankrollCents
     const histBefore = store.history.length
     store.cashOut()
-
     expect(bj.phase).toBe('resolved')
-    expect(store.spinning).toBe(true)
-    // cashOut books a payout record
     expect(store.history.length).toBe(histBefore + 1)
-    const lastRec = store.history.at(-1)!
-    expect(lastRec.coinsInCents).toBe(0) // cashOut is free
-    expect(lastRec.payoutCents).toBeGreaterThanOrEqual(0)
-    expect(store.bankrollCents).toBe(bankBefore + lastRec.payoutCents)
+    const rec = store.history.at(-1)!
+    expect(rec.coinsInCents).toBe(0) // cashOut is free
+    expect(rec.payoutCents).toBe(expectedCents)
+    expect(store.bankrollCents).toBe(bankBefore + expectedCents)
+    // Net across the hand: -ante debit + the cashed credit.
+    expect(store.bankrollCents).toBe(start - 300 + expectedCents)
+  })
+
+  it('a CRASH pays 0 and resolves the hand', () => {
+    setLiveRand(mulberry32(99))
+    const store = freshStore()
+    store.startSession(100_000)
+    store.selectMachine('flameout-21')
+    store.setBet(2)
+    const start = store.bankrollCents
+    const bj = dealHand(store, ['KS', 'KD']) // total 20
+
+    // Force reel 2 to CRASH and stop it.
+    bj.reelStrips[2] = ['CRASH']
+    const histBefore = store.history.length
+    store.stop()
+    expect(bj.crashed).toBe(true)
+    expect(bj.phase).toBe('resolved')
+    expect(store.history.length).toBe(histBefore + 1)
+    const rec = store.history.at(-1)!
+    expect(rec.payoutCents).toBe(0) // crash = total loss
+    // Only the ante (2 × 100¢) is gone; the crash credits nothing.
+    expect(store.bankrollCents).toBe(start - 200)
+  })
+
+  it('cashOut is a no-op before the first card lands (idx < 1)', () => {
+    setLiveRand(mulberry32(123))
+    const store = freshStore()
+    store.startSession(100_000)
+    store.selectMachine('flameout-21')
+    store.setBet(1)
+    store.deal()
+    store.revealDone()
+    const bj = store.machineStates['flameout-21']!.blackjackReel!
+    expect(bj.idx).toBe(0) // no card stopped yet
+    const histBefore = store.history.length
+    store.cashOut() // idx < 1 → guarded no-op
+    expect(bj.phase).toBe('spinning')
+    expect(store.history.length).toBe(histBefore)
   })
 
   it('deal is a no-op while spinning or broke', () => {
     setLiveRand(mulberry32(1))
     const store = freshStore()
     store.startSession(100_000)
-    store.selectMachine('lucky-21')
+    store.selectMachine('flameout-21')
     store.deal()
     expect(store.spinning).toBe(true) // gate is up
 
@@ -584,14 +604,16 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
     store.deal()
     expect(store.history).toHaveLength(1)
 
-    // lower gate, cash out, lower gate again
+    // lower gate, stop a card so cashOut is legal, cash out, lower gate again
+    store.revealDone()
+    store.stop()
     store.revealDone()
     store.cashOut()
     store.revealDone()
     expect(store.history).toHaveLength(2) // deal + cashOut records
 
-    // drain bankroll to below 1 coin (25¢) and try to deal
-    store.bankrollCents = 10 // 10¢ < 25¢
+    // drain bankroll below 1 coin (100¢) and try to deal
+    store.bankrollCents = 10 // 10¢ < 100¢
     store.deal()
     expect(store.history).toHaveLength(2) // no new deal record
     expect(store.liveAnnouncement).toMatch(/out of credits/i)
@@ -601,217 +623,98 @@ describe('blackjack-reel interactive actions — Lucky 21', () => {
     setLiveRand(mulberry32(2))
     const store = freshStore()
     store.startSession(100_000)
-    store.selectMachine('lucky-21')
+    store.selectMachine('flameout-21')
     store.spinOnce()
     expect(store.history).toHaveLength(0)
     expect(store.spinning).toBe(false)
   })
 
-  it('a full deal → cashOut hand round-trips through persistence', () => {
+  it('a full deal → stop → cashOut hand round-trips through persistence', () => {
     setLiveRand(mulberry32(42))
     const store = freshStore()
     store.startSession(100_000)
-    store.selectMachine('lucky-21')
+    store.selectMachine('flameout-21')
     store.setBet(1)
-    store.deal()
-    store.revealDone()
+    dealHand(store, ['9S', '9D'])
     store.cashOut()
     store.revealDone()
 
-    // save and reload
     const b = freshStore()
     expect(b.resume()).toBe(true)
-    const bj = b.machineStates['lucky-21']!.blackjackReel!
+    const bj = b.machineStates['flameout-21']!.blackjackReel!
     expect(bj.phase).toBe('resolved')
     expect(b.history.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('wallet net across a full hand: only one debit (deal) and one credit (resolve)', () => {
-    setLiveRand(mulberry32(500))
-    const store = freshStore()
-    store.startSession(10_000)
-    store.selectMachine('lucky-21')
-    store.setBet(1) // ante = 1 coin = 25¢
-    const start = store.bankrollCents
-    store.deal()
-    store.revealDone()
-    // Immediately cash out (stand after 2 cards)
-    store.cashOut()
-    store.revealDone()
-    const dealRec = store.history[0]!
-    const payRec = store.history[1]!
-    expect(dealRec.coinsInCents).toBe(25) // debit
-    expect(dealRec.payoutCents).toBe(0)
-    expect(payRec.coinsInCents).toBe(0) // cashOut is free
-    expect(payRec.payoutCents).toBeGreaterThanOrEqual(0)
-    expect(store.bankrollCents).toBe(start - 25 + payRec.payoutCents)
   })
 
   it('bet is selectable for blackjack-reel (1..maxCoins), not forced to max', () => {
     const store = freshStore()
     store.startSession(100_000)
-    store.selectMachine('lucky-21')
-    expect(LUCKY_21.maxCoins).toBeGreaterThanOrEqual(3)
+    store.selectMachine('flameout-21')
+    expect(FLAMEOUT_21.maxCoins).toBeGreaterThanOrEqual(3)
     store.setBet(1)
     expect(store.currentBet).toBe(1)
-    store.setBet(2)
-    expect(store.currentBet).toBe(2)
-    store.setBet(3)
-    expect(store.currentBet).toBe(3)
+    store.setBet(5)
+    expect(store.currentBet).toBe(5)
+    store.setBet(20)
+    expect(store.currentBet).toBe(20)
     store.setBet(99) // over max → clamped
-    expect(store.currentBet).toBe(LUCKY_21.maxCoins)
+    expect(store.currentBet).toBe(FLAMEOUT_21.maxCoins)
   })
 
-  it('one deal+cashOut hand increments spins by exactly 1', () => {
+  it('one deal → stop → cashOut hand increments spins by exactly 1', () => {
     const store = freshStore()
     setLiveRand(mulberry32(999))
     store.startSession(1_000_000)
-    store.selectMachine('lucky-21')
+    store.selectMachine('flameout-21')
     const before = store.stats.spins
-    store.deal()
-    store.revealDone()
+    dealHand(store, ['9S', '9D'])
     store.cashOut()
     store.revealDone()
     expect(store.stats.spins).toBe(before + 1)
   })
-})
 
-// ---------------------------------------------------------------------------
-// blackjack-reel gamble actions: gambleStop / gambleCashOut (Lucky 21)
-// ---------------------------------------------------------------------------
-
-describe('blackjack-reel gamble actions — Lucky 21', () => {
-  /** Force a natural by rigging the reel strips after deal. */
-  function dealToNatural(store: ReturnType<typeof useSlotsStore>) {
-    store.deal()
-    const bj = store.machineStates['lucky-21']!.blackjackReel!
-    bj.reelStrips[0] = ['AS']
-    bj.reelStrips[1] = ['TH']
-    store.revealDone()
-    store.stop() // lock AS → reel 0
-    store.revealDone()
-    store.stop() // lock TH → reel 1, natural → phase 'gamble'
-    store.revealDone()
-  }
-
-  it('gambleCashOut books the naturalPay × ante payout and resolves', () => {
-    setLiveRand(mulberry32(1))
+  it('defaults the crash machine bet to 1 coin', () => {
     const store = freshStore()
     store.startSession(100_000)
-    store.selectMachine('lucky-21')
-    store.setBet(1)
-    dealToNatural(store)
-    const bj = store.machineStates['lucky-21']!.blackjackReel!
-    expect(bj.phase).toBe('gamble')
-    const expectedAmount = bj.gambleAmount
-    expect(expectedAmount).toBeGreaterThan(0)
-    const bankBefore = store.bankrollCents
-    const histBefore = store.history.length
-    store.gambleCashOut()
-    expect(bj.phase).toBe('resolved')
-    expect(store.spinning).toBe(true)
-    expect(store.history.length).toBe(histBefore + 1)
-    const rec = store.history.at(-1)!
-    expect(rec.payoutCents).toBe(expectedAmount * LUCKY_21.denominationCents)
-    expect(store.bankrollCents).toBe(bankBefore + rec.payoutCents)
-  })
-
-  it('gambleStop resolves the hand (either doubled or bust)', () => {
-    setLiveRand(mulberry32(7))
-    const store = freshStore()
-    store.startSession(100_000)
-    store.selectMachine('lucky-21')
-    store.setBet(1)
-    dealToNatural(store)
-    const bj = store.machineStates['lucky-21']!.blackjackReel!
-    const base = bj.gambleAmount
-    expect(base).toBeGreaterThan(0)
-    const histBefore = store.history.length
-    store.gambleStop()
-    // Either win (gamble) or bust (resolved): both are valid outcomes
-    if (bj.phase === 'gamble') {
-      expect(bj.gambleAmount).toBe(base * 2)
-      expect(bj.gambleCount).toBe(1)
-      expect(store.history.length).toBe(histBefore) // not resolved yet; no new record
-    } else {
-      expect(bj.phase).toBe('resolved')
-      // bust resolves immediately and books a record; win at cap also resolves and books
-      expect(store.history.length).toBe(histBefore + 1)
-    }
-    expect(store.spinning).toBe(true)
-  })
-
-  it('gambleCashOut is a no-op while spinning or not in gamble phase', () => {
-    setLiveRand(mulberry32(2))
-    const store = freshStore()
-    store.startSession(100_000)
-    store.selectMachine('lucky-21')
-    store.setBet(1)
-    store.deal()
-    store.revealDone()
-    // phase is 'spinning', not 'gamble' — gambleCashOut must no-op
-    const histBefore = store.history.length
-    store.gambleCashOut()
-    expect(store.history.length).toBe(histBefore)
-    expect(store.spinning).toBe(false)
-  })
-
-  it('gambleStop is a no-op when not in gamble phase', () => {
-    setLiveRand(mulberry32(3))
-    const store = freshStore()
-    store.startSession(100_000)
-    store.selectMachine('lucky-21')
-    store.setBet(1)
-    store.deal()
-    store.revealDone()
-    // phase is 'spinning' — gambleStop must no-op
-    const histBefore = store.history.length
-    store.gambleStop()
-    expect(store.history.length).toBe(histBefore)
-    expect(store.spinning).toBe(false)
+    store.selectMachine('flameout-21')
+    expect(store.currentBet).toBe(1) // demo-faithful $1 default
   })
 })
 
-describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
-  it('round-trips a mid-hand spinning state exactly', () => {
+describe('blackjack-reel sanitizeMachineState — Flameout 21', () => {
+  it('round-trips a mid-climb spinning state exactly', () => {
     const a = freshStore()
     a.startSession(50_000)
-    a.selectMachine('lucky-21')
-    // Simulate a state after 2 card reels stopped (idx=2, hand=[KS,7D])
-    // reelStrips must contain only valid deck ids or special Lucky-21 symbol ids —
-    // 'CARD' tokens are resolved to concrete deck cards at deal time and never persisted.
-    const midHandState = {
+    a.selectMachine('flameout-21')
+    // A state mid-climb (idx=3, one CLIMB landed). reelStrips hold only deck
+    // card ids (deal reels) or CLIMB/CRASH (climb reels); 'CARD' tokens are
+    // resolved to concrete deck cards at deal time and never persisted.
+    const midClimbState = {
       phase: 'spinning' as const,
-      reelStrips: [['KS', 'QH'], ['7D', 'AS'], ['MX2', 'BUST'], ['BUST', 'MX3'], ['MX5', 'BUST']],
-      landed: ['KS', '7D', null, null, null],
-      idx: 2,
+      reelStrips: [['KS'], ['7D'], ['CLIMB', 'CRASH'], ['CLIMB', 'CRASH'], ['CLIMB', 'CRASH']],
+      landed: ['KS', '7D', 'CLIMB', null, null],
+      idx: 3,
       hand: ['KS', '7D'],
-      hard: 17,
-      aces: 0,
-      multSum: 0,
-      bestTotal: 17,
+      velocity: 1.33,
+      multiplier: 1.2901,
+      crashed: false,
       natural: false,
-      busted: false,
-      bustBySymbol: false,
-      charlie: false,
-      ante: 2,
-      gambleAmount: 0,
-      gambleCount: 0
+      ante: 2
     }
-    a.machineStates['lucky-21']!.blackjackReel = midHandState
+    a.machineStates['flameout-21']!.blackjackReel = midClimbState
     a.saveToLocalStorage()
     const b = freshStore()
     expect(b.resume()).toBe(true)
-    expect(b.machineStates['lucky-21']!.blackjackReel).toEqual(midHandState)
+    expect(b.machineStates['flameout-21']!.blackjackReel).toEqual(midClimbState)
   })
 
   it('restores idle phase if blackjackReel blob is corrupt', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
-      currentMachineId: 'lucky-21',
+      currentMachineId: 'flameout-21',
       machineStates: {
-        'lucky-21': {
+        'flameout-21': {
           progressive: null,
           videoFeature: null,
           pachislo: null,
@@ -821,14 +724,10 @@ describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
             landed: ['not-a-symbol', 999],
             idx: 'lots',
             hand: ['evil'],
-            hard: -5,
-            aces: 'yes',
-            multSum: -5,
-            bestTotal: null,
+            velocity: 'fast',
+            multiplier: null,
+            crashed: null,
             natural: null,
-            busted: null,
-            bustBySymbol: undefined,
-            charlie: undefined,
             ante: 99
           }
         }
@@ -839,8 +738,7 @@ describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
     }))
     const store = freshStore()
     expect(store.resume()).toBe(true)
-    const bj = store.machineStates['lucky-21']!.blackjackReel!
-    // corrupt data → falls back to fresh idle state
+    const bj = store.machineStates['flameout-21']!.blackjackReel!
     expect(bj.phase).toBe('idle')
     expect(bj.hand).toEqual([])
     expect(bj.ante).toBe(0)
@@ -851,26 +749,22 @@ describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
-      currentMachineId: 'lucky-21',
+      currentMachineId: 'flameout-21',
       machineStates: {
-        'lucky-21': {
+        'flameout-21': {
           progressive: null,
           videoFeature: null,
           pachislo: null,
           blackjackReel: {
             phase: 'spinning',
-            reelStrips: [['KS'], ['7D'], ['MX2'], ['MX3'], ['BUST']],
+            reelStrips: [['KS'], ['7D'], ['CLIMB'], ['CRASH'], ['CLIMB']],
             landed: ['KS', 'BADCARD', null, null, null], // BADCARD is not a valid id
             idx: 2,
             hand: ['KS', '7D'],
-            hard: 17,
-            aces: 0,
-            multSum: 0,
-            bestTotal: 17,
+            velocity: 1.33,
+            multiplier: 0.97,
+            crashed: false,
             natural: false,
-            busted: false,
-            bustBySymbol: false,
-            charlie: false,
             ante: 1
           }
         }
@@ -881,17 +775,16 @@ describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
     }))
     const store = freshStore()
     expect(store.resume()).toBe(true)
-    // should have fallen back to fresh idle
-    expect(store.machineStates['lucky-21']!.blackjackReel!.phase).toBe('idle')
+    expect(store.machineStates['flameout-21']!.blackjackReel!.phase).toBe('idle')
   })
 
   it('rejects a state with ante > maxCoins', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
-      currentMachineId: 'lucky-21',
+      currentMachineId: 'flameout-21',
       machineStates: {
-        'lucky-21': {
+        'flameout-21': {
           progressive: null,
           videoFeature: null,
           pachislo: null,
@@ -901,15 +794,11 @@ describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
             landed: [null, null, null, null, null],
             idx: 0,
             hand: [],
-            hard: 0,
-            aces: 0,
-            multSum: 0,
-            bestTotal: 0,
+            velocity: 0,
+            multiplier: 1,
+            crashed: false,
             natural: false,
-            busted: false,
-            bustBySymbol: false,
-            charlie: false,
-            ante: 999 // > maxCoins (5)
+            ante: 999 // > maxCoins (20)
           }
         }
       },
@@ -919,79 +808,33 @@ describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
     }))
     const store = freshStore()
     expect(store.resume()).toBe(true)
-    expect(store.machineStates['lucky-21']!.blackjackReel!.phase).toBe('idle')
-    expect(store.machineStates['lucky-21']!.blackjackReel!.ante).toBe(0)
+    expect(store.machineStates['flameout-21']!.blackjackReel!.phase).toBe('idle')
+    expect(store.machineStates['flameout-21']!.blackjackReel!.ante).toBe(0)
   })
 
-  it('round-trips a resolved (bust) state exactly', () => {
-    const bustState = {
+  it('round-trips a resolved (crash) state exactly', () => {
+    const crashState = {
       phase: 'resolved' as const,
-      reelStrips: [['AS'], ['KS'], ['MX2', 'BUST'], ['BUST'], ['MX5']],
-      landed: ['AS', 'KS', 'BUST', null, null],
-      idx: 3,
-      hand: ['AS', 'KS'],
-      hard: 11,
-      aces: 1,
-      multSum: 0,
-      bestTotal: 21,
-      natural: true,
-      busted: true,
-      bustBySymbol: true,
-      charlie: false,
-      ante: 5,
-      gambleAmount: 0,
-      gambleCount: 0
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      v: 1,
-      bankrollCents: 5000,
-      currentMachineId: 'lucky-21',
-      machineStates: {
-        'lucky-21': {
-          progressive: null,
-          videoFeature: null,
-          pachislo: null,
-          blackjackReel: bustState
-        }
-      },
-      history: [],
-      stats: null,
-      settings: null
-    }))
-    const store = freshStore()
-    expect(store.resume()).toBe(true)
-    expect(store.machineStates['lucky-21']!.blackjackReel).toEqual(bustState)
-  })
-
-  it('round-trips a mid-gamble state with amount/count intact', () => {
-    const gambleState = {
-      phase: 'gamble' as const,
-      reelStrips: [['AS'], ['TH'], ['MX2', 'BUST'], ['BUST', 'MX3'], ['MX5', 'BUST']],
-      landed: ['AS', 'TH', null, null, null],
+      reelStrips: [['AS'], ['KS'], ['CRASH', 'CLIMB'], ['CLIMB'], ['CLIMB']],
+      landed: ['AS', 'KS', 'CRASH', null, null],
       idx: 2,
-      hand: ['AS', 'TH'],
-      hard: 11,
-      aces: 1,
-      multSum: 0,
-      bestTotal: 21,
+      hand: ['AS', 'KS'],
+      velocity: 2.0,
+      multiplier: 2.0,
+      crashed: true,
       natural: true,
-      busted: false,
-      bustBySymbol: false,
-      charlie: false,
-      ante: 3,
-      gambleAmount: 15,
-      gambleCount: 1
+      ante: 5
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
-      currentMachineId: 'lucky-21',
+      currentMachineId: 'flameout-21',
       machineStates: {
-        'lucky-21': {
+        'flameout-21': {
           progressive: null,
           videoFeature: null,
           pachislo: null,
-          blackjackReel: gambleState
+          blackjackReel: crashState
         }
       },
       history: [],
@@ -1000,53 +843,6 @@ describe('blackjack-reel sanitizeMachineState — Lucky 21', () => {
     }))
     const store = freshStore()
     expect(store.resume()).toBe(true)
-    const bj = store.machineStates['lucky-21']!.blackjackReel!
-    expect(bj.phase).toBe('gamble')
-    expect(bj.gambleAmount).toBe(15)
-    expect(bj.gambleCount).toBe(1)
-    expect(bj.natural).toBe(true)
-    expect(bj.ante).toBe(3)
-  })
-
-  it('clamps gambleCount to GAMBLE_CAP on restore', () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      v: 1,
-      bankrollCents: 5000,
-      currentMachineId: 'lucky-21',
-      machineStates: {
-        'lucky-21': {
-          progressive: null,
-          videoFeature: null,
-          pachislo: null,
-          blackjackReel: {
-            phase: 'gamble',
-            reelStrips: [['AS'], ['TH'], ['MX2'], ['BUST'], ['MX5']],
-            landed: ['AS', 'TH', null, null, null],
-            idx: 2,
-            hand: ['AS', 'TH'],
-            hard: 11,
-            aces: 1,
-            multSum: 0,
-            bestTotal: 21,
-            natural: true,
-            busted: false,
-            bustBySymbol: false,
-            charlie: false,
-            ante: 1,
-            gambleAmount: 5,
-            gambleCount: 99
-          }
-        }
-      },
-      history: [],
-      stats: null,
-      settings: null
-    }))
-    const store = freshStore()
-    expect(store.resume()).toBe(true)
-    const bj = store.machineStates['lucky-21']!.blackjackReel!
-    expect(bj.phase).toBe('gamble')
-    expect(bj.gambleCount).toBe(GAMBLE_CAP) // clamped to GAMBLE_CAP
-    expect(bj.gambleAmount).toBe(5)
+    expect(store.machineStates['flameout-21']!.blackjackReel).toEqual(crashState)
   })
 })

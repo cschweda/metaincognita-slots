@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { exactRtp } from '~/engine'
+import { crashOdds } from '~/engine/blackjackReelRtp'
 import { pachisloBonusValues } from '~/engine/pachisloRtp'
 import { formatOdds, formatPercent } from '~/utils/format'
 import type { ExactRtpReport, MachineDef } from '~/engine'
@@ -73,11 +74,11 @@ const bonusValues = computed(() => {
 // in (out/IN), not credits paid — so don't mislabel it "Avg pay/coin".
 const payColLabel = computed(() => def.value?.family === 'pachislo' ? 'Value ÷ IN' : 'Avg pay/coin')
 
-/** Human-readable label for a breakdown entry ID (e.g. "total-20" → "Total 20"). */
+/** Human-readable label for a blackjack-reel (crash) breakdown entry ID. */
 function breakdownLabel(entryId: string): string {
-  if (entryId === 'bust') return 'Bust (loss)'
-  if (entryId === 'charlie') return 'Five-Card Charlie'
-  if (entryId.startsWith('total-')) return `Total ${entryId.slice(6)}`
+  if (entryId === 'crash') return 'Crash (loss)'
+  if (entryId === 'cash') return 'Cashed out'
+  if (entryId === 'topped') return 'Topped out (all five)'
   return entryId
 }
 
@@ -117,19 +118,14 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
         { id: 'reg', text: 'REG lined (then 8 guaranteed wins)', pay: `${d.pays.bonusLined}` },
         { id: 'big', text: 'BIG lined (then 3 rounds of 8)', pay: `${d.pays.bonusLined}` }
       ]
-    case 'blackjack-reel':
+    case 'blackjack-reel': {
+      const reels = crashOdds(d) // [reel3, reel4, reel5]
       return [
-        ...d.paytable.map(e => ({
-          id: `total-${e.total}`,
-          text: `Hand total ${e.total}`,
-          pay: `${e.pay} per coin`
-        })),
-        {
-          id: 'charlie-bonus',
-          text: `Five-Card Charlie bonus (added on top)`,
-          pay: `+${d.charlieMultiplier} per coin`
-        }
+        ...d.launchTable.map(e => ({ id: `launch-${e.atLeast}`, text: `Launch · total ≥ ${e.atLeast}`, pay: `×${e.mult.toFixed(2)}` })),
+        { id: 'natural-launch', text: 'Launch · natural 21', pay: `×${d.naturalLaunch.toFixed(2)}` },
+        ...reels.map((p, i) => ({ id: `crash-${i + 3}`, text: `Reel ${i + 3} crash chance`, pay: `${(p * 100).toFixed(0)}%` }))
       ]
+    }
     default: {
       const exhaustive: never = d
       throw new Error(`unhandled family: ${(exhaustive as MachineDef).family}`)
@@ -383,7 +379,12 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
               RTP-share column sums to the exact RTP. Every figure derives from the machine definition at render time.
             </p>
 
-            <!-- Lucky 21 strategy matrix: rebuilt in Task 12 -->
+            <p
+              v-if="def.family === 'blackjack-reel'"
+              class="text-[10px] text-neutral-400"
+            >
+              Optimal play: climb while the crash odds keep the push +EV; cash once they don't.
+            </p>
           </template>
         </div>
         <!-- PAR sheet explainer — always visible below the tab content -->

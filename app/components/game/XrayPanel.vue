@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { nearMisses } from '~/engine'
-import { decisionEvs, blackjackReelExactRtp } from '~/engine/blackjackReelRtp'
+import { decisionEvs, blackjackReelExactRtp, crashOdds } from '~/engine/blackjackReelRtp'
 import { floorIntel } from '~/utils/floorIntel'
 import { formatPercent } from '~/utils/format'
 import type { BlackjackReelMachineDef } from '~/engine/types'
@@ -76,49 +76,35 @@ const internals = computed(() => {
 })
 
 /**
- * Live EV(cash) vs EV(continue) for blackjack-reel hands in the 'spinning' phase.
- * Returns null when not applicable (other families or idle/resolved state).
+ * Live crash cash-vs-push surface for blackjack-reel hands in the 'spinning'
+ * phase, expressed in dollars at the live bet. Null when not applicable (other
+ * families or not at a climb decision).
  */
 const bjEv = computed(() => {
   const d = def.value
   if (d === null || d.family !== 'blackjack-reel') return null
   const bj = store.currentState?.blackjackReel
   if (bj === null || bj === undefined || bj.phase !== 'spinning') return null
-  return decisionEvs(d as BlackjackReelMachineDef, bj)
+  const ev = decisionEvs(d as BlackjackReelMachineDef, bj)
+  if (ev === null) return null
+  const toDollars = (perCoin: number): string => `$${(perCoin * bj.ante * d.denominationCents / 100).toFixed(2)}`
+  return { cash: toDollars(ev.evCash), push: toDollars(ev.evContinue), action: ev.action }
 })
 
 /**
- * Bust rate and Five-Card Charlie rate from the exact RTP report.
- * Shown when the hand is not in the 'spinning' phase (idle or resolved).
+ * Crash odds + RTP from the exact RTP report. Shown when the hand is not in the
+ * 'spinning' phase (idle or resolved); the live EV panel takes over otherwise.
  */
 const bjOdds = computed(() => {
   const d = def.value
   if (d === null || d.family !== 'blackjack-reel') return null
   const bj = store.currentState?.blackjackReel
-  if (bj?.phase === 'spinning') return null // EV panel takes over
-  if (bj?.phase === 'gamble') return null // gamble fair-EV panel takes over
+  if (bj?.phase === 'spinning') return null // the live EV panel takes over
   const report = blackjackReelExactRtp(d as BlackjackReelMachineDef)
-  const charlieBucket = report.breakdown.find(b => b.entryId === 'charlie')
-  const bustBucket = report.breakdown.find(b => b.entryId === 'bust')
   return {
-    bustRate: bustBucket?.probability ?? 0,
-    charlieRate: charlieBucket?.probability ?? 0,
-    rtpPerCoin: report.rtpPerCoin
-  }
-})
-
-/**
- * Blackjack double-or-nothing bonus: the fair-EV honesty surface. The gamble is
- * a true 50/50, so EV(stop) == the amount on the line — no edge, only variance.
- * Shown only during the 'gamble' phase.
- */
-const bjGamble = computed(() => {
-  const d = def.value
-  if (d === null || d.family !== 'blackjack-reel') return null
-  const bj = store.currentState?.blackjackReel
-  if (bj === null || bj === undefined || bj.phase !== 'gamble') return null
-  return {
-    evDollars: `$${(bj.gambleAmount * d.denominationCents / 100).toFixed(2)}`
+    rtpPerCoin: report.rtpPerCoin,
+    crashRate: report.breakdown.find(b => b.entryId === 'crash')?.probability ?? 0,
+    perReel: crashOdds(d as BlackjackReelMachineDef) // [reel3, reel4, reel5]
   }
 })
 </script>
@@ -303,43 +289,14 @@ const bjGamble = computed(() => {
       </table>
     </div>
 
-    <!-- Blackjack double-or-nothing bonus: fair-EV honesty surface -->
+    <!-- Flameout 21: live cash-now vs push-the-reel EV during 'spinning' phase -->
     <div
-      v-if="bjGamble"
-      class="space-y-1"
-      data-test="bj-gamble-panel"
-    >
-      <div class="text-[10px] text-amber-400 uppercase tracking-wider">
-        Double-or-nothing — fair 50/50
-      </div>
-      <table class="w-full font-mono text-[11px]">
-        <tbody class="divide-y divide-neutral-800/50">
-          <tr>
-            <th
-              scope="row"
-              class="py-0.5 text-left font-normal text-neutral-400"
-            >
-              EV of stopping
-            </th>
-            <td class="py-0.5 text-right text-emerald-400 font-bold">
-              {{ bjGamble.evDollars }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p class="text-[10px] text-neutral-400">
-        The casino's gamble feature adds no edge — it only adds variance.
-      </p>
-    </div>
-
-    <!-- Blackjack-reel: live EV(hit) vs EV(stand) during 'spinning' phase -->
-    <div
-      v-else-if="bjEv"
+      v-if="bjEv"
       class="space-y-1"
       data-test="bj-ev-panel"
     >
       <div class="text-[10px] text-amber-400 uppercase tracking-wider">
-        The casino never shows you this
+        The casino never shows you this live EV
       </div>
       <table class="w-full font-mono text-[11px]">
         <tbody class="divide-y divide-neutral-800/50">
@@ -348,13 +305,13 @@ const bjGamble = computed(() => {
               scope="row"
               class="py-0.5 text-left font-normal text-neutral-400"
             >
-              EV(cash)
+              Cash now
             </th>
             <td
               class="py-0.5 text-right"
               :class="bjEv.action === 'cash' ? 'text-emerald-400 font-bold' : 'text-neutral-300'"
             >
-              {{ bjEv.evCash.toFixed(4) }}
+              {{ bjEv.cash }}
               <span
                 v-if="bjEv.action === 'cash'"
                 class="text-emerald-400"
@@ -366,13 +323,13 @@ const bjGamble = computed(() => {
               scope="row"
               class="py-0.5 text-left font-normal text-neutral-400"
             >
-              EV(continue)
+              Push the reel (EV)
             </th>
             <td
               class="py-0.5 text-right"
               :class="bjEv.action === 'continue' ? 'text-amber-300 font-bold' : 'text-neutral-300'"
             >
-              {{ bjEv.evContinue.toFixed(4) }}
+              {{ bjEv.push }}
               <span
                 v-if="bjEv.action === 'continue'"
                 class="text-amber-300"
@@ -382,22 +339,23 @@ const bjGamble = computed(() => {
         </tbody>
       </table>
       <p class="text-[10px] text-neutral-400">
-        EV per coin wagered under this machine's optimal policy. Optimal action:
+        Optimal call:
         <span
           class="font-bold"
           :class="bjEv.action === 'continue' ? 'text-amber-300' : 'text-emerald-400'"
-        >{{ bjEv.action.toUpperCase() }}</span>
+        >{{ bjEv.action === 'cash' ? 'cash' : 'push' }}</span>
+        — the casino never shows you this live EV.
       </p>
     </div>
 
-    <!-- Blackjack-reel: idle/resolved — show bust + charlie odds -->
+    <!-- Flameout 21: idle/resolved — show RTP + crash odds -->
     <div
       v-else-if="bjOdds"
       class="space-y-1"
       data-test="bj-odds-panel"
     >
       <div class="text-[10px] text-neutral-400 uppercase tracking-wider">
-        Lucky 21 odds (optimal play)
+        Flameout 21 odds (optimal play)
       </div>
       <table class="w-full font-mono text-[11px]">
         <tbody class="divide-y divide-neutral-800/50">
@@ -406,32 +364,32 @@ const bjGamble = computed(() => {
               scope="row"
               class="py-0.5 text-left font-normal text-neutral-400"
             >
-              Bust rate
-            </th>
-            <td class="py-0.5 text-right text-neutral-300">
-              {{ formatPercent(bjOdds.bustRate, 2) }}
-            </td>
-          </tr>
-          <tr>
-            <th
-              scope="row"
-              class="py-0.5 text-left font-normal text-neutral-400"
-            >
-              Five-Card Charlie
-            </th>
-            <td class="py-0.5 text-right text-neutral-300">
-              {{ formatPercent(bjOdds.charlieRate, 2) }}
-            </td>
-          </tr>
-          <tr>
-            <th
-              scope="row"
-              class="py-0.5 text-left font-normal text-neutral-400"
-            >
-              Exact RTP/coin
+              RTP
             </th>
             <td class="py-0.5 text-right text-emerald-400">
               {{ formatPercent(bjOdds.rtpPerCoin, 4) }}
+            </td>
+          </tr>
+          <tr>
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
+              Crash before you cash
+            </th>
+            <td class="py-0.5 text-right text-neutral-300">
+              {{ formatPercent(bjOdds.crashRate, 2) }}
+            </td>
+          </tr>
+          <tr>
+            <th
+              scope="row"
+              class="py-0.5 text-left font-normal text-neutral-400"
+            >
+              Reel 3/4/5 crash
+            </th>
+            <td class="py-0.5 text-right text-neutral-300">
+              {{ bjOdds.perReel.map(p => formatPercent(p)).join(' · ') }}
             </td>
           </tr>
         </tbody>

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { addCoinToProgressive, freshBlackjackState, initMachineState, nextSpinCost, spin, validateMachineDef } from '~/engine'
 import type { BlackjackReelMachineDef, MachineDef, MachineSessionState, PachisloFlag, PachisloBonusState, SpinOutcome } from '~/engine'
 import { spinPachislo } from '~/engine/pachislo'
-import { dealReels, stopReel, cashOut as bjCashOut, gambleStop as bjGambleStop, gambleCashOut as bjGambleCashOut, GAMBLE_CAP } from '~/engine/blackjackReel'
+import { dealReels, stopReel, cashOut as bjCashOut } from '~/engine/blackjackReel'
 import { FLOOR } from '~/machines'
 import { liveRand } from '~/utils/liveRand'
 
@@ -51,7 +51,10 @@ function emptyStats(): SessionStats {
 }
 
 function defaultSettings(): SlotsSettings {
-  return { xray: false, betsByMachine: Object.fromEntries(FLOOR.map(def => [def.id, def.maxCoins])) }
+  return {
+    xray: false,
+    betsByMachine: Object.fromEntries(FLOOR.map(def => [def.id, def.family === 'blackjack-reel' ? 1 : def.maxCoins]))
+  }
 }
 
 function asFiniteNumber(value: unknown, fallback: number): number {
@@ -190,125 +193,62 @@ function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionStat
     }
   }
 
-  // blackjack-reel: validate and restore a persisted BlackjackReelSessionState
+  // blackjack-reel (Flameout 21 crash): validate and restore a persisted state
   if (def.family === 'blackjack-reel' && r.blackjackReel !== null && typeof r.blackjackReel === 'object') {
     const bj = r.blackjackReel as Record<string, unknown>
     const bjDef = def as BlackjackReelMachineDef
-
-    // Build the complete set of valid symbol ids for this def (deck cards + specials)
     const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K']
     const SUITS = ['S', 'H', 'D', 'C']
     const deckIds = new Set<string>()
     for (const suit of SUITS) for (const rank of RANKS) deckIds.add(`${rank}${suit}`)
-    const specialIds = new Set<string>(Object.keys(bjDef.symbols))
-    const isValidSym = (s: unknown): s is string =>
-      typeof s === 'string' && (deckIds.has(s) || specialIds.has(s))
-
-    const phase = bj.phase
-    if (phase !== 'idle' && phase !== 'spinning' && phase !== 'resolved' && phase !== 'gamble') {
+    const reelSyms = new Set<string>([bjDef.climbSymbol, bjDef.crashSymbol])
+    const isCard = (s: unknown): s is string => typeof s === 'string' && deckIds.has(s)
+    const isReelSym = (s: unknown): s is string => isCard(s) || (typeof s === 'string' && reelSyms.has(s))
+    const bad = (): MachineSessionState => {
       fresh.blackjackReel = freshBlackjackState()
       return fresh
     }
 
-    // reelStrips: array of valid symbol id arrays (or empty [] for idle phase)
-    const rawStrips = bj.reelStrips
+    const phase = bj.phase
+    if (phase !== 'idle' && phase !== 'spinning' && phase !== 'resolved') return bad()
+
     let reelStrips: string[][] = []
     if (phase !== 'idle') {
-      if (!Array.isArray(rawStrips)) {
-        fresh.blackjackReel = freshBlackjackState()
-        return fresh
-      }
-      const mapped: (string[] | null)[] = (rawStrips as unknown[]).map((strip) => {
+      if (!Array.isArray(bj.reelStrips)) return bad()
+      const mapped = (bj.reelStrips as unknown[]).map((strip) => {
         if (!Array.isArray(strip)) return null
-        const validated = (strip as unknown[]).filter(isValidSym)
-        return validated.length === (strip as unknown[]).length ? validated : null
+        const v = (strip as unknown[]).filter(isReelSym)
+        return v.length === (strip as unknown[]).length ? v : null
       })
-      if (mapped.some(s => s === null)) {
-        fresh.blackjackReel = freshBlackjackState()
-        return fresh
-      }
+      if (mapped.some(s => s === null)) return bad()
       reelStrips = mapped as string[][]
     }
 
-    // landed: array of 5 (valid SymbolId or null)
-    const rawLanded = bj.landed
-    if (!Array.isArray(rawLanded) || rawLanded.length !== 5) {
-      fresh.blackjackReel = freshBlackjackState()
-      return fresh
-    }
-    const landed = (rawLanded as unknown[]).map((s) => {
-      if (s === null) return null
-      return isValidSym(s) ? s : 'INVALID'
-    })
-    if (landed.some(s => s === 'INVALID')) {
-      fresh.blackjackReel = freshBlackjackState()
-      return fresh
-    }
+    if (!Array.isArray(bj.landed) || (bj.landed as unknown[]).length !== 5) return bad()
+    const landed = (bj.landed as unknown[]).map(s => (s === null ? null : isReelSym(s) ? s : 'INVALID'))
+    if (landed.some(s => s === 'INVALID')) return bad()
 
-    // idx: integer 0..5
     const idx = bj.idx
-    if (!Number.isInteger(idx) || (idx as number) < 0 || (idx as number) > 5) {
-      fresh.blackjackReel = freshBlackjackState()
-      return fresh
-    }
+    if (!Number.isInteger(idx) || (idx as number) < 0 || (idx as number) > 5) return bad()
+    if (!Array.isArray(bj.hand) || !(bj.hand as unknown[]).every(isCard)) return bad()
 
-    // hand: array of valid symbol ids
-    const rawHand = bj.hand
-    if (!Array.isArray(rawHand)) {
-      fresh.blackjackReel = freshBlackjackState()
-      return fresh
-    }
-    const hand = rawHand as unknown[]
-    if (!hand.every(isValidSym)) {
-      fresh.blackjackReel = freshBlackjackState()
-      return fresh
-    }
-
-    // numeric fields
-    const hard = asFiniteNumber(bj.hard, -1)
-    const aces = asFiniteNumber(bj.aces, -1)
-    const multSum = asFiniteNumber(bj.multSum, -1)
-    const bt = asFiniteNumber(bj.bestTotal, -1)
+    const velocity = asFiniteNumber(bj.velocity, -1)
+    const multiplier = asFiniteNumber(bj.multiplier, -1)
     const ante = asFiniteNumber(bj.ante, -1)
-    if (
-      !Number.isInteger(hard) || hard < 0
-      || !Number.isInteger(aces) || aces < 0
-      || !Number.isInteger(multSum) || multSum < 0
-      || !Number.isInteger(bt) || bt < 0
-      || !Number.isInteger(ante) || ante < 0 || ante > bjDef.maxCoins
-    ) {
-      fresh.blackjackReel = freshBlackjackState()
-      return fresh
-    }
-
-    // booleans
-    if (
-      typeof bj.natural !== 'boolean'
-      || typeof bj.busted !== 'boolean'
-      || typeof bj.bustBySymbol !== 'boolean'
-      || typeof bj.charlie !== 'boolean'
-    ) {
-      fresh.blackjackReel = freshBlackjackState()
-      return fresh
-    }
+    if (velocity < 0 || multiplier < 0 || !Number.isInteger(ante) || ante < 0 || ante > bjDef.maxCoins) return bad()
+    if (typeof bj.crashed !== 'boolean' || typeof bj.natural !== 'boolean') return bad()
 
     fresh.blackjackReel = {
-      phase: phase as 'idle' | 'spinning' | 'resolved' | 'gamble',
-      reelStrips: reelStrips as string[][],
+      phase: phase as 'idle' | 'spinning' | 'resolved',
+      reelStrips,
       landed: landed as (string | null)[],
       idx: idx as number,
-      hand: hand as string[],
-      hard: hard,
-      aces: aces,
-      multSum: multSum,
-      bestTotal: bt,
+      hand: bj.hand as string[],
+      velocity,
+      multiplier,
+      crashed: bj.crashed as boolean,
       natural: bj.natural as boolean,
-      busted: bj.busted as boolean,
-      bustBySymbol: bj.bustBySymbol as boolean,
-      charlie: bj.charlie as boolean,
-      ante: ante,
-      gambleAmount: asNonNegativeInt(bj.gambleAmount, 0),
-      gambleCount: Math.min(asNonNegativeInt(bj.gambleCount, 0), GAMBLE_CAP)
+      ante
     }
   }
 
@@ -587,8 +527,8 @@ export const useSlotsStore = defineStore('slots', {
      * accounting is exactly identical across all families.
      */
     bookOutcome(def: MachineDef, out: SpinOutcome): void {
-      const inCents = out.coinsIn * def.denominationCents
-      const outCents = out.totalPayout * def.denominationCents
+      const inCents = Math.round(out.coinsIn * def.denominationCents)
+      const outCents = Math.round(out.totalPayout * def.denominationCents)
       this.bankrollCents += outCents - inCents
 
       this.history.push({
@@ -623,7 +563,7 @@ export const useSlotsStore = defineStore('slots', {
       }
     },
 
-    // ── Lucky 21 interactive actions ──────────────────────────────────────
+    // ── Flameout 21 interactive actions ───────────────────────────────────
 
     /**
      * Deal two cards for the current blackjack-reel machine. Only fires when:
@@ -667,7 +607,8 @@ export const useSlotsStore = defineStore('slots', {
     /**
      * Stop the next reel for the current in-progress hand. Only fires when
      * phase === 'spinning'. Free (coinsIn = 0). If the stop resolves the hand
-     * (bust or Five-Card Charlie) the payout is booked immediately.
+     * (a CRASH, or topping out after the fifth reel) the payout is booked
+     * immediately; a surviving climb stays spinning with no record.
      */
     stop(): void {
       const def = this.currentDef
@@ -684,10 +625,10 @@ export const useSlotsStore = defineStore('slots', {
       const out = stopReel(def as BlackjackReelMachineDef, state, liveRand)
       this.lastOutcome = out
 
-      // stopReel may mutate bj.phase to 'resolved' (bust or charlie)
+      // stopReel may mutate bj.phase to 'resolved' (crash or topped out)
       const bjPhase: string = state.blackjackReel!.phase
       if (bjPhase === 'resolved') {
-        // Hand ended (bust or charlie): book the payout now.
+        // Hand ended (crash or topped out): book the payout now.
         this.bookOutcome(def, out)
         this.liveAnnouncement = this.describeOutcome(def, out)
       }
@@ -695,8 +636,9 @@ export const useSlotsStore = defineStore('slots', {
     },
 
     /**
-     * Cash out: resolve the hand at its current best total. Only fires when
-     * phase === 'spinning'. Free (coinsIn = 0). Books the payout.
+     * Cash out: bank bet × multiplier at the current climb. Only fires when
+     * phase === 'spinning' and the first card has landed (idx >= 1). Free
+     * (coinsIn = 0). Books the payout.
      */
     cashOut(): void {
       const def = this.currentDef
@@ -707,6 +649,7 @@ export const useSlotsStore = defineStore('slots', {
         || def.family !== 'blackjack-reel'
         || state.blackjackReel === null
         || state.blackjackReel.phase !== 'spinning'
+        || state.blackjackReel.idx < 1
       ) return
 
       this.spinning = true
@@ -717,51 +660,9 @@ export const useSlotsStore = defineStore('slots', {
       this.saveToLocalStorage()
     },
 
-    /** Blackjack-bonus: STOP the double-or-nothing reel (fair 50/50). */
-    gambleStop(): void {
-      const def = this.currentDef
-      const state = this.currentState
-      if (
-        def === null || state === null
-        || this.phase !== 'playing' || this.spinning
-        || def.family !== 'blackjack-reel'
-        || state.blackjackReel === null
-        || state.blackjackReel.phase !== 'gamble'
-        || state.blackjackReel.gambleCount >= GAMBLE_CAP
-      ) return
-      this.spinning = true
-      const out = bjGambleStop(def as BlackjackReelMachineDef, state, liveRand)
-      this.lastOutcome = out
-      const bjPhaseAfterGamble: string = state.blackjackReel!.phase
-      if (bjPhaseAfterGamble === 'resolved') {
-        this.bookOutcome(def, out)
-        this.liveAnnouncement = this.describeOutcome(def, out)
-      }
-      this.saveToLocalStorage()
-    },
-
-    /** Blackjack-bonus: keep the guaranteed amount without spinning. */
-    gambleCashOut(): void {
-      const def = this.currentDef
-      const state = this.currentState
-      if (
-        def === null || state === null
-        || this.phase !== 'playing' || this.spinning
-        || def.family !== 'blackjack-reel'
-        || state.blackjackReel === null
-        || state.blackjackReel.phase !== 'gamble'
-      ) return
-      this.spinning = true
-      const out = bjGambleCashOut(def as BlackjackReelMachineDef, state)
-      this.bookOutcome(def, out)
-      this.lastOutcome = out
-      this.liveAnnouncement = this.describeOutcome(def, out)
-      this.saveToLocalStorage()
-    },
-
     /**
-     * Return a resolved Lucky 21 hand to idle (the attract spin), ready for a
-     * fresh deal — powers the result modal's "Play Again". No charge: the next
+     * Return a resolved Flameout 21 hand to idle (the attract spin), ready for
+     * a fresh deal — powers the result card's "Play Again". No charge: the next
      * STOP deals and charges the ante (matches the demo's reset()).
      */
     resetHand(): void {
@@ -779,6 +680,15 @@ export const useSlotsStore = defineStore('slots', {
     },
 
     describeOutcome(def: MachineDef, out: SpinOutcome): string {
+      if (def.family === 'blackjack-reel') {
+        const dollars = (credits: number): string => `$${(credits * def.denominationCents / 100).toFixed(2)}`
+        for (const e of out.featureEvents) {
+          if (e.type === 'crash') return `Flamed out on reel ${e.reel + 1} at ×${e.multiplier.toFixed(2)} — lost the bet. Balance ${dollars(this.bankrollCents / def.denominationCents)}.`
+          if (e.type === 'cash-out') return `Cashed out at ×${e.multiplier.toFixed(2)} — banked ${dollars(out.totalPayout)}. Balance ${dollars(this.bankrollCents / def.denominationCents)}.`
+          if (e.type === 'topped-out') return `Topped out at ×${e.multiplier.toFixed(2)} — banked ${dollars(out.totalPayout)}! Balance ${dollars(this.bankrollCents / def.denominationCents)}.`
+        }
+        return 'Dealt.'
+      }
       const parts: string[] = []
       if (out.totalPayout > 0) {
         parts.push(`Won ${out.totalPayout.toLocaleString('en-US')} credits.`)

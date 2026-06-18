@@ -1,28 +1,21 @@
 // app/composables/useBlackjackReel.ts
-// Lucky 21 — stop-the-reels composable. Wraps the store, computes derived
-// display values (score, cash-out $, modal breakdown), and exposes the three
-// actions: deal / stop / cashOut.
+// Flameout 21 — crash composable. Wraps the store, derives the display values
+// (multiplier, velocity, cash-out $, altitude marks) and exposes deal/stop/cashOut.
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { bestTotal, handPayout, GAMBLE_CAP } from '~/engine/blackjackReel'
+import { handTotal } from '~/engine/blackjackReel'
 import type { BlackjackReelMachineDef } from '~/engine'
 import type { SymbolId } from '~/engine/types'
 
-export interface ModalOutcome {
-  kind: 'win' | 'bust' | 'charlie'
-  best: number
-  baseDollars: number
-  mult: number
-  totalDollars: string
+export interface ResultOutcome {
+  kind: 'cash' | 'topped' | 'crash'
+  title: string
+  amountDollars: string
+  multiplier: number
   sub: string
-  // true when this resolved hand came through the blackjack double-or-nothing
-  // bonus (a natural); the flow chips read the gamble result, not handPayout.
-  gamble?: boolean
-  // bust-only
-  bustLabel?: string
-  bustValue?: string
-  bustResult?: string
 }
+
+const BET_CHIPS = [1, 5, 10, 15, 20] as const
 
 export function useBlackjackReel() {
   const store = useSlotsStore()
@@ -33,7 +26,6 @@ export function useBlackjackReel() {
     if (def === null || state === null || def.family !== 'blackjack-reel') return null
     return state.blackjackReel
   })
-
   const def = computed(() => {
     const d = store.currentDef
     return d?.family === 'blackjack-reel' ? (d as BlackjackReelMachineDef) : null
@@ -43,99 +35,90 @@ export function useBlackjackReel() {
   const reelStrips = computed(() => bjState.value?.reelStrips ?? [])
   const landed = computed(() => bjState.value?.landed ?? [null, null, null, null, null])
   const idx = computed(() => bjState.value?.idx ?? 0)
+  const multiplier = computed(() => bjState.value?.multiplier ?? 1)
+  const velocity = computed(() => bjState.value?.velocity ?? 0)
+  const natural = computed(() => bjState.value?.natural ?? false)
+  const crashed = computed(() => bjState.value?.crashed ?? false)
+  const ante = computed(() => bjState.value?.ante ?? 0)
 
-  // ── score (dual display for soft hands) ────────────────────────────────────
-  const score = computed((): string => {
+  const multiplierDisplay = computed(() => `×${multiplier.value.toFixed(2)}`)
+  const velocityDisplay = computed(() => (idx.value < 2 ? '—' : `×${velocity.value.toFixed(2)}/reel`))
+
+  const handText = computed((): string => {
     const bj = bjState.value
-    const d = def.value
-    if (bj === null || d === null || bj.phase === 'idle') return '—'
-    if (bj.busted) return String(bj.hard)
-    const { total, isSoft, softLow } = bestTotal(bj.hard, bj.aces)
-    if (isSoft) return `${softLow} <span class="alt">or ${total}</span>`
-    return String(total)
+    if (bj === null || bj.hand.length === 0) return 'deal your hand'
+    const labels = bj.hand.map(c => c.slice(0, -1)).join(' ')
+    return bj.hand.length >= 2 ? `${labels} = ${handTotal(bj.hand)}` : labels
   })
 
-  // ── cash-out value ─────────────────────────────────────────────────────────
+  // coins on the line: the locked ante once dealt, else the selected bet
+  const betCoins = computed(() => (ante.value > 0 ? ante.value : store.currentBet))
   const cashValueCents = computed((): number => {
-    const bj = bjState.value
     const d = def.value
-    if (bj === null || d === null || bj.phase === 'idle') return 0
-    if (bj.busted) return 0
-    const pay = handPayout(d, bj)
-    return pay * d.denominationCents
+    return d === null ? 0 : Math.round(betCoins.value * multiplier.value * d.denominationCents)
   })
-
-  const cashValueDollars = computed((): string => {
-    const c = cashValueCents.value
-    return `$${(c / 100).toFixed(2)}`
-  })
-
-  // ── multSum for display ────────────────────────────────────────────────────
-  const multSum = computed(() => bjState.value?.multSum ?? 0)
-
-  // ── best total for logic ───────────────────────────────────────────────────
-  const bestTotalVal = computed((): number => bjState.value?.bestTotal ?? 0)
-
-  // ── ante (fixed bet) display ────────────────────────────────────────────────
+  const cashValueDollars = computed(() => `$${(cashValueCents.value / 100).toFixed(2)}`)
   const anteDollars = computed((): string => {
-    const bj = bjState.value
     const d = def.value
-    if (d === null) return '$0.00'
-    const coins = (bj !== null && bj.ante > 0) ? bj.ante : store.currentBet
-    return `$${(coins * d.denominationCents / 100).toFixed(2)}`
+    return d === null ? '$0.00' : `$${(betCoins.value * d.denominationCents / 100).toFixed(2)}`
   })
 
-  // ── live message line (mirrors the demo's setMsg states) ────────────────────
-  const message = computed((): { text: string, tone: '' | 'good' | 'bad' | 'gold' } => {
-    const bj = bjState.value
+  // Projected-altitude ladder for the climb reels (3,4,5) — the rocket marks.
+  // base = the multiplier at the deal (idx 2) = current / velocity^(climbs done).
+  const altitudeMarks = computed((): { reel: number, multiplier: number, dollars: string, reached: boolean }[] => {
     const d = def.value
-    if (bj === null || d === null || bj.phase === 'idle' || bj.phase === 'resolved') {
-      return { text: 'Press STOP to lock reel 1', tone: '' }
+    const bj = bjState.value
+    if (d === null || bj === null || bj.velocity <= 0) return []
+    const climbsDone = Math.max(0, bj.idx - 2)
+    const base = bj.multiplier / Math.pow(bj.velocity, climbsDone)
+    const out: { reel: number, multiplier: number, dollars: string, reached: boolean }[] = []
+    for (let k = 0; k < 3; k++) {
+      const m = base * Math.pow(bj.velocity, k + 1)
+      out.push({
+        reel: 3 + k,
+        multiplier: m,
+        dollars: `$${(betCoins.value * m * d.denominationCents / 100).toFixed(2)}`,
+        reached: climbsDone >= k + 1
+      })
     }
-    // spinning: describe the reel we just locked
-    const lastIdx = bj.idx - 1
-    if (lastIdx < 0) return { text: 'Press STOP to lock reel 1', tone: '' }
-    const sym = bj.landed[lastIdx] ?? null
+    return out
+  })
+
+  const betChips = computed(() => BET_CHIPS.map(c => ({ coins: c, dollars: `$${c}`, active: store.currentBet === c })))
+  function selectBet(coins: number): void {
+    store.setBet(coins)
+  }
+
+  const stopHint = computed((): string => {
+    const i = idx.value
+    if (i >= 5) return '—'
+    return i < 2 ? `deal ${i + 1}` : `climb reel ${i + 1}`
+  })
+
+  const message = computed((): { text: string, tone: '' | 'good' | 'bad' | 'gold' | 'cyan' } => {
+    const bj = bjState.value
+    if (bj === null || bj.phase !== 'spinning') return { text: 'Press STOP — the climb begins on reel 1', tone: '' }
+    const last = bj.idx - 1
+    if (last < 0) return { text: 'Press STOP — the climb begins on reel 1', tone: '' }
     const cash = cashValueDollars.value
-    if (sym !== null && sym in d.multiplierSymbols) {
-      return { text: `×${d.multiplierSymbols[sym]} multiplier — ${cash}`, tone: 'gold' }
+    if (last === 0) return { text: `First card → ×${bj.multiplier.toFixed(2)} · one more to set your hand`, tone: 'good' }
+    if (last === 1) {
+      return bj.natural
+        ? { text: `BLACKJACK ×${bj.multiplier.toFixed(0)}! steep ×${bj.velocity.toFixed(2)}/reel — cash ${cash} or push`, tone: 'gold' }
+        : { text: `Hand ${handTotal(bj.hand)} → ×${bj.multiplier.toFixed(2)} · ×${bj.velocity.toFixed(2)}/reel — cash ${cash} or push`, tone: 'cyan' }
     }
-    if (sym !== null && sym in d.minusSymbols) {
-      return { text: `−${d.minusSymbols[sym]} safe room (${cash} holds)`, tone: 'good' }
-    }
-    // a card landed
-    if (bj.bestTotal < d.qualifyMin) {
-      const { total } = bestTotal(bj.hard, bj.aces)
-      return { text: `Score ${total} — reach ${d.qualifyMin} to win`, tone: '' }
-    }
-    if (cashValueCents.value > 0) return { text: `${cash} on the line — push toward 21`, tone: 'good' }
-    return { text: 'No gain — push toward 21', tone: '' }
+    return { text: `Climbed to ×${bj.multiplier.toFixed(2)} — cash ${cash} or push?`, tone: 'good' }
   })
 
-  // STOP button sub-label: which reel the next STOP locks (demo updateStopLabel).
-  const stopHint = computed((): string => (idx.value < 5 ? `spin reel ${idx.value + 1}` : '—'))
-
-  // ── attract strips (idle phase only) ──────────────────────────────────────
-  // Build a short strip per reel from the reel composition tokens so the idle
-  // attract renders actual cards/specials. 'CARD' tokens are replaced with
-  // representative deck cards (cycling through a fixed ordering so the strip
-  // is deterministic and bounded). Bounded: max ~16 items * 2 passes = ≤32
-  // elements per reel — never thousands.
+  // idle attract strips (reels spin showing representative cards + CLIMB/CRASH)
   const attractStrips = computed((): SymbolId[][] => {
     const d = def.value
     if (d === null) return [[], [], [], [], []]
-    // A fixed representative subset of the deck for attract cards (8 cards,
-    // covering ranks A/K/Q/J/T/9/8/7 across suits for visual variety).
-    const attractDeck: SymbolId[] = ['AS', 'KH', 'QD', 'JC', 'TS', 'AH', '9D', '8C']
-    let di = 0
-    return d.reels.map((slots): SymbolId[] =>
-      slots.map((tok): SymbolId =>
-        tok === 'CARD' ? attractDeck[di++ % attractDeck.length]! : tok
-      )
-    )
+    const cards: SymbolId[] = ['AS', 'KH', 'QD', 'JC', 'TS', '9H', '8D', '7C']
+    let ci = 0
+    return d.reels.map(slots => slots.map(tok => (tok === 'CARD' ? cards[ci++ % cards.length]! : tok)))
   })
 
-  // ── can*/action gates ──────────────────────────────────────────────────────
   const canDeal = computed(() => {
     const d = def.value
     if (d === null || store.spinning) return false
@@ -143,62 +126,22 @@ export function useBlackjackReel() {
     if (p !== 'idle' && p !== 'resolved') return false
     return store.currentBet * d.denominationCents <= store.bankrollCents
   })
-
-  // STOP is enabled in idle (to start the hand) and spinning (to lock a reel).
-  // It is NOT enabled while the store's spinning gate is held (mid-action).
   const canStop = computed(() => {
     if (store.spinning) return false
-    const p = phase.value
-    if (p === 'idle') return canDeal.value // same bankroll gate
-    return p === 'spinning'
+    return phase.value === 'idle' ? canDeal.value : phase.value === 'spinning'
   })
+  const canCash = computed(() => !store.spinning && phase.value === 'spinning' && idx.value >= 1)
 
-  // CASH OUT is only valid once a hand is in progress.
-  const canCash = computed(() =>
-    !store.spinning && phase.value === 'spinning'
-  )
-
-  // ── gamble (double-or-nothing bonus) ───────────────────────────────────────
-  const gambleAmount = computed(() => bjState.value?.gambleAmount ?? 0)
-  const gambleCount = computed(() => bjState.value?.gambleCount ?? 0)
-  const canGambleStop = computed(() =>
-    !store.spinning && phase.value === 'gamble' && gambleCount.value < GAMBLE_CAP)
-  const canGambleCashOut = computed(() =>
-    !store.spinning && phase.value === 'gamble')
-  // Fair 50/50 → EV of stopping equals the amount on the line. The honesty surface.
-  const gambleEv = computed(() => gambleAmount.value)
-  const gambleAmountDollars = computed(() => {
-    const d = def.value
-    return d === null ? '$0.00' : `$${(gambleAmount.value * d.denominationCents / 100).toFixed(2)}`
-  })
-
-  function gambleStop() {
-    if (!canGambleStop.value) return
-    store.gambleStop()
-    store.revealDone()
-  }
-  function gambleCashOut() {
-    if (!canGambleCashOut.value) return
-    store.gambleCashOut()
-    store.revealDone()
-  }
-
-  // ── actions ────────────────────────────────────────────────────────────────
-  function deal() {
+  function deal(): void {
     if (!canDeal.value) return
     store.deal()
     store.revealDone()
   }
-
-  function stop() {
+  function stop(): void {
     if (!canStop.value) return
     if (phase.value === 'idle') {
-      // STOP while idle: deal the hand (charges the ante), then immediately
-      // lock reel 1. deal() sets spinning=true and the store transitions to
-      // phase 'spinning'; revealDone clears the gate; then stop() picks up.
       store.deal()
       store.revealDone()
-      // After revealDone the gate is clear and phase is 'spinning' — proceed.
       store.stop()
       store.revealDone()
     } else {
@@ -206,134 +149,54 @@ export function useBlackjackReel() {
       store.revealDone()
     }
   }
-
-  function cashOut() {
+  function cashOut(): void {
     if (!canCash.value) return
     store.cashOut()
     store.revealDone()
   }
-
-  // Dismiss the result modal and return to the idle attract, ready to play again.
-  function playAgain() {
+  function playAgain(): void {
     store.resetHand()
     store.revealDone()
   }
+  // "Same Bet": deal a fresh hand at the current bet — works from idle OR a
+  // resolved result (store.deal() accepts both phases and resets the state).
+  function sameBet(): void {
+    if (!canDeal.value) return
+    store.deal()
+    store.revealDone()
+    store.stop()
+    store.revealDone()
+  }
 
-  // ── modal outcome (only valid when phase === 'resolved') ────────────────────
-  const modalOutcome = computed((): ModalOutcome | null => {
+  const resultOutcome = computed((): ResultOutcome | null => {
     const bj = bjState.value
-    const d = def.value
-    if (bj === null || d === null || bj.phase !== 'resolved') return null
-
-    const ante = bj.ante
-    const anteDollars = (ante * d.denominationCents / 100).toFixed(2)
-
-    // Blackjack-bonus: a resolved natural came through the double-or-nothing
-    // gamble. Its result is bj.gambleAmount (already 0 on a gamble loss, or the
-    // laddered amount on a win/cash-out) — NOT handPayout. The dollar hero must
-    // equal the gamble result and a loss must read as a BUST at $0.
-    if (bj.natural) {
-      const gambleCents = bj.gambleAmount * d.denominationCents
-      const gambleDollars = `$${(gambleCents / 100).toFixed(2)}`
-      const won = bj.gambleAmount > 0
-      const doubled = bj.gambleCount > 0 ? ` — doubled ${bj.gambleCount}×` : ''
+    if (bj === null || bj.phase !== 'resolved') return null
+    if (bj.crashed) {
       return {
-        kind: won ? 'win' : 'bust',
-        best: 21,
-        baseDollars: gambleCents / 100,
-        mult: 1,
-        totalDollars: gambleDollars,
-        gamble: true,
-        sub: won
-          ? `BLACKJACK${doubled} — kept ${gambleDollars}`
-          : 'gambled the blackjack and busted'
+        kind: 'crash',
+        title: 'CRASH!',
+        amountDollars: '$0',
+        multiplier: bj.multiplier,
+        sub: `reel ${bj.idx + 1} crashed at ×${bj.multiplier.toFixed(2)} — the climb is gone`
       }
     }
-
-    if (bj.busted) {
-      const bustLabel = bj.bustBySymbol ? 'Drew a' : 'Total'
-      const bustValue = bj.bustBySymbol ? 'BUST card' : String(bj.hard)
-      const bustResult = bj.bustBySymbol ? 'BUST' : 'OVER 21'
-      return {
-        kind: 'bust',
-        best: 0,
-        baseDollars: 0,
-        mult: 1,
-        totalDollars: '$0.00',
-        sub: `your $${anteDollars} bet is gone`,
-        bustLabel,
-        bustValue,
-        bustResult
-      }
-    }
-
-    const mult = Math.max(1, bj.multSum)
-    const pay = handPayout(d, bj)
-    const totalCents = pay * d.denominationCents
-    const totalDollars = `$${(totalCents / 100).toFixed(2)}`
-
-    // base pay for the best total (before mult × charlie)
-    const paytableEntry = d.paytable.find(e => e.total === bj.bestTotal)
-    const qualifyEntry = d.paytable.find(e => e.total === d.qualifyMin)
-    const basePay = bj.charlie
-      ? Math.max(
-          paytableEntry?.pay ?? 0,
-          qualifyEntry?.pay ?? 0
-        )
-      : (bj.natural && !bj.charlie && bj.bestTotal === 21)
-          ? d.naturalPay
-          : (paytableEntry?.pay ?? 0)
-    const baseCents = basePay * ante * d.denominationCents
-    const baseDollars = baseCents / 100
-
-    const kind = bj.charlie ? 'charlie' : 'win'
-    const sub = `cashed ${totalDollars} on a $${anteDollars} bet`
-
+    const topped = bj.idx >= 5
+    const climbs = Math.max(0, bj.idx - 2)
     return {
-      kind,
-      best: bj.bestTotal,
-      baseDollars,
-      mult,
-      totalDollars,
-      sub
+      kind: topped ? 'topped' : 'cash',
+      title: topped ? 'TOPPED OUT!' : 'CASHED OUT',
+      amountDollars: cashValueDollars.value,
+      multiplier: bj.multiplier,
+      sub: topped
+        ? `survived all five at ×${bj.multiplier.toFixed(2)} on a ${anteDollars.value} bet`
+        : `locked ×${bj.multiplier.toFixed(2)} after ${climbs} climb${climbs === 1 ? '' : 's'} on a ${anteDollars.value} bet`
     }
   })
 
   return {
-    bjState,
-    phase,
-    reelStrips,
-    attractStrips,
-    landed,
-    idx,
-    score,
-    cashValueCents,
-    cashValueDollars,
-    anteDollars,
-    message,
-    stopHint,
-    multSum,
-    bestTotalVal,
-    canDeal,
-    canStop,
-    canCash,
-    deal,
-    stop,
-    cashOut,
-    playAgain,
-    modalOutcome,
-    gambleAmount,
-    gambleCount,
-    canGambleStop,
-    canGambleCashOut,
-    gambleEv,
-    gambleAmountDollars,
-    gambleStop,
-    gambleCashOut,
-    // backward compat for pages/game.vue key handler
-    canHit: canStop,
-    canStand: canCash,
-    hit: stop,
-    stand: cashOut
+    bjState, phase, reelStrips, landed, idx, multiplier, velocity, natural, crashed,
+    multiplierDisplay, velocityDisplay, handText, cashValueCents, cashValueDollars, anteDollars,
+    altitudeMarks, betChips, selectBet, message, stopHint, attractStrips,
+    canDeal, canStop, canCash, deal, stop, cashOut, playAgain, sameBet, resultOutcome
   }
 }
