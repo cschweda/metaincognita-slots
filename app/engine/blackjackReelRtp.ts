@@ -206,17 +206,3 @@ export function decisionEvs(
 export function crashOdds(def: BlackjackReelMachineDef): number[] {
   return crashProbs(def)
 }
-
-/** Per-climb-reel optimal call at a given velocity (the PAR strategy view). */
-export function climbStrategy(
-  def: BlackjackReelMachineDef,
-  velocity: number
-): { reel: number, pCrash: number, action: 'cash' | 'climb' }[] {
-  const pCrash = crashProbs(def)
-  const c = climbMultiples(pCrash, velocity)
-  return pCrash.map((p, k) => ({
-    reel: k + 3,
-    pCrash: p,
-    action: (1 - p) * velocity * c[k + 1]! > 1 ? 'climb' : 'cash'
-  }))
-}

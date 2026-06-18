@@ -464,7 +464,7 @@ export const useSlotsStore = defineStore('slots', {
       const state = this.currentState
       if (def === null || state === null || this.phase !== 'playing' || this.spinning) return
 
-      // blackjack-reel is interactive — it uses dealHand/hitCard/standHand, not spinOnce
+      // blackjack-reel is interactive — it uses deal/stop/cashOut, not spinOnce
       if (def.family === 'blackjack-reel') return
 
       if (presses !== undefined) {
