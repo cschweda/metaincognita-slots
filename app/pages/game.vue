@@ -50,7 +50,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- ── Lucky 21 (blackjack-reel): dedicated demo-faithful felt page ── -->
+  <!-- ── Flameout 21 (blackjack-reel): dedicated demo-faithful crash page ── -->
   <div
     v-if="store.currentDef && store.currentDef.family === 'blackjack-reel'"
     class="l21-page"
@@ -162,7 +162,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Lucky 21 — full-bleed felt page (the demo's body background) */
+/* Flameout 21 — full-bleed crash page (the demo's body background) */
 .l21-page {
   position: relative;
   min-height: 100%;

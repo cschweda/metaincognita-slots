@@ -18,7 +18,7 @@ export default defineNuxtConfig({
       bodyAttrs: { style: 'background-color: #0a0a0a' },
       title: 'Slots Simulator',
       meta: [
-        { name: 'description', content: 'Educational slot machine simulator — play ten authentic archetypes (including a press-your-luck blackjack reel), run bankroll-risk simulations in the Sim Lab, and explore the math the floor never shows in the /learn section.' },
+        { name: 'description', content: 'Educational slot machine simulator — play ten authentic archetypes (including a blackjack-meets-crash reel), run bankroll-risk simulations in the Sim Lab, and explore the math the floor never shows in the /learn section.' },
         { property: 'og:title', content: 'Slots Simulator' },
         { property: 'og:description', content: 'Ten machines, a Monte-Carlo Sim Lab (risk of ruin, survival curve, drawdown histograms), and /learn explainers on house edge, virtual reels, and hold-and-spin math.' },
         { property: 'og:image', content: '/og-image.png' },

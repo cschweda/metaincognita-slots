@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.10.0] - 2026-06-17
+
+### Changed
+- **Flameout 21 — a blackjack-meets-crash game — replaces Lucky 21** in the
+  `blackjack-reel` family (the floor's tenth machine; the floor is still ten
+  machines). The stop-the-reels chassis is reborn as an Aviator-style crash
+  game:
+  - The two-card deal (reels 1–2, which never crash) sets a **launch
+    multiplier** and a climb **velocity** by hand value — closer to 21 launches
+    higher and climbs steeper; a 2-card natural launches highest.
+  - Reels 3–5 each **climb** (multiplier ×= velocity) or **crash** (lose it
+    all), with the crash share escalating ~20% → 33% → 43%.
+  - **Cash out any reel** to bank `bet × multiplier`, or ride a hot hand and
+    top out by surviving all five.
+- **Recalibration to ~97% RTP** (the Aviator standard) under optimal cash/climb
+  play — exact `rtpPerCoin` 96.9591%. Because reels 1–2 never crash a player can
+  always cash the launch risk-free, so RTP ≥ E[launch]; the launch table
+  therefore averages below ×1.0 and the profit comes from the climb. The
+  `blackjackReelExactRtp` DP enumerates the two-card deal distribution into a
+  closed-form climb/crash policy; the seeded sim cross-check converges within the
+  3.5σ band.
+- **Dynamic rocket side-chrome + altitude marks** flank the cabinet, rising with
+  the climb, and an **in-page result card** replaces the centered result modal
+  (the side rockets stay visible at the payoff). The PAR sheet and X-ray now read
+  in crash terms (launch/velocity, per-reel crash odds, live EV cash vs climb).
+- **Flashy 3-across kitsch floor**: the slot picker is now a three-column neon
+  grid with chase-light bulb trim, per-family accents, big glyphs, hover
+  lift+glow, and paylines/ways badges; Flameout 21 is the featured machine.
+
 ## [0.9.0] - 2026-06-16
 
 ### Added

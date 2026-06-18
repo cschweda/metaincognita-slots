@@ -10,7 +10,7 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.9.0.** The floor is open: ten machines, full game surfaces,
+**Status: v0.10.0.** The floor is open: ten machines, full game surfaces,
 per-machine cabinet chrome, X-ray mode, PAR sheets, session history, a
 Monte-Carlo Sim Lab, and /learn explainers on the math the floor never shows.
 
@@ -26,7 +26,7 @@ pnpm dev        # open http://localhost:3000
 2. **Machine** — spin, adjust your bet, watch the reels inside each
    machine's bespoke decorative cabinet chrome (ten themed frames: gothic
    stone, pachinko neon, baroque gold, emerald scales, riveted steel, ice
-   facets, rising flames, warm brass, cool turquoise, green-felt card room).
+   facets, rising flames, warm brass, cool turquoise, crash-rocket rails).
    Hit **X-ray** to
    open the side panel: labeled RNG trace, near-miss callouts, a live
    session-vs-exact RTP convergence sparkline, and machine internals.
@@ -61,7 +61,7 @@ This is an educational simulator. No real money is involved.
 | Thunder Vault | Video (lines) | 5 reels x 24 stops, 25-line, Grand progressive | 90.2948% @ Grand reset |
 | Ruby of Gargoyle | Video (lines) | 5 reels x 24 stops, 25-line, hold & spin, Gargoyle's Eye ×N multiplier, Grand progressive | 90.0802% @ Grand reset |
 | Stock Rush | Pachislo (skill-stop) | 3 reels x 21 stops, flag lottery, stock queue | 66.0012%–120.0028% by operator level (L4 default 91.5013%) |
-| Lucky 21 | Blackjack reel (stop-the-reels) | 5 card reels, STOP to lock each reel, additive multiplier cards, Five-Card Charlie, Blackjack Bonus double-or-nothing gamble | 90.0255% under optimal stopping |
+| Flameout 21 | Blackjack reel (blackjack-meets-crash) | 5 reels: 2-card deal sets launch multiplier + climb velocity, reels 3-5 climb (×velocity) or crash (~20/33/43%), cash out any reel | 96.9591% under optimal cash/climb |
 
 Every RTP shown is **computed** from the machine definition by exact
 enumeration (`exactRtp`) — never asserted — and verified by seeded
@@ -75,9 +75,10 @@ Planned machines (see `docs/superpowers/specs/2026-06-14-future-games-roadmap.md
   a separate fifth multiplier reel and two buttons (Spin / Cash Out). Each spin
   either survives and grows the running payout or crashes and forfeits the lot;
   your winnings stay fully at risk until you cash out, and the multiplier reel is
-  the big-but-riskiest score. Distinct from pachislo skill-stop, where banked
-  wins are protected — here everything rides until you bank it. RTP computed
-  under optimal cash-out timing (the same exact-EV machinery as Lucky 21).
+  the big-but-riskiest score. Unlike Flameout 21, there is no blackjack hand to
+  set a launch or velocity — every spin is an independent climb, and the score
+  rides on the dedicated multiplier reel. RTP computed under optimal cash-out
+  timing (the same exact-EV machinery as Flameout 21).
 - **Authentic 4-tier progressives** — Mini/Minor/Major/Grand as scaling pools,
   generalizing the single-meter progressive system.
 
@@ -110,32 +111,30 @@ slips ≤ 4 stops, and an exhaustive 21³ check proves no win can land without a
 flag — so your timing changes *when*, never *how much*. Six operator odds
 levels straight from the manual's bands (65–67% up to 115–125%).
 
-## Blackjack reel (stop-the-reels)
+## Blackjack reel (blackjack-meets-crash)
 
-Lucky 21 reimagines blackjack as a five-card stop-the-reels game. Ante a bet;
-press **STOP** to lock each reel in sequence (or **CASH OUT** at any time to
-bank your current hand value). No dealer — you play a scaling paytable by
-final hand value (qualify at 15; 21 best, then 20/19/18; bust pays nothing).
-Reels escalate in danger and reward 1→2→3→4→5: reels 1–2 are pure cards, reel
-3 is the lock-in bonus (no cards — grab a **×multiplier** or −safe room over a
-wall of BUST), and reels 4–5 bring cards back alongside bigger ×3/×5/×10
-multipliers and more BUST.
+Flameout 21 wears a blackjack coat over an Aviator-style crash game. Five reels,
+stopped left-to-right. Press **STOP** to deal: reels 1–2 turn up a two-card hand
+that sets your **launch multiplier** and your climb **velocity** — closer to 21
+launches higher and climbs steeper, and a 2-card natural launches highest. These
+deal reels never crash, so you can always **CASH OUT** the launch risk-free.
 
-A true 2-card natural (A + ten-value on reels 1–2) triggers the **Blackjack
-Bonus**: a spinning chromed double-or-nothing reel. **STOP** for a fair 50/50
-— land ×2 to double the amount on the line, land BUST to forfeit it. **CASH
-OUT** keeps the guaranteed natural payout. The bonus is capped at 3 consecutive
-doubles (a ladder shows your rung). The fair coin-flip EV equals the forfeited
-amount, so the bonus is **RTP-neutral** — it adds pure variance with no house
-edge contribution.
+Reels 3–5 are the climb. Each one either **climbs** (multiplier ×= velocity) or
+**crashes** (lose it all), and the crash share escalates ~20% → 33% → 43% as you
+push higher. Cash out any reel to bank `bet × multiplier`, or ride a hot hand all
+the way and **top out** by surviving all five. The only thing that ends a run is
+a crash — there is no bustable total.
 
-RTP is exact under **optimal stopping**: a backward-induction DP over the
-decision state `(cards drawn, hard total, aces, multiplier sum)` enumerates
-the full deck-depleted tree. Calibrated to 90.0255% (Five-Card Charlie ≈ 0.77%,
-house edge ≈ 9.97%). A seeded simulate-under-optimal cross-check converges
-within the 3.5σ band. The PAR sheet renders the DP-derived stop/cash-out
-strategy table and exact bust / Five-Card-Charlie odds; X-ray shows the live
-EV(stop) vs EV(cash) at each decision — the math the casino never shows.
+RTP is exact under **optimal cash/climb play**: a dynamic program enumerates the
+two-card deal distribution (over deck value counts), then walks each hand through
+a closed-form climb policy (climb iff `pClimb · velocity · c[next] > 1`) to a
+terminal payout distribution. Calibrated to **96.9591%** — the canonical
+crash-game return (Aviator ≈ 97%). Because reels 1–2 never crash, RTP ≥ E[launch],
+so the launch table averages below ×1.0 and the profit comes from the climb. A
+seeded simulate-under-optimal cross-check converges within the 3.5σ band. The PAR
+sheet renders the per-reel crash odds and the DP-derived cash/climb strategy by
+velocity; X-ray shows the live EV(cash) vs EV(climb) at each reel — the math the
+casino never shows.
 
 ## Per-machine cabinet chrome
 
@@ -182,7 +181,7 @@ sevens-ablaze           2     94.4881%    94.7558%     0.2677%    15.7193%    15
 series-e-3line          1     89.0351%    89.1345%     0.0994%    11.8144%    11.8181%         2  PASS
 series-e-multiplier     3     89.1264%    89.1293%     0.0029%    14.2559%    14.2621%       204  PASS
 stock-rush              3     91.5013%    92.3172%     0.8159%    21.2341%    21.2290%         0  PASS
-lucky-21                3     90.0255%    90.0172%     0.0083%    50.5893%    50.5801%         0  PASS
+flameout-21            20     96.9591%    96.9155%     0.0436%    84.6786%    84.7187%         0  PASS
 ```
 
 ## Tech
