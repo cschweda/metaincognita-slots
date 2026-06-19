@@ -2,11 +2,13 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useBlackjackReel } from '~/composables/useBlackjackReel'
+import { useLockReel } from '~/composables/useLockReel'
 
 const store = useSlotsStore()
 const route = useRoute()
 const parOpen = ref(false)
 const { phase, canStop, canCash, stop, cashOut, playAgain } = useBlackjackReel()
+const lock = useLockReel()
 
 function onKeydown(e: KeyboardEvent) {
   if (e.repeat) return
@@ -21,6 +23,12 @@ function onKeydown(e: KeyboardEvent) {
     if (phase.value === 'resolved') playAgain()
     else if (isEnter && canCash.value) cashOut()
     else if (canStop.value) stop()
+    return
+  }
+  if (store.currentDef?.family === 'lock-reel') {
+    e.preventDefault()
+    if (lock.phase.value === 'resolved') lock.playAgain()
+    else if (lock.canStop.value) lock.stop()
     return
   }
   if (!isSpace) return
@@ -50,9 +58,47 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- ── Stop & Lock 777 (lock-reel): the "big daddy" cash-collect cabinet ── -->
+  <div
+    v-if="store.currentDef && store.currentDef.family === 'lock-reel'"
+    class="sl-page"
+  >
+    <div class="sl-page-grid">
+      <div class="sl-page-main">
+        <GameReelLockReel :key="store.currentMachineId ?? ''" />
+      </div>
+      <aside class="sl-page-side">
+        <div class="sl-side-tools">
+          <UButton
+            :color="store.settings.xray ? 'primary' : 'neutral'"
+            :variant="store.settings.xray ? 'solid' : 'outline'"
+            :aria-pressed="store.settings.xray"
+            size="xs"
+            icon="i-lucide-scan-line"
+            @click="store.setXray(!store.settings.xray)"
+          >
+            X-ray
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="xs"
+            icon="i-lucide-file-spreadsheet"
+            @click="parOpen = true"
+          >
+            PAR sheet
+          </UButton>
+          <GameParSheetModal v-model:open="parOpen" />
+        </div>
+        <GameSessionSidebar />
+        <GameXrayPanel />
+      </aside>
+    </div>
+  </div>
+
   <!-- ── Flameout 21 (blackjack-reel): dedicated demo-faithful crash page ── -->
   <div
-    v-if="store.currentDef && store.currentDef.family === 'blackjack-reel'"
+    v-else-if="store.currentDef && store.currentDef.family === 'blackjack-reel'"
     class="l21-page"
   >
     <GameChromeFlameoutChrome side="left" />
@@ -162,6 +208,37 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Stop & Lock 777 — full-bleed "big daddy" page (steel-room backdrop) */
+.sl-page {
+  position: relative;
+  min-height: 100%;
+  padding: 24px 14px 40px;
+  background: radial-gradient(120% 90% at 50% 0%, #3a4250 0%, #20252e 42%, #0c0f15 100%);
+}
+.sl-page-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .sl-page-grid { grid-template-columns: minmax(0, 1fr) 300px; }
+}
+.sl-page-main { min-width: 0; }
+.sl-page-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sl-side-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* Flameout 21 — full-bleed crash page (the demo's body background) */
 .l21-page {
   position: relative;
