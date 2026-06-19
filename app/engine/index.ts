@@ -8,6 +8,7 @@ import { spinPachislo } from './pachislo'
 import { initProgressiveState, addCoinToProgressive } from './progressive'
 import { freshBlackjackState, dealReels, stopReel, cashOut } from './blackjackReel'
 import { makeOptimalStopFn } from './blackjackReelRtp'
+import { freshLockState, dealStart, stopReel as lockStopReel, bonusStop } from './lockReel'
 
 export * from './types'
 export { mulberry32, cryptoSeed } from './rng'
@@ -18,6 +19,7 @@ export { nearMisses } from './nearMiss'
 export { validateMachineDef } from './validate'
 export { initProgressiveState, addCoinToProgressive } from './progressive'
 export { freshBlackjackState } from './blackjackReel'
+export { freshLockState } from './lockReel'
 
 export function initMachineState(def: MachineDef): MachineSessionState {
   return {
@@ -33,8 +35,7 @@ export function initMachineState(def: MachineDef): MachineSessionState {
         }
       : null,
     blackjackReel: def.family === 'blackjack-reel' ? freshBlackjackState() : null,
-    // TODO(Task 2): fresh lock-reel session state (step fns/dispatch)
-    lockReel: null
+    lockReel: def.family === 'lock-reel' ? freshLockState(def) : null
   }
 }
 
@@ -61,7 +62,7 @@ export function nextSpinCost(def: MachineDef, state: MachineSessionState, coins:
     }
     case 'blackjack-reel':
       return coins
-    // TODO(Task 2): real lock-reel logic (the ante is charged on dealStart)
+    // lock-reel is interactive; the ante is charged on dealStart
     case 'lock-reel':
       return coins
     default: {
@@ -88,9 +89,8 @@ export function spin(
       return spinPachislo(def, state, coins, rand)
     case 'blackjack-reel':
       throw new Error('blackjack-reel is interactive; use dealReels/stopReel/cashOut')
-    // TODO(Task 2): real lock-reel logic (interactive; use dealStart/stopReel/resolve/bonusStop)
     case 'lock-reel':
-      throw new Error('lock-reel: not yet implemented')
+      throw new Error('lock-reel is interactive; use dealStart/stopReel/bonusStop')
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
@@ -188,9 +188,60 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
     }
   }
 
-  // TODO(Task 4): real lock-reel simulation (optimal-policy Monte-Carlo, like blackjack-reel above)
+  // ── lock-reel (Stop & Lock 777 cash-collect): honest-stop Monte-Carlo ──────
+  // Each cycle = one round. dealStart charges the ante once (coinsIn = opts.coins);
+  // the five stops and the bonus respins are free. The honest stop is a uniform
+  // window draw (skill-neutral), so there is no policy to optimise — the sim just
+  // stops every reel and auto-plays the bonus to completion. The two-7s tease is
+  // a flag-only affordance (no auto re-stop), so the sim's RTP is the clean
+  // 5-stop collect + 3-seven bonus that the exact-RTP module enumerates.
+  // jackpotHits is always 0 (lock-reel has no progressive; progressive: null).
   if (def.family === 'lock-reel') {
-    throw new Error('lock-reel: not yet implemented')
+    let totalIn = 0
+    let totalOut = 0
+    let hits = 0
+    let cycles = 0
+    let net = 0
+    let peak = 0
+    let maxDrawdown = 0
+    const byEntry: Record<string, number> = {}
+
+    while (cycles < opts.spins) {
+      const dealOut = dealStart(def, state, opts.coins, rand)
+      totalIn += dealOut.coinsIn
+      let roundPay = dealOut.totalPayout
+      for (const w of dealOut.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
+      const lr = state.lockReel!
+      for (let r = 0; r < 5; r++) {
+        const out = lockStopReel(def, state, rand)
+        roundPay += out.totalPayout
+        for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
+      }
+      while (lr.phase === 'bonus') {
+        const out = bonusStop(def, state, rand)
+        roundPay += out.totalPayout
+        for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
+      }
+      totalOut += roundPay
+      net += roundPay - opts.coins
+      if (net > peak) peak = net
+      if (peak - net > maxDrawdown) maxDrawdown = peak - net
+      if (roundPay > 0) hits++
+      cycles++
+    }
+
+    return {
+      machineId: def.id,
+      spins: opts.spins,
+      coins: opts.coins,
+      totalIn,
+      totalOut,
+      rtp: totalIn > 0 ? totalOut / totalIn : 0,
+      hitFrequency: hits / opts.spins,
+      jackpotHits: 0,
+      maxDrawdown,
+      byEntry
+    }
   }
 
   // ── all other families ──────────────────────────────────────────────────────

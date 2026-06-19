@@ -470,7 +470,7 @@ export type FeatureEvent
     | { type: 'cash-out', reel: number, multiplier: number, payout: number }
     | { type: 'topped-out', multiplier: number, payout: number }
     // lock-reel (Stop & Lock 777 cash-collect) events
-    | { type: 'reel-stopped', reel: number, locked: SymbolId[] }
+    | { type: 'column-locked', reel: number, locked: SymbolId[] }
     | { type: 'cash-locked', credits: number }
     | { type: 'seven-locked', count: number }
     | { type: 'bonus-triggered' }
