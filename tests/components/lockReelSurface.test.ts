@@ -38,10 +38,25 @@ describe('Stop & Lock 777 surface (big-daddy cabinet)', () => {
     // the three-7 bonus meter + the collect readout
     expect(wrapper.find('[data-test="seven-meter"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="collect"]').exists()).toBe(true)
-    // bet chips $1 · $5 · $10 · $15 · $20
-    for (const c of [1, 5, 10, 15, 20]) {
-      expect(wrapper.find(`[data-test="bet-${c}"]`).exists()).toBe(true)
+    // bet chips key on coins 1/4/8/12/20 and read round dollars at 25¢/coin
+    const chips = { 1: '25¢', 4: '$1', 8: '$2', 12: '$3', 20: '$5' } as const
+    for (const [coins, label] of Object.entries(chips)) {
+      const chip = wrapper.find(`[data-test="bet-${coins}"]`)
+      expect(chip.exists()).toBe(true)
+      expect(chip.text()).toBe(label)
     }
+    // no leftover chips from the old $1/$5/$10/$15 ladder
+    for (const c of [5, 10, 15]) {
+      expect(wrapper.find(`[data-test="bet-${c}"]`).exists()).toBe(false)
+    }
+  })
+
+  it('the 1-coin default bet reads "25¢" on the deck (cents, never "$0")', () => {
+    const { wrapper, store } = withLockReel()
+    expect(store.currentBet).toBe(1)
+    const deck = wrapper.find('[data-test="sl-surface"]').text()
+    expect(deck).toContain('25¢')
+    expect(deck).not.toContain('$0')
   })
 
   it('the live (first) STOP key is the only enabled one while spinning', async () => {
@@ -73,14 +88,16 @@ describe('Stop & Lock 777 surface (big-daddy cabinet)', () => {
     lr.idx = 1
     lr.ante = 1
     lr.grid[0] = ['C5', 'SEVEN', 'BLANK', 'C1'] // column 0, rows 0..3
-    lr.collectCredits = 6
+    lr.collectCredits = 3
     await wrapper.vm.$nextTick()
-    // row 0 col 0 = $5 cash (1 coin × $0.25 × 5 credits = $1 → "$1")
-    expect(wrapper.find('[data-test="cell-0-0"]').text()).toContain('$')
+    // row 0 col 0 = C5 (5 credits × 1 coin × 25¢ = 125¢ → "$1.25")
+    expect(wrapper.find('[data-test="cell-0-0"]').text()).toBe('$1.25')
+    // row 3 col 0 = C1 (1 credit × 1 coin × 25¢ = 25¢ → cents, not "$0")
+    expect(wrapper.find('[data-test="cell-3-0"]').text()).toBe('25¢')
     // row 1 col 0 = a 7
     expect(wrapper.find('[data-test="cell-1-0"]').text()).toContain('7')
-    // collect readout shows a dollar figure
-    expect(wrapper.find('[data-test="collect"]').text()).toContain('$')
+    // sub-dollar collect (3 credits = 75¢) reads cents, never "$0"
+    expect(wrapper.find('[data-test="collect"]').text()).toBe('75¢')
   })
 
   it('lights the seven meter as sevens lock', async () => {

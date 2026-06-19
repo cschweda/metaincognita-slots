@@ -35,7 +35,18 @@ export interface LockResult {
   sub: string
 }
 
-const BET_CHIPS = [1, 5, 10, 15, 20] as const
+const BET_CHIPS = [1, 4, 8, 12, 20] as const
+
+/**
+ * Render a cents amount as a cabinet money string: sub-dollar shows cents
+ * ("25¢"), whole dollars drop the decimals ("$1"), and the rest keeps two
+ * places ("$1.25"). Shared by every cash readout so the deck never shows "$0".
+ */
+function money(cents: number): string {
+  if (cents < 100) return `${Math.round(cents)}¢`
+  const d = cents / 100
+  return Number.isInteger(d) ? `$${d}` : `$${d.toFixed(2)}`
+}
 
 export function useLockReel() {
   const store = useSlotsStore()
@@ -67,7 +78,7 @@ export function useLockReel() {
   function creditsToDollars(credits: number): string {
     const d = def.value
     if (d === null || credits <= 0) return ''
-    return `$${(credits * betCoins.value * d.denominationCents / 100).toFixed(0)}`
+    return money(credits * betCoins.value * d.denominationCents)
   }
 
   /** Classify a locked symbol into a renderable cell. */
@@ -130,12 +141,12 @@ export function useLockReel() {
   const collectDollars = computed((): string => {
     const d = def.value
     if (d === null) return '$0'
-    return `$${(collectCredits.value * betCoins.value * d.denominationCents / 100).toFixed(0)}`
+    return money(collectCredits.value * betCoins.value * d.denominationCents)
   })
   const betDollars = computed((): string => {
     const d = def.value
     if (d === null) return '$0.00'
-    return `$${(betCoins.value * d.denominationCents / 100).toFixed(2)}`
+    return money(betCoins.value * d.denominationCents)
   })
   const minDollars = computed((): string => {
     const d = def.value
@@ -144,7 +155,10 @@ export function useLockReel() {
     return c < 100 ? `${c}¢` : `$${(c / 100).toFixed(2)}`
   })
 
-  const betChips = computed(() => BET_CHIPS.map(c => ({ coins: c, dollars: `$${c}`, active: store.currentBet === c })))
+  const betChips = computed(() => {
+    const cents = def.value?.denominationCents ?? 0
+    return BET_CHIPS.map(c => ({ coins: c, dollars: money(c * cents), active: store.currentBet === c }))
+  })
   function selectBet(coins: number): void {
     store.setBet(coins)
   }
@@ -247,7 +261,7 @@ export function useLockReel() {
     const d = def.value
     if (lr === null || d === null || lr.phase !== 'resolved') return null
     const filled = lr.grid.every(col => col.every(c => c !== null && c !== d.blankSymbol))
-    const banked = `$${(lr.collectCredits * lr.ante * d.denominationCents / 100).toFixed(0)}`
+    const banked = money(lr.collectCredits * lr.ante * d.denominationCents)
     if (filled) {
       return {
         kind: 'grand',
