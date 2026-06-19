@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.12.1] - 2026-06-19
+
+### Added
+- **Temple of Gold — the CASCADE! celebration.** A chain ≥ 2 re-win now forces a
+  flashy, can't-miss beat: a strobing rainbow overlay with a giant flashing
+  **CASCADE!**, the live **×N** multiplier, a screen-shake, and a dozen lightning
+  bolts, plus an escalating riser + double-bell + sub-boom sound — so it's no
+  longer easy to mindlessly hit spin through a tumble (reduced-motion shows it
+  static, no strobe/shake).
+- **A real X-ray for the cabinet.** The X-ray toggle now reveals the **last spin
+  link by link** in the cabinet — every cascade chain, its symbol + count, the
+  multiplier, and the cents it paid (and the Grand when it hits). Immediate, per
+  spin, and the heart of the trainer.
+- **PAR sheet on the cascade page**, beside the X-ray toggle — the full pay-anywhere
+  paytable + the exact, computed RTP (the empty "Strips" tab is hidden for cascade;
+  it opens on the Paytable tab).
+
+### Changed
+- The CascadeXray sidebar is now all-instant (explainers, ladder, per-cell odds);
+  the heavy exact-RTP enumeration moved to the PAR sheet (where a brief spinner is
+  expected), so the page never janks and the X-ray toggle has an obvious effect.
+  Version → 0.12.1.
+
 ## [0.12.0] - 2026-06-19
 
 ### Added

@@ -129,3 +129,30 @@ export function sfxJackpot(): void {
   notes.forEach((f, i) => bell(f, 0.7, 0.18, i * 0.12))
   tone(130.81, reducedMotion() ? 0.5 : 1.2, 0.06, 'sawtooth')
 }
+
+/** CASCADE! — a big escalating riser + double bell + sub boom + sparkle, bigger per chain. */
+export function sfxCascade(chain = 2): void {
+  if (!live()) return
+  const c = ctx!
+  const t = c.currentTime
+  // rising whoosh
+  const osc = c.createOscillator()
+  const g = c.createGain()
+  osc.type = 'sawtooth'
+  const base = 160 + chain * 45
+  osc.frequency.setValueAtTime(base, t)
+  osc.frequency.exponentialRampToValueAtTime(base * 4, t + 0.5)
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.linearRampToValueAtTime(0.09, t + 0.1)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55)
+  osc.connect(g).connect(c.destination)
+  osc.start(t)
+  osc.stop(t + 0.6)
+  // big double bell hit on top (climbs with the chain)
+  const note = PENT[Math.min(chain - 1, PENT.length - 1)]!
+  bell(note * 1.5, 0.8, 0.22, 0.12)
+  bell(note, 0.95, 0.18, 0.12)
+  // sub boom + sparkle sweep
+  tone(68, 0.55, 0.13, 'sine', 0.1)
+  noiseBurst(0.32, 0.12, 'bandpass', 4200, 2, 0.14)
+}

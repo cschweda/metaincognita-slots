@@ -84,6 +84,16 @@ onUnmounted(() => {
           >
             X-ray
           </UButton>
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="xs"
+            icon="i-lucide-file-spreadsheet"
+            @click="parOpen = true"
+          >
+            PAR sheet
+          </UButton>
+          <GameParSheetModal v-model:open="parOpen" />
         </div>
         <GameCascadeXray />
       </aside>

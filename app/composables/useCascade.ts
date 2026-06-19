@@ -4,13 +4,15 @@
 // result for the trick-exposer. Drives the synth SFX and the tumble animation.
 import { ref, shallowRef, computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { spinCascade, cascadeAlphabet } from '~/engine/cascade'
+import { spinCascade, cascadeAlphabet, countSymbols } from '~/engine/cascade'
 import { initMachineState, addCoinToProgressive } from '~/engine'
 import { liveRand } from '~/utils/liveRand'
 import type { CascadeMachineDef, MachineSessionState, SymbolId, SpinOutcome } from '~/engine'
 import {
-  unlockAudio, sfxWhirr, sfxWin, sfxShatter, sfxDrop, sfxJackpot, isMuted, setMuted
+  unlockAudio, sfxWhirr, sfxWin, sfxShatter, sfxDrop, sfxJackpot, sfxCascade, isMuted, setMuted
 } from '~/utils/audio'
+
+export interface TraceRow { chain: number, mult: number, sym: SymbolId, count: number, payCents: number }
 
 export type TrickTone = 'intro' | 'good' | 'bad'
 
@@ -32,6 +34,11 @@ export function useCascade() {
   const spinWinCredits = ref(0) // running win for the spin in progress
   const grandMeter = ref(0)
   const grandHit = ref(false)
+
+  // The CASCADE! celebration — a chain ≥ 2 re-win, a forced flashy beat.
+  const cascadeFlash = ref<{ active: boolean, chain: number, mult: number }>({ active: false, chain: 0, mult: 1 })
+  // Last spin's link-by-link breakdown (the X-ray trace).
+  const lastTrace = ref<{ rows: TraceRow[], grandCents: number } | null>(null)
 
   // Honest House Ledger (cents).
   const spins = ref(0)
@@ -110,6 +117,7 @@ export function useCascade() {
     chain.value = 0
     chainMult.value = 1
     grandHit.value = false
+    cascadeFlash.value = { active: false, chain: 0, mult: 1 }
     // brief spin shuffle for spectacle
     for (let f = 0; f < 3; f++) {
       grid.value = attractGrid(d)
@@ -128,6 +136,18 @@ export function useCascade() {
     fedCents.value += out.coinsIn * d.denominationCents
     backCents.value += out.totalPayout * d.denominationCents
 
+    // Build the link-by-link trace (the X-ray): one row per winning symbol per chain.
+    const rows: TraceRow[] = []
+    for (const step of out.cascadeSteps ?? []) {
+      if (step.wins.length === 0) continue
+      const counts = countSymbols(step.grid)
+      for (const w of step.wins) {
+        rows.push({ chain: step.chain, mult: step.chainMult, sym: w.entryId, count: counts.get(w.entryId) ?? 0, payCents: w.payCredits * d.denominationCents })
+      }
+    }
+    const grandWin = out.wins.find(w => w.entryId === 'grand')
+    lastTrace.value = { rows, grandCents: grandWin ? grandWin.payCredits * d.denominationCents : 0 }
+
     // Animate the tumble sequence.
     phase.value = 'tumbling'
     for (const step of out.cascadeSteps ?? []) {
@@ -138,15 +158,22 @@ export function useCascade() {
         winners.value = new Set()
         continue
       }
+      // CASCADE! — a re-win after a tumble. Force a flashy, can't-miss beat.
+      if (step.chain >= 2) {
+        cascadeFlash.value = { active: true, chain: step.chain, mult: step.chainMult }
+        sfxCascade(step.chain)
+        await wait(900)
+      }
       winners.value = new Set(step.wins.map(w => w.entryId))
       sfxWin(step.chain)
-      await wait(440)
+      await wait(460)
       sfxShatter()
       spinWinCredits.value += step.wins.reduce((a, w) => a + w.payCredits, 0)
-      await wait(230)
+      await wait(250)
       winners.value = new Set()
+      cascadeFlash.value = { active: false, chain: 0, mult: 1 }
       sfxDrop()
-      await wait(200)
+      await wait(210)
     }
     grid.value = out.grid
     if (out.progressiveEvents.length > 0) {
@@ -159,6 +186,7 @@ export function useCascade() {
 
   return {
     def, phase, grid, winners, chain, chainMult, spinWinCredits, grandMeter, grandHit,
+    cascadeFlash, lastTrace,
     spins, fedCents, backCents, betCents, netCents, paybackPct, trick,
     ensure, spin, isMuted, setMuted
   }

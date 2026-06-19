@@ -6,8 +6,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useCascade } from '~/composables/useCascade'
+import { useSlotsStore } from '~/stores/slots'
 
 const c = useCascade()
+const store = useSlotsStore()
 
 const EMOJI: Record<string, string> = {
   MASK: '🎭', JAGUAR: '🐆', CROWN: '👑', GOLD: '🪙', IDOL: '🗿'
@@ -35,7 +37,10 @@ const busy = computed(() => c.phase.value !== 'idle')
 </script>
 
 <template>
-  <div class="tg">
+  <div
+    class="tg"
+    :class="{ 'tg-shake': c.cascadeFlash.value.active }"
+  >
     <!-- chasing bulbs frame -->
     <span
       class="tg-bulbs"
@@ -47,6 +52,24 @@ const busy = computed(() => c.phase.value !== 'idle')
         class="tg-bulb"
       />
     </span>
+
+    <!-- CASCADE! — the batshit-crazy can't-miss beat -->
+    <div
+      v-if="c.cascadeFlash.value.active"
+      class="tg-cascade"
+      aria-hidden="true"
+    >
+      <span
+        v-for="z in 12"
+        :key="z"
+        class="tg-zap"
+      >⚡</span>
+      <div class="tg-cascade-burst">
+        <span class="tg-cascade-word">CASCADE!</span>
+        <span class="tg-cascade-mult">×{{ c.cascadeFlash.value.mult }}</span>
+        <span class="tg-cascade-sub">chain {{ c.cascadeFlash.value.chain }} — it keeps paying</span>
+      </div>
+    </div>
 
     <header class="tg-head">
       <span
@@ -159,6 +182,37 @@ const busy = computed(() => c.phase.value !== 'idle')
       aria-live="polite"
     >
       {{ c.trick.value.text }}
+    </div>
+
+    <!-- the X-ray: the last spin link by link (revealed by the X-ray toggle) -->
+    <div
+      v-if="store.settings.xray"
+      class="tg-xray"
+    >
+      <span class="tg-xray-cap">🔬 X-RAY — the last spin, link by link</span>
+      <template v-if="c.lastTrace.value && c.lastTrace.value.rows.length">
+        <div
+          v-for="(r, i) in c.lastTrace.value.rows"
+          :key="i"
+          class="tg-xray-row"
+        >
+          <span class="tg-xray-chain">chain {{ r.chain }} <b>×{{ r.mult }}</b></span>
+          <span class="tg-xray-sym">{{ EMOJI[r.sym] ?? '◆' }} {{ r.count }}× {{ c.def.value?.symbols[r.sym]?.label ?? r.sym }}</span>
+          <span class="tg-xray-pay">{{ usdCents(r.payCents) }}</span>
+        </div>
+        <div
+          v-if="c.lastTrace.value.grandCents > 0"
+          class="tg-xray-row tg-xray-grand"
+        >
+          <span class="tg-xray-chain">🗿 GRAND</span>
+          <span class="tg-xray-sym">golden idols filled</span>
+          <span class="tg-xray-pay">{{ usdCents(c.lastTrace.value.grandCents) }}</span>
+        </div>
+      </template>
+      <span
+        v-else
+        class="tg-xray-empty"
+      >Spin to X-ray the cascade — every link, every multiplier, every cent.</span>
     </div>
 
     <!-- the honest House Ledger -->
@@ -384,7 +438,102 @@ const busy = computed(() => c.phase.value !== 'idle')
 .tg-down { color: #ff9b7b; }
 .tg-ledger-foot { display: block; margin-top: 6px; font-size: 11px; color: #b89a58; }
 
+/* ===== CASCADE! — the batshit-crazy can't-miss beat ===== */
+.tg-cascade {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: tg-strobe .12s steps(1) infinite;
+}
+@keyframes tg-strobe {
+  0%   { background: radial-gradient(circle at 50% 45%, rgba(255,40,120,.55), rgba(0,0,0,.55) 72%); }
+  33%  { background: radial-gradient(circle at 50% 45%, rgba(90,220,255,.55), rgba(0,0,0,.55) 72%); }
+  66%  { background: radial-gradient(circle at 50% 45%, rgba(255,220,40,.6), rgba(0,0,0,.55) 72%); }
+}
+.tg-cascade-burst { text-align: center; z-index: 1; }
+.tg-cascade-word {
+  display: block;
+  font-family: 'Bungee', sans-serif;
+  font-size: clamp(40px, 12vw, 92px);
+  line-height: .92;
+  letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 0 0 12px #ffd24a, 0 0 30px #ff5cc8, 0 0 48px #5ad8ff;
+  animation: tg-cascade-pop .4s ease-out, tg-rainbow .6s linear infinite;
+}
+@keyframes tg-cascade-pop {
+  0%   { transform: scale(.3) rotate(-8deg); opacity: 0; }
+  60%  { transform: scale(1.28) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+@keyframes tg-rainbow { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }
+.tg-cascade-mult {
+  display: block;
+  font-family: 'Bungee', sans-serif;
+  font-size: clamp(36px, 10vw, 76px);
+  color: #fff7d6;
+  text-shadow: 0 0 18px #ffd24a;
+  animation: tg-mult-pulse .25s ease-in-out infinite alternate;
+}
+@keyframes tg-mult-pulse { from { transform: scale(1); } to { transform: scale(1.2); } }
+.tg-cascade-sub { display: block; margin-top: 4px; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #fff; }
+.tg-zap {
+  position: absolute;
+  font-size: clamp(22px, 6vw, 40px);
+  animation: tg-zap-fly .5s ease-out infinite;
+}
+.tg-zap:nth-child(1) { top: 6%; left: 10%; animation-delay: 0s; }
+.tg-zap:nth-child(2) { top: 12%; right: 8%; animation-delay: .06s; }
+.tg-zap:nth-child(3) { top: 30%; left: 4%; animation-delay: .12s; }
+.tg-zap:nth-child(4) { top: 38%; right: 5%; animation-delay: .18s; }
+.tg-zap:nth-child(5) { bottom: 30%; left: 8%; animation-delay: .24s; }
+.tg-zap:nth-child(6) { bottom: 22%; right: 7%; animation-delay: .3s; }
+.tg-zap:nth-child(7) { top: 8%; left: 42%; animation-delay: .1s; }
+.tg-zap:nth-child(8) { bottom: 10%; left: 38%; animation-delay: .16s; }
+.tg-zap:nth-child(9) { top: 50%; left: 14%; animation-delay: .22s; }
+.tg-zap:nth-child(10) { top: 52%; right: 12%; animation-delay: .28s; }
+.tg-zap:nth-child(11) { bottom: 14%; right: 30%; animation-delay: .34s; }
+.tg-zap:nth-child(12) { top: 20%; left: 50%; animation-delay: .4s; }
+@keyframes tg-zap-fly {
+  0%   { transform: scale(.4) rotate(0); opacity: 0; }
+  50%  { opacity: 1; }
+  100% { transform: scale(1.4) rotate(22deg); opacity: 0; }
+}
+.tg-shake { animation: tg-shake .28s linear infinite; }
+@keyframes tg-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 2px); }
+  40% { transform: translate(4px, -2px); }
+  60% { transform: translate(-3px, -3px); }
+  80% { transform: translate(3px, 3px); }
+}
+
+/* ===== X-ray: the last spin link by link ===== */
+.tg-xray {
+  margin: 0 auto 12px;
+  max-width: 660px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(10, 20, 40, .6);
+  border: 1px solid #2f5a8f;
+}
+.tg-xray-cap { display: block; font-size: 11px; letter-spacing: 2px; color: #8fc4ff; margin-bottom: 6px; }
+.tg-xray-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: baseline; font-family: 'DM Mono', monospace; font-size: 13px; color: #d6e6ff; padding: 2px 0; }
+.tg-xray-chain { color: #8fc4ff; white-space: nowrap; }
+.tg-xray-chain b { color: #fff; }
+.tg-xray-pay { color: #7bffb0; }
+.tg-xray-grand .tg-xray-pay { color: #ffd24a; }
+.tg-xray-empty { font-size: 12px; color: #8fa8c8; }
+
 @media (prefers-reduced-motion: reduce) {
-  .tg-bulb, .tg-torch, .tg-ladder-arrow, .tg-grand-hit, .tg-cell-win { animation: none !important; }
+  .tg-bulb, .tg-torch, .tg-ladder-arrow, .tg-grand-hit, .tg-cell-win,
+  .tg-cascade, .tg-cascade-word, .tg-cascade-mult, .tg-shake { animation: none !important; }
+  /* CASCADE! still shows (static) under reduced motion — just no strobe/shake. */
+  .tg-cascade { background: radial-gradient(circle at 50% 45%, rgba(255, 220, 40, .5), rgba(0, 0, 0, .6) 72%); }
+  .tg-zap { display: none; }
 }
 </style>

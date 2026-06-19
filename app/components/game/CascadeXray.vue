@@ -1,13 +1,12 @@
 <!-- app/components/game/CascadeXray.vue -->
-<!-- Temple of Gold teaching panel: plain-English explainers + instant symbol
-     odds always; the exact RTP/HF/volatility/Grand-odds compute (a real ~4s
-     enumeration) only when the X-ray toggle is on, deferred so the page never
-     janks. "Every number computed, never asserted." -->
+<!-- Temple of Gold teaching panel: instant, always-on plain-English explainers +
+     per-cell symbol odds + the multiplier ladder. The per-spin link-by-link
+     X-ray trace lives in the cabinet (toggled by X-ray); the full paytable + the
+     exact computed RTP live in the PAR sheet. -->
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { floorIntel, type FloorIntel } from '~/utils/floorIntel'
-import { formatPercent, formatOdds } from '~/utils/format'
+import { formatPercent } from '~/utils/format'
 import type { CascadeMachineDef } from '~/engine/types'
 
 const store = useSlotsStore()
@@ -29,17 +28,6 @@ const symbolRows = computed(() => {
     tiers: d.paytable[id] ?? null
   }))
 })
-
-// The exact figures are a ~4s enumeration — only run it when the X-ray is opened.
-const intel = ref<FloorIntel | null>(null)
-const computing = ref(false)
-watch([() => store.settings.xray, def], async ([on, d]) => {
-  if (on !== true || d === null || intel.value !== null) return
-  computing.value = true
-  await new Promise(resolve => setTimeout(resolve, 30)) // paint the spinner first
-  intel.value = floorIntel(d, { coins: d.maxCoins })
-  computing.value = false
-}, { immediate: true })
 </script>
 
 <template>
@@ -93,37 +81,12 @@ watch([() => store.settings.xray, def], async ([on, d]) => {
       </ul>
     </section>
 
-    <section class="cx-card cx-xray">
+    <section class="cx-card">
       <h2 class="cx-h">
-        🔬 The exact math <span class="cx-note">X-ray</span>
+        See the math
       </h2>
-      <p
-        v-if="!store.settings.xray"
-        class="cx-dim"
-      >
-        Flip <b>X-ray</b> on to compute the exact return — a real absorbing-Markov enumeration, not a guess.
-      </p>
-      <p
-        v-else-if="computing"
-        class="cx-dim"
-      >
-        Computing the exact return by enumeration…
-      </p>
-      <dl
-        v-else-if="intel"
-        class="cx-stats"
-      >
-        <div><dt>Return to player</dt><dd>{{ formatPercent(intel.rtp, 2) }}</dd></div>
-        <div><dt>Hit frequency</dt><dd>{{ formatPercent(intel.hitFrequency, 1) }} <span class="cx-dim">(~1 in {{ (1 / intel.hitFrequency).toFixed(1) }})</span></dd></div>
-        <div><dt>Volatility (σ/bet)</dt><dd>{{ intel.sdPerCoin.toFixed(2) }}</dd></div>
-        <div v-if="intel.topAwardProbability">
-          <dt>Grand jackpot</dt><dd>{{ formatOdds(intel.topAwardProbability) }}</dd>
-        </div>
-        <div><dt>House edge</dt><dd>{{ formatPercent(1 - intel.rtp, 2) }}</dd></div>
-      </dl>
-      <p class="cx-foot">
-        Re-checked every build against a 5-million-spin simulation (3.5σ band).
-      </p>
+      <p>Flip <b>🔬 X-ray</b> (top right) to break down the <i>last spin</i> link by link — every cascade, every multiplier, every cent.</p>
+      <p>Open the <b>PAR sheet</b> for the full paytable and the exact, computed return (a real absorbing-Markov enumeration, re-checked every build against a 5-million-spin simulation).</p>
     </section>
   </div>
 </template>

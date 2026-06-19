@@ -15,6 +15,13 @@ const store = useSlotsStore()
 const def = computed(() => store.currentDef)
 const tab = ref<'strips' | 'paytable' | 'math'>('strips')
 
+// Cascade has no reel strips — drop that tab and default to the paytable.
+const tabs = computed<('strips' | 'paytable' | 'math')[]>(() =>
+  def.value?.family === 'cascade' ? ['paytable', 'math'] : ['strips', 'paytable', 'math'])
+watch([() => props.open, def], ([open]) => {
+  if (open && !tabs.value.includes(tab.value)) tab.value = tabs.value[0]!
+}, { immediate: true })
+
 /** the joint pass for video machines costs ~1s on first compute — load lazily */
 const report = ref<ExactRtpReport | null>(null)
 const computing = ref(false)
@@ -201,7 +208,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
       >
         <div class="flex items-center gap-2">
           <UButton
-            v-for="t in (['strips', 'paytable', 'math'] as const)"
+            v-for="t in tabs"
             :key="t"
             :data-test="`tab-${t}`"
             size="xs"
