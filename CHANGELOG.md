@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.1] - 2026-06-19
+
+### Changed
+- **Stop & Lock 777 parked — the floor is back to nine.** The shipped hold-and-spin
+  cash-collect machine, plus a follow-up spins-economy redesign (3-reel, $1/spin,
+  free-spin snowball, a stop-the-777 luck multiplier — explored on the
+  `lock-reel-kitsch` branch), both came out technically sound and exact-RTP-verified
+  but never felt *fun* enough as a slot. The honest, recurring lesson — the same one
+  that parked Flameout 21 — is that inventing a genuinely fun *new* slot is hard when
+  the math has to favor the house. Moved `STOP_AND_LOCK_777` from `FLOOR` to `PARKED`
+  (now `[FLAMEOUT_21, STOP_AND_LOCK_777]`) — kept resolvable + tested, off the floor.
+  Removed the Featured card + the `lock-reel` family group; og-image (svg + regenerated
+  png), social/OG meta, README, and `verify` read **nine** again. The code and design
+  specs are preserved (the redesign on `lock-reel-kitsch`) for a possible future revisit.
+
 ## [0.11.0] - 2026-06-18
 
 ### Added

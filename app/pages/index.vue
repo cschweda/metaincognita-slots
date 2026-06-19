@@ -11,23 +11,17 @@ onMounted(() => {
   if (store.phase === 'floor' && store.peekSavedSession()) store.resume()
 })
 
-const FEATURED_ID = 'stop-and-lock-777'
-const featured = computed(() => FLOOR.find(def => def.id === FEATURED_ID) ?? null)
-
-const FAMILY_ORDER = ['video', 'stepper', 'bally-em', 'pachislo', 'lock-reel'] as const
+const FAMILY_ORDER = ['video', 'stepper', 'bally-em', 'pachislo'] as const
 const FAMILY_HEADING: Record<string, string> = {
   'video': 'Video slots',
   'stepper': 'Telnaes steppers (1984)',
   'bally-em': 'Vintage Bally Series E (1979)',
-  'pachislo': 'Pachislo skill-stop',
-  'lock-reel': 'Hold-and-spin cash-collect'
+  'pachislo': 'Pachislo skill-stop'
 }
-// The featured machine is promoted to the top; drop it from its family group
-// (and hide any group left empty) so it never appears twice.
 const groups = computed(() => FAMILY_ORDER.map(family => ({
   family,
   heading: FAMILY_HEADING[family]!,
-  machines: FLOOR.filter(def => def.family === family && def.id !== FEATURED_ID)
+  machines: FLOOR.filter(def => def.family === family)
 })).filter(group => group.machines.length > 0))
 </script>
 
@@ -39,7 +33,7 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
           SLOTS SIMULATOR
         </h1>
         <p class="text-neutral-400 text-sm">
-          Ten authentic machines. Every number computed, never asserted — flip the X-ray on and see the guts.
+          Nine authentic machines. Every number computed, never asserted — flip the X-ray on and see the guts.
         </p>
       </div>
 
@@ -74,11 +68,6 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
             </UButton>
           </div>
         </div>
-
-        <FloorFeaturedMachine
-          v-if="featured"
-          :def="featured"
-        />
 
         <h2 class="floor-title text-2xl font-bold tracking-widest pt-2">
           CHOOSE YOUR MACHINE

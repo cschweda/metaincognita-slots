@@ -22,17 +22,21 @@ export const FLOOR: MachineDef[] = [
   SEVENS_ABLAZE,
   SERIES_E_3LINE,
   SERIES_E_MULTIPLIER,
-  STOCK_RUSH,
-  STOP_AND_LOCK_777
+  STOCK_RUSH
 ]
 
 // Parked machines — kept in the codebase (and resolvable + tested) but OFF the
 // floor. Flameout 21 (blackjack-meets-crash) was a good exercise but isn't fun as a
 // slot: a risk-free cashable launch at a real (sub-100%) RTP forces low payoff for
-// high risk. The full rework is preserved on the `flameout-21-parked` branch; the
-// shipped def stays here so its engine family, components, and tests keep working
-// for a possible future revisit.
-export const PARKED: MachineDef[] = [FLAMEOUT_21]
+// high risk. Its full rework is preserved on the `flameout-21-parked` branch.
+//
+// Stop & Lock 777 (the lock-reel hold-and-spin) shipped, but the owner found it
+// still didn't feel fun — even a technically-sound stop-the-reels + collecting
+// payoff is a hard sell at a real house edge. A spins-economy redesign (3-reel,
+// $1/spin, free-spin snowball, 777 luck multiplier) was explored on the
+// `lock-reel-kitsch` branch but also didn't land. The shipped def stays here so its
+// engine family, components, and tests keep working for a possible future revisit.
+export const PARKED: MachineDef[] = [FLAMEOUT_21, STOP_AND_LOCK_777]
 
 // Every machine the store can resolve (floor + parked). The floor screen, Sim Lab,
 // and `verify` iterate FLOOR; the store resolves ALL_MACHINES so a parked game can
