@@ -48,7 +48,11 @@ onMounted(() => {
       return
     }
   }
-  if (store.phase !== 'playing' || store.currentMachineId === null) navigateTo('/')
+  // Temple of Gold is FREE PLAY — it never touches the bankroll, so it's a
+  // walk-up machine: playable without a started session. The betting machines
+  // still require one.
+  const freePlay = store.currentDef?.family === 'cascade'
+  if (!freePlay && (store.phase !== 'playing' || store.currentMachineId === null)) navigateTo('/')
   window.addEventListener('keydown', onKeydown)
 })
 

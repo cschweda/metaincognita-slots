@@ -18,16 +18,16 @@ export default defineNuxtConfig({
       bodyAttrs: { style: 'background-color: #0a0a0a' },
       title: 'Slots Simulator',
       meta: [
-        { name: 'description', content: 'Educational slot machine simulator — play nine authentic archetypes, run bankroll-risk simulations in the Sim Lab, and explore the math the floor never shows in the /learn section.' },
+        { name: 'description', content: 'Educational slot machine simulator — play ten authentic archetypes, run bankroll-risk simulations in the Sim Lab, and explore the math the floor never shows in the /learn section.' },
         { property: 'og:title', content: 'Slots Simulator' },
-        { property: 'og:description', content: 'Nine machines, a Monte-Carlo Sim Lab (risk of ruin, survival curve, drawdown histograms), and /learn explainers on house edge, virtual reels, and hold-and-spin math.' },
+        { property: 'og:description', content: 'Ten machines, a Monte-Carlo Sim Lab (risk of ruin, survival curve, drawdown histograms), and /learn explainers on house edge, virtual reels, and hold-and-spin math.' },
         { property: 'og:image', content: '/og-image.png' },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
         { property: 'og:type', content: 'website' },
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'Slots Simulator' },
-        { name: 'twitter:description', content: 'Nine machines, a Monte-Carlo Sim Lab (risk of ruin, survival curve, drawdown histograms), and /learn explainers on house edge, virtual reels, and hold-and-spin math.' },
+        { name: 'twitter:description', content: 'Ten machines, a Monte-Carlo Sim Lab (risk of ruin, survival curve, drawdown histograms), and /learn explainers on house edge, virtual reels, and hold-and-spin math.' },
         { name: 'twitter:image', content: '/og-image.png' }
       ]
     }

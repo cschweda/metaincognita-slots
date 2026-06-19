@@ -3,6 +3,46 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.12.0] - 2026-06-19
+
+### Added
+- **Temple of Gold — the Featured machine; the floor is back to ten.** A new
+  `cascade` engine family: a gaudy 5×4 Aztec **tumble** (the Gonzo's Quest /
+  Sweet Bonanza lineage). A symbol landing **8+ times anywhere** on the grid
+  pays (scatter / pay-anywhere), shatters, and the survivors fall while fresh
+  symbols drop in — chaining up a **×1/×2/×3/×5/×8** ladder, all inside one bet.
+  Six **golden idols** light a percent-fed **Grand** (~1 in 51,000; \$100 →
+  \$1,000).
+- **The floor's first FREE-PLAY machine.** A bespoke gold cabinet runs the real
+  engine but never debits a balance. Instead an **honest House Ledger** shows,
+  in *real dollars* (never "credits"), what a \$1/spin player **would** have fed,
+  won, and lost — settling toward the true RTP — and a per-spin **trick-exposer**
+  X-rays the result: **loss-disguised-as-a-win** (the #1 trick), engineered
+  **near-miss**, **clean loss**, **genuine win**, and the **Grand** as the carrot
+  funded by everyone's losses. The house edge is shown as a fact, inflicted on no
+  one. Temple is a **walk-up** machine — playable without starting a session.
+- **Exact RTP for a cascade — no Monte-Carlo in the exact path.** A memoized
+  **absorbing-Markov DP** over symbol-count states computes the per-spin mean and
+  variance exactly (the percent Grand folded at the meter, like the video Grand),
+  with admissible probability-bound pruning and a `maxTumbles` cap for
+  tractability. **RTP 90.896%**, hit frequency 35.5%; `pnpm verify` confirms it
+  against a 5M-spin simulation within 3.5σ (Δrtp 0.012%).
+- **Greenfield synth SFX** (`app/utils/audio.ts`): zero-file, CSP-clean Web Audio
+  — whirr, win-chimes (a pentatonic climb per cascade link), shatters, drops, and
+  a Grand fanfare. A visible sound toggle (default on, unlocked on first gesture),
+  reduced-motion-aware.
+- A **CascadeXray** teaching panel: plain-English "what's a cascade / a
+  progressive / why free play", the symbol odds, the multiplier ladder, and — on
+  X-ray — the exact RTP / hit-frequency / volatility / Grand odds, computed live
+  (a real enumeration), deferred so the page never janks.
+
+### Changed
+- `FLOOR` is ten again (`TEMPLE_OF_GOLD` added; Flameout 21 + Stop & Lock 777 stay
+  parked). og-image (svg + regenerated png), social/OG meta, README, and `verify`
+  read **ten**. Version → 0.12.0. 526 tests; verify 10/10; a11y 100/100 (desktop +
+  mobile); production-CSP console verified clean (the synth audio and the exact
+  enumeration both run under the hardened CSP).
+
 ## [0.11.1] - 2026-06-19
 
 ### Changed

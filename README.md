@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/og-image.png" alt="Slots Simulator — nine machines, Monte-Carlo Sim Lab, /learn explainers, and the math the floor never shows" width="800">
+  <img src="public/og-image.png" alt="Slots Simulator — ten machines, Monte-Carlo Sim Lab, /learn explainers, and the math the floor never shows" width="800">
 </p>
 
 # Metaincognita Slots
@@ -10,9 +10,18 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.11.1.** The floor is open: nine machines, full game surfaces,
+**Status: v0.12.0.** The floor is open: ten machines, full game surfaces,
 per-machine cabinet chrome, X-ray mode, PAR sheets, session history, a
 Monte-Carlo Sim Lab, and /learn explainers on the math the floor never shows.
+
+> **Featured: Temple of Gold** — a gaudy Aztec **cascade** (tumble) machine and
+> the floor's first **free-play trainer**. It runs the same exact maths a real
+> machine would, but never debits a balance: an honest **House Ledger** shows, in
+> real dollars, what a \$1/spin player *would* have fed, won, and lost, and a
+> per-spin **trick-exposer** X-rays each result — loss-disguised-as-a-win,
+> engineered near-miss, clean loss, genuine win, and the Grand as the carrot
+> funded by everyone's losses. The spectacle and the lesson, loss-free. (Cascade
+> RTP is computed exactly by an absorbing-Markov tumble DP — see below.)
 
 > **Parked (two from-scratch experiments):** *Flameout 21* (a blackjack-meets-crash
 > game) and *Stop & Lock 777* (a stop-the-reels hold-and-spin cash-collect) were each
@@ -61,6 +70,7 @@ This is an educational simulator. No real money is involved.
 
 | Machine | Family | Format | Exact RTP |
 |---|---|---|---|
+| **Temple of Gold** ★ *Featured* | Cascade (tumble) | 5×4 pay-anywhere (8+), ×1/2/3/5/8 cascade ladder, percent Grand — **free play** | 90.8961% |
 | Diamond Doubler | Telnaes stepper | 3 reels, wild 2x/4x multiplier | 94.7442% |
 | Sevens Ablaze | Telnaes stepper | 3 reels, 2-coin, percent-fed progressive | 94.4881% @ reset + 1%/coin-in feed |
 | Series E 3-Line | Vintage Bally (E-1202 replica) | 5 reels x 22 uniform stops, 3 lines, dual toggling progressive | 89.0351% per line |
@@ -123,6 +133,27 @@ slips ≤ 4 stops, and an exhaustive 21³ check proves no win can land without a
 flag — so your timing changes *when*, never *how much*. Six operator odds
 levels straight from the manual's bands (65–67% up to 115–125%).
 
+## Cascade (tumble) — and the first free-play trainer
+
+Temple of Gold is a **scatter / pay-anywhere tumble**: a symbol landing 8+ times
+anywhere on the 5×4 grid pays, shatters, and the survivors fall while fresh
+symbols drop in — chaining up a ×1/×2/×3/×5/×8 ladder, all inside one bet. The
+exact RTP is the hard part (a tumble is a branching process), so the engine
+models the grid as a multinomial count vector and solves an **absorbing-Markov
+DP** over states — exact per-spin mean *and* variance, the percent Grand folded
+at the meter, an admissible probability-bound prune and a `maxTumbles` cap for
+tractability, **no Monte-Carlo in the exact path**. `pnpm verify` confirms it
+against 5M spins within 3.5σ.
+
+It is also the floor's first **free-play** machine: the cabinet runs that real
+engine but never debits a balance. An honest **House Ledger** shows, in real
+dollars, what a $1/spin player *would* have fed, won, and lost (settling toward
+the true RTP), and a per-spin **trick-exposer** names the result —
+loss-disguised-as-a-win, engineered near-miss, clean loss, genuine win, and the
+Grand as the carrot funded by everyone's losses. The house edge is shown as a
+fact, inflicted on no one; Temple is walk-up (no session needed). Sound is a
+zero-file, CSP-clean Web Audio synth.
+
 ## Per-machine cabinet chrome
 
 Each machine's reel window sits inside a bespoke, gaudy, "weird-Vegas"
@@ -146,7 +177,7 @@ pnpm test          # unit + frozen-calibration + convergence suites
 pnpm verify        # headless floor verification report (5M cycles/machine)
 ```
 
-`pnpm verify` now covers 9 machines and prints a jackpot-column footnote
+`pnpm verify` now covers 10 machines and prints a jackpot-column footnote
 distinguishing progressive meter hits (Bally, Thunder Vault Grand) from
 pachislo bonus flags. Convergence tests include video cycle-SE cases and
 pachislo block-SE at levels 1/4/6.
@@ -159,15 +190,16 @@ Full-run table (5M cycles/machine, seed 20260612):
 
 ```
 machine               coins   exact RTP    sim RTP      Δ           HF exact     HF sim      jackpots  σ-band
-canal-royale           25     92.4559%    92.3114%     0.1446%    55.5343%    55.5288%         0  PASS
-dragons-hoard          25     93.9950%    93.8912%     0.1038%    53.5534%    53.5202%         0  PASS
-thunder-vault          25     90.2948%    90.2476%     0.0471%    41.2899%    41.3153%       947  PASS
-ruby-of-gargoyle       25     90.0802%    90.3199%     0.2397%    41.2899%    41.2930%      1007  PASS
-diamond-doubler         3     94.7442%    94.6399%     0.1044%    14.6675%    14.6918%         0  PASS
-sevens-ablaze           2     94.4881%    94.7558%     0.2677%    15.7193%    15.7390%       366  PASS
-series-e-3line          1     89.0351%    89.1345%     0.0994%    11.8144%    11.8181%         2  PASS
-series-e-multiplier     3     89.1264%    89.1293%     0.0029%    14.2559%    14.2621%       204  PASS
-stock-rush              3     91.5013%    92.3172%     0.8159%    21.2341%    21.2290%         0  PASS
+temple-of-gold        100     90.8961%    90.9518%     0.0557%    35.5257%    35.5251%        97  PASS
+canal-royale           25     92.4559%    92.3251%     0.1309%    55.5343%    55.5200%         0  PASS
+dragons-hoard          25     93.9950%    94.2613%     0.2663%    53.5534%    53.5694%         0  PASS
+thunder-vault          25     90.2948%    90.3789%     0.0841%    41.2899%    41.2930%      1007  PASS
+ruby-of-gargoyle       25     90.0802%    89.5856%     0.4946%    41.2899%    41.2619%       961  PASS
+diamond-doubler         3     94.7442%    95.1375%     0.3933%    14.6675%    14.6742%         0  PASS
+sevens-ablaze           2     94.4881%    94.9118%     0.4237%    15.7193%    15.7222%       379  PASS
+series-e-3line          1     89.0351%    88.5838%     0.4513%    11.8144%    11.8052%         1  PASS
+series-e-multiplier     3     89.1264%    89.0240%     0.1024%    14.2559%    14.2648%       197  PASS
+stock-rush              3     91.5013%    91.5360%     0.0347%    21.2341%    21.2481%         0  PASS
 ```
 
 ## Tech

@@ -48,18 +48,18 @@ watch([() => store.settings.xray, def], async ([on, d]) => {
     class="cx"
   >
     <section class="cx-card">
-      <h3 class="cx-h">
+      <h2 class="cx-h">
         How it works
-      </h3>
+      </h2>
       <p><b>Cascade (tumble).</b> Land {{ def.minMatch }}+ of one symbol <i>anywhere</i> on the grid and it pays, shatters, and the symbols above fall into the gaps while fresh ones drop in — which can pay again. Every link climbs the multiplier, all inside one bet. That's the "down, down, down."</p>
       <p><b>Progressive.</b> The Grand is a single prize that climbs a little with every bet on the floor until someone lands {{ def.grandTrigger }} golden idols — then it pays and resets. A rare carrot funded by everyone's play.</p>
       <p><b>Why free play?</b> This machine runs the exact maths a real one would — but it never debits a balance. The House Ledger shows, in real dollars, what it <i>would</i> have taken. You get the spectacle and the lesson; the loss stays hypothetical.</p>
     </section>
 
     <section class="cx-card">
-      <h3 class="cx-h">
+      <h2 class="cx-h">
         The multiplier ladder
-      </h3>
+      </h2>
       <div class="cx-ladder">
         <span
           v-for="(m, i) in def.multiplierLadder"
@@ -70,9 +70,9 @@ watch([() => store.settings.xray, def], async ([on, d]) => {
     </section>
 
     <section class="cx-card">
-      <h3 class="cx-h">
+      <h2 class="cx-h">
         Symbols &amp; odds <span class="cx-note">per cell</span>
-      </h3>
+      </h2>
       <ul class="cx-syms">
         <li
           v-for="s in symbolRows"
@@ -94,9 +94,9 @@ watch([() => store.settings.xray, def], async ([on, d]) => {
     </section>
 
     <section class="cx-card cx-xray">
-      <h3 class="cx-h">
+      <h2 class="cx-h">
         🔬 The exact math <span class="cx-note">X-ray</span>
-      </h3>
+      </h2>
       <p
         v-if="!store.settings.xray"
         class="cx-dim"
