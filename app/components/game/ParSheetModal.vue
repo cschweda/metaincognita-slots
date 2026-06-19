@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { exactRtp } from '~/engine'
 import { crashOdds } from '~/engine/blackjackReelRtp'
+import { bonusEv, bonusOdds } from '~/engine/lockReelRtp'
 import { pachisloBonusValues } from '~/engine/pachisloRtp'
 import { formatOdds, formatPercent } from '~/utils/format'
 import type { ExactRtpReport, MachineDef } from '~/engine'
@@ -53,6 +54,23 @@ const stripRows = computed<StripRow[]>(() => {
 const virtualSizes = computed(() =>
   def.value?.family === 'stepper' ? def.value.virtualMaps.map(v => v.length) : [])
 
+/**
+ * Lock-reel (Stop & Lock 777) only: the DEDICATED bonus strips' per-symbol
+ * counts. The 777 hold-and-spin respins draw from these denser strips — not the
+ * sparse base `reels` shown above — so cash genuinely keeps locking.
+ */
+const bonusStripRows = computed<StripRow[]>(() => {
+  const d = def.value
+  if (d === null || d.family !== 'lock-reel') return []
+  const symbols = Object.keys(d.symbols)
+  return symbols.map((symbol) => {
+    const counts = d.bonusReels.map(strip => strip.filter(c => c === symbol).length)
+    return { symbol, label: d.symbols[symbol]?.label ?? symbol, counts }
+  }).filter(row => row.counts.some(c => c > 0))
+})
+const baseStripLen = computed(() => def.value?.family === 'lock-reel' ? (def.value.reels[0]?.length ?? 0) : 0)
+const bonusStripLen = computed(() => def.value?.family === 'lock-reel' ? (def.value.bonusReels[0]?.length ?? 0) : 0)
+
 const pachisloLevel = computed(() => store.currentState?.pachislo?.oddsLevel ?? null)
 const pachisloRates = computed(() => {
   const d = def.value
@@ -81,6 +99,15 @@ function breakdownLabel(entryId: string): string {
   if (entryId === 'crash') return 'Crash (loss)'
   if (entryId === 'cash') return 'Cashed out'
   if (entryId === 'topped') return 'Topped out (all five)'
+  return entryId
+}
+
+/** Human-readable label for a lock-reel (cash-collect) breakdown entry ID. */
+function lockBreakdownLabel(entryId: string): string {
+  if (entryId === 'base-cash') return 'Base collect (5 stops)'
+  if (entryId === 'bonus-cash') return '777 bonus — cash locked'
+  if (entryId === 'seven-upgrade') return '777 bonus — 7 upgrades'
+  if (entryId === 'grand') return '777 bonus — GRAND (grid fill)'
   return entryId
 }
 
@@ -128,12 +155,20 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
         ...reels.map((p, i) => ({ id: `crash-${i + 3}`, text: `Reel ${i + 3} crash chance`, pay: `${(p * 100).toFixed(0)}%` }))
       ]
     }
-    case 'lock-reel':
-      // TODO(Task 3): real lock-reel PAR rows (per-reel cash EV, P(bonus), bonus EV)
+    case 'lock-reel': {
+      const trigger = bonusOdds(d)
       return [
-        ...Object.entries(d.cashValues).map(([id, v]) => ({ id, text: d.symbols[id]?.label ?? id, pay: `${v}` })),
-        ...Object.entries(d.prizes).map(([id, v]) => ({ id, text: d.symbols[id]?.label ?? id, pay: `${v}` }))
+        ...Object.entries(d.cashValues).map(([id, v]) => ({ id, text: `${d.symbols[id]?.label ?? id} (cash collect)`, pay: `${v}` })),
+        ...Object.entries(d.prizes).map(([id, v]) => ({
+          id,
+          text: id === d.bonus.grandOnFill ? `${d.symbols[id]?.label ?? id} (777 bonus — fill the grid)` : `${d.symbols[id]?.label ?? id} (fixed prize)`,
+          pay: `${v}`
+        })),
+        { id: 'bonus-sticky-7', text: `Sticky 7 upgrade (777 bonus, per 7)`, pay: `${d.bonus.sevenUpgrade}` },
+        { id: 'bonus-trigger', text: '777 BONUS — trigger (3 sevens)', pay: formatOdds(trigger) },
+        { id: 'bonus-ev', text: '777 BONUS — EV given trigger', pay: `${bonusEv(d).toFixed(2)} cr` }
       ]
+    }
     default: {
       const exhaustive: never = d
       throw new Error(`unhandled family: ${(exhaustive as MachineDef).family}`)
@@ -180,6 +215,9 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
             </template>
             <template v-else-if="def.family === 'pachislo'">
               21 stops per reel. Strips only place wins; the /16384 lottery decides them.
+            </template>
+            <template v-else-if="def.family === 'lock-reel'">
+              {{ baseStripLen }}-cell BASE strips — long and blank-heavy, so each uniform 4-cell stop window rarely catches cash. Every stop is exactly 1/{{ baseStripLen }}; there is no weighting, only counts.
             </template>
             <template v-else>
               24-cell strips — short enough that the app enumerates the complete 24⁵ cycle exactly.
@@ -228,6 +266,53 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
               </tr>
             </tbody>
           </table>
+
+          <div
+            v-if="bonusStripRows.length"
+            class="space-y-2 pt-2"
+            data-test="bonus-strips"
+          >
+            <p class="text-[11px] text-amber-400/90">
+              777 BONUS strips — {{ bonusStripLen }} cells each, ~25× denser than the base. The hold-and-spin respins draw from THESE, so cash genuinely keeps locking and the grid can fill the GRAND.
+            </p>
+            <table class="w-full text-xs font-mono">
+              <thead>
+                <tr class="text-neutral-400 text-left">
+                  <th
+                    scope="col"
+                    class="py-1 pr-3"
+                  >
+                    Symbol
+                  </th>
+                  <th
+                    v-for="(_, r) in bonusStripRows[0]?.counts ?? []"
+                    :key="r"
+                    scope="col"
+                    class="py-1 pr-3 text-right"
+                  >
+                    Reel {{ r + 1 }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-neutral-800/60">
+                <tr
+                  v-for="row in bonusStripRows"
+                  :key="row.symbol"
+                >
+                  <td class="py-1 pr-3 text-neutral-300">
+                    {{ row.label }}
+                  </td>
+                  <td
+                    v-for="(c, r) in row.counts"
+                    :key="r"
+                    class="py-1 pr-3 text-right text-neutral-400"
+                  >
+                    {{ row.label }} × {{ c }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div
@@ -288,6 +373,17 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
               (ceiling {{ bonusValues.bigMaxOut }} — the manual's "35 payouts")
             </div>
           </div>
+          <p
+            v-if="def.family === 'lock-reel'"
+            class="text-[11px] text-neutral-400 leading-relaxed"
+            data-test="lock-explainer"
+          >
+            <strong class="text-neutral-300">Collection, not paylines.</strong>
+            You STOP each reel left-to-right; every cash symbol and fixed prize in the window BANKS — nothing is ever wiped out. Each stop is an honest
+            <strong class="text-neutral-300">skill-stop</strong>: a uniform draw from the strip, so your timing feels skillful but doesn't change the odds.
+            Lock three 7s in one pass and the <strong class="text-neutral-300">777 BONUS</strong> fires — a free hold-and-spin where held cash sticks, every still-empty cell respins off the denser bonus strips, and filling the whole grid pays the
+            <strong class="text-neutral-300">GRAND</strong>. See the strips, know the edge.
+          </p>
         </div>
 
         <div
@@ -363,7 +459,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
                   :key="b.entryId"
                 >
                   <td class="py-1 pr-2 text-neutral-300">
-                    {{ def.family === 'blackjack-reel' ? breakdownLabel(b.entryId) : b.entryId }}
+                    {{ def.family === 'blackjack-reel' ? breakdownLabel(b.entryId) : def.family === 'lock-reel' ? lockBreakdownLabel(b.entryId) : b.entryId }}
                   </td>
                   <td class="py-1 pr-2 text-right text-neutral-400">
                     {{ formatOdds(b.probability) }}
@@ -392,6 +488,12 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
               class="text-[10px] text-neutral-400"
             >
               Optimal play: climb while the crash odds keep the push +EV; cash once they don't.
+            </p>
+            <p
+              v-if="def.family === 'lock-reel'"
+              class="text-[10px] text-neutral-400"
+            >
+              No play decision to optimize — each stop is a uniform draw. Value lives in the base collect plus the rare 777 hold-and-spin (cash + sticky-7 upgrades + the GRAND on a fill).
             </p>
           </template>
         </div>
