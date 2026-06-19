@@ -13,6 +13,10 @@ const MODULES: Record<string, () => Promise<{ default: Component }>> = {
   'series-e-3line': () => import('./SeriesE3LineChrome.vue'),
   'series-e-multiplier': () => import('./SeriesEMultiplierChrome.vue'),
   'flameout-21': () => import('./FlameoutChrome.vue')
+  // Stop & Lock 777 (lock-reel) deliberately has no entry: it renders its own
+  // full-page bespoke cabinet (GameReelLockReel) instead of the standard
+  // MachineChrome path, so it never calls chromeFor — the DefaultChrome fallback
+  // below is the correct no-op and an explicit entry would be dead.
 }
 
 const cache: Record<string, Component> = {}

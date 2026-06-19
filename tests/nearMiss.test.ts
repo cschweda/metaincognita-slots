@@ -122,8 +122,8 @@ describe('pachislo near-misses (stocked flags only — nothing else is honest)',
 describe('invariance: purely presentational', () => {
   it('never mutates inputs (deep-frozen) and never throws across a seeded floor sweep', () => {
     for (const def of FLOOR) {
-      // blackjack-reel is interactive (deal/hit/stand); spin() throws for this family
-      if (def.family === 'blackjack-reel') continue
+      // blackjack-reel and lock-reel are interactive (deal/stop/cash); spin() throws
+      if (def.family === 'blackjack-reel' || def.family === 'lock-reel') continue
       const state = initMachineState(def)
       const rand = mulberry32(20260612)
       const coins = def.family === 'bally-em' && def.payMode === 'lines' ? 1 : def.maxCoins
@@ -139,8 +139,8 @@ describe('invariance: purely presentational', () => {
     const run = (analyze: boolean) => {
       const totals: Record<string, number> = {}
       for (const def of FLOOR) {
-        // blackjack-reel is interactive (deal/hit/stand); spin() throws for this family
-        if (def.family === 'blackjack-reel') continue
+        // blackjack-reel and lock-reel are interactive (deal/stop/cash); spin() throws
+        if (def.family === 'blackjack-reel' || def.family === 'lock-reel') continue
         const state = initMachineState(def)
         const rand = mulberry32(777_000 + def.id.length)
         const coins = def.family === 'bally-em' && def.payMode === 'lines' ? 1 : def.maxCoins

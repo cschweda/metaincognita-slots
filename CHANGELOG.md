@@ -3,6 +3,41 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.0] - 2026-06-18
+
+### Added
+- **Stop & Lock 777 — the Featured machine; the floor is back to ten.** A new
+  `lock-reel` engine family: a player-stopped **hold-and-spin cash-collect**
+  cabinet (the genre of Lightning Link / Dragon Link / Buffalo Gold), the floor's
+  brushed-steel "big daddy" corner machine. Five reels spin nonstop over a 5×4
+  grid; you press **STOP** to lock each reel left to right, and every locked cash
+  symbol + fixed prize **banks** — nothing is ever wiped out (no bust, no crash).
+  When all five are stopped you collect the bet-scaled sum.
+- **The 777 bonus is a *real* hold-and-spin, not a re-roll.** Lock three vault-7s
+  in one pass and the bonus fires: everything held stays put and every still-empty
+  cell respins off **dedicated, ~25× denser bonus reels**, so cash genuinely keeps
+  locking. Any new lock resets the respins; the trigger's 7s are sticky and
+  upgrade. Filling the whole 20-cell grid awards the **GRAND** — a rare-but-
+  reachable dream (~1 in 10,600 rounds), not a showcase you can never hit.
+- **Exact RTP 94.5073%/coin** ($0.25 denom, 1–20 coins), computed by the
+  `lockReelExactRtp` derivation (base collect + a full bonus-fill DP) and frozen
+  in tests; the seeded multi-million-round sim converges inside `verify`'s 3.5σ
+  band. Value sits in real bonus locking and the GRAND, not flat sticky-7 upgrades.
+- **Bespoke big-daddy cabinet** (its own full-page `GameReelLockReel`): gold bezel
+  over brushed steel, three giant vault-7s as the bonus meter, a beveled-chrome
+  5×4 grid, and five 3-D metal STOP keys. An **X-ray** surfaces per-reel cash EV,
+  the 3-seven trigger odds, and the bonus EV; the **PAR sheet** shows the full
+  cash-collect paytable and derivation. The skill-stop interaction is real even
+  though every stop is an honest uniform draw (the pachislo stance).
+- Floor screen restores the **Featured** card (now Stop & Lock 777), adds the
+  `lock-reel` family group, and reads "Ten authentic machines"; floor-card label
+  "Stop & Lock", marquee art, and chrome theme entries added.
+
+### Changed
+- og-image (svg + regenerated png), social/OG meta, the README, and `verify` now
+  read **ten** machines; `verify` iterates all ten and passes. Flameout 21 stays
+  `PARKED` (resolvable + tested, off the floor); `PARKED` is now just Flameout 21.
+
 ## [0.10.1] - 2026-06-18
 
 ### Changed

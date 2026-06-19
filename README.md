@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/og-image.png" alt="Slots Simulator — nine machines, Monte-Carlo Sim Lab, /learn explainers, and the math the floor never shows" width="800">
+  <img src="public/og-image.png" alt="Slots Simulator — ten machines, Monte-Carlo Sim Lab, /learn explainers, and the math the floor never shows" width="800">
 </p>
 
 # Metaincognita Slots
@@ -10,14 +10,18 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.10.1.** The floor is open: nine machines, full game surfaces,
+**Status: v0.11.0.** The floor is open: ten machines, full game surfaces,
 per-machine cabinet chrome, X-ray mode, PAR sheets, session history, a
 Monte-Carlo Sim Lab, and /learn explainers on the math the floor never shows.
+The Featured machine is **Stop & Lock 777**, a hold-and-spin cash-collect cabinet.
 
-> **Parked:** a tenth machine, *Flameout 21* (a blackjack-meets-crash game), was
-> built and then pulled from the floor — a risk-free cashable launch at a real RTP
-> forces low payoff for high risk, which doesn't play like a fun slot. The code is
-> kept (resolvable + tested, off the floor) on the `flameout-21-parked` branch.
+> **Parked:** *Flameout 21* (a blackjack-meets-crash game) was built and then
+> pulled from the floor — a risk-free cashable launch at a real RTP forces low
+> payoff for high risk, which doesn't play like a fun slot. The code is kept
+> (resolvable + tested, off the floor), and the lesson — pair the stop-the-reels
+> dynamic with a *collecting* payoff, not a lose-it-all gamble — is exactly what
+> Stop & Lock 777 delivers. A fuller crash rework lives on the `flameout-21-parked`
+> branch.
 
 ## Playing it
 
@@ -29,9 +33,11 @@ pnpm dev        # open http://localhost:3000
 1. **Floor** — set a bankroll, then pick a machine from the family-grouped
    card grid. Each card shows the exact RTP and a one-line description.
 2. **Machine** — spin, adjust your bet, watch the reels inside each
-   machine's bespoke decorative cabinet chrome (nine themed frames: gothic
-   stone, pachinko neon, baroque gold, emerald scales, riveted steel, ice
-   facets, rising flames, warm brass, cool turquoise).
+   machine's bespoke decorative cabinet chrome (nine themed `GameMachineChrome`
+   frames: gothic stone, pachinko neon, baroque gold, emerald scales, riveted
+   steel, ice facets, rising flames, warm brass, cool turquoise) — plus the
+   featured **Stop & Lock 777**, a full-page brushed-steel "big daddy" cabinet
+   with gold bezel, vault-7 bonus meter, a 5×4 cash grid, and metal STOP keys.
    Hit **X-ray** to
    open the side panel: labeled RNG trace, near-miss callouts, a live
    session-vs-exact RTP convergence sparkline, and machine internals.
@@ -66,8 +72,9 @@ This is an educational simulator. No real money is involved.
 | Thunder Vault | Video (lines) | 5 reels x 24 stops, 25-line, Grand progressive | 90.2948% @ Grand reset |
 | Ruby of Gargoyle | Video (lines) | 5 reels x 24 stops, 25-line, hold & spin, Gargoyle's Eye ×N multiplier, Grand progressive | 90.0802% @ Grand reset |
 | Stock Rush | Pachislo (skill-stop) | 3 reels x 21 stops, flag lottery, stock queue | 66.0012%–120.0028% by operator level (L4 default 91.5013%) |
+| Stop & Lock 777 ★ | Hold-and-spin cash-collect (`lock-reel`) | 5 player-stopped reels over a 5×4 grid, lock-the-cash, 777 → dedicated-reel hold-and-spin bonus, grid-fill GRAND | 94.5073% |
 
-Every RTP shown is **computed** from the machine definition by exact
+★ Featured machine. Every RTP shown is **computed** from the machine definition by exact
 enumeration (`exactRtp`) — never asserted — and verified by seeded
 multi-million-spin simulation.
 
@@ -83,7 +90,9 @@ Planned machines (see `docs/superpowers/specs/2026-06-14-future-games-roadmap.md
   **Caveat from the parked Flameout 21:** a freely cashable climb at a real
   (sub-100%) RTP forces low payoff for high risk — a crash machine only feels
   Vegas-y if it runs player-favorable or leans on a high-variance jackpot chase.
-  Revisit with that in mind.
+  The stop-the-reels dynamic itself is fine: paired with a *collecting* payoff it
+  became the shipped **Stop & Lock 777** above. Revisit Galactic Crash with that
+  in mind.
 - **Authentic 4-tier progressives** — Mini/Minor/Major/Grand as scaling pools,
   generalizing the single-meter progressive system.
 
@@ -116,6 +125,27 @@ slips ≤ 4 stops, and an exhaustive 21³ check proves no win can land without a
 flag — so your timing changes *when*, never *how much*. Six operator odds
 levels straight from the manual's bands (65–67% up to 115–125%).
 
+## Stop & Lock 777 (hold-and-spin cash-collect) ★
+
+The Featured machine and the floor's "big daddy" — the lavish corner cabinet of
+the cash-collect genre that conquered modern floors (Lightning Link, Dragon Link,
+Buffalo Gold), with a stop-the-reels twist. Five reels spin nonstop over a 5×4
+grid; press **STOP** to lock each reel left to right, and every locked cash symbol
+and fixed prize **banks** — nothing is ever wiped out (no bust, no crash). Stop
+all five and collect the bet-scaled sum. Each stop is an honest uniform window
+draw (the pachislo stance): the skill-stop feel is real, the odds are not changed.
+
+The engine is the **777 bonus**, a *true* hold-and-spin rather than a re-roll.
+Light all three vault-7s in one pass and every still-empty cell respins off
+**dedicated, ~25× denser bonus reels**, so cash genuinely keeps locking; held cells
+stay put, any new lock resets the respins, and the trigger's 7s turn sticky and
+upgrade. Filling the whole 20-cell grid awards the **GRAND** — a rare-but-reachable
+dream (~1 in 10,600 rounds, ≈0.94% of bonuses fill), not a showcase you never hit.
+The exact RTP (94.5073%/coin) is computed by `lockReelExactRtp` — a base-collect
+expectation plus a full bonus-fill DP — never asserted, and the breakdown puts the
+value in real bonus locking and the GRAND (not flat sticky-7 upgrades). The X-ray
+exposes per-reel cash EV, the 3-seven trigger odds, and the bonus EV.
+
 ## Per-machine cabinet chrome
 
 Each machine's reel window sits inside a bespoke, gaudy, "weird-Vegas"
@@ -139,10 +169,10 @@ pnpm test          # unit + frozen-calibration + convergence suites
 pnpm verify        # headless floor verification report (5M cycles/machine)
 ```
 
-`pnpm verify` now covers 9 machines and prints a jackpot-column footnote
+`pnpm verify` now covers 10 machines and prints a jackpot-column footnote
 distinguishing progressive meter hits (Bally, Thunder Vault Grand) from
 pachislo bonus flags. Convergence tests include video cycle-SE cases and
-pachislo block-SE at levels 1/4/6.
+pachislo block-SE at levels 1/4/6, and the Stop & Lock 777 cash-collect band.
 
 CI also enforces engine purity: a grep over `app/engine/` confirms no UI
 framework imports (`vue`, `nuxt`, `pinia`) have leaked into the headless
@@ -161,6 +191,7 @@ sevens-ablaze           2     94.4881%    94.7558%     0.2677%    15.7193%    15
 series-e-3line          1     89.0351%    89.1345%     0.0994%    11.8144%    11.8181%         2  PASS
 series-e-multiplier     3     89.1264%    89.1293%     0.0029%    14.2559%    14.2621%       204  PASS
 stock-rush              3     91.5013%    92.3172%     0.8159%    21.2341%    21.2290%         0  PASS
+stop-and-lock-777      20     94.5073%    94.8805%     0.3733%    22.8880%    22.8937%         0  PASS
 ```
 
 ## Tech

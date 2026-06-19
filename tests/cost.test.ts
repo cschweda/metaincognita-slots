@@ -4,8 +4,9 @@ import { FLOOR } from '../app/machines'
 
 describe('nextSpinCost predicts every spin cost exactly', () => {
   for (const def of FLOOR) {
-    // blackjack-reel is interactive (deal/hit/stand); spin() throws for this family
-    if (def.family === 'blackjack-reel') continue
+    // blackjack-reel and lock-reel are interactive (deal/stop/cash); spin() throws
+    // for these families — they are driven through their own stop/collect actions.
+    if (def.family === 'blackjack-reel' || def.family === 'lock-reel') continue
     it(`${def.id}: 5,000 seeded spins, prediction === outcome.coinsIn`, () => {
       const state = initMachineState(def)
       const rand = mulberry32(def.id.length * 7919 + 42)

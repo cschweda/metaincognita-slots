@@ -1,27 +1,31 @@
 <!-- app/components/floor/FeaturedMachine.vue -->
 <!-- Big, visual "Featured machine" card for the floor select screen.
-     Styled to preview the Flameout 21 crash cabinet (felt + gold + Bungee marquee). -->
+     Styled to preview the Stop & Lock 777 cabinet — the floor's brushed-steel
+     "big daddy": gold bezel, vault-7s, and the hold-and-spin cash-collect motif. -->
 <script setup lang="ts">
 import { useSlotsStore } from '~/stores/slots'
 import { formatCents } from '~/utils/format'
-import type { MachineDef, SymbolId } from '~/engine'
+import type { MachineDef } from '~/engine'
 
 const props = defineProps<{ def: MachineDef }>()
 const store = useSlotsStore()
 
-// Decorative 5-reel motif — a representative crash row (deal + climb + crash).
-const MOTIF: SymbolId[] = ['KH', 'AS', 'CLIMB', 'CLIMB', 'CRASH']
-
-// GameCardFace only renders deck cards; CLIMB/CRASH use the inline reel tile.
-function isSpecial(sym: SymbolId): sym is 'CLIMB' | 'CRASH' {
-  return sym === 'CLIMB' || sym === 'CRASH'
-}
+// Decorative reel motif — a representative stop-through: cash locking left to
+// right with the three vault-7s landing in the middle (the 777 trigger).
+interface Tile { kind: 'cash' | 'seven', label: string }
+const MOTIF: Tile[] = [
+  { kind: 'cash', label: '$1' },
+  { kind: 'seven', label: '7' },
+  { kind: 'seven', label: '7' },
+  { kind: 'seven', label: '7' },
+  { kind: 'cash', label: '$5' }
+]
 
 const FACTS = [
   '5 reels — stop them one by one',
-  'Your hand sets launch + climb speed',
-  'Cash out before it crashes',
-  '~97% RTP — true crash-game odds'
+  'Lock the cash — nothing is ever wiped',
+  'Three 7s crack the 777 bonus',
+  'Fill the grid for the GRAND · ~94.5% RTP'
 ] as const
 
 function play() {
@@ -49,30 +53,24 @@ function play() {
       />
     </span>
 
-    <span class="feat-title">FLAMEOUT&nbsp;21</span>
-    <span class="feat-tag">Climb to multiply. Crash and lose it all.</span>
+    <span class="feat-title">STOP&nbsp;&amp;&nbsp;LOCK&nbsp;777</span>
+    <span class="feat-tag">Stop the reels, lock the cash — 777 lands the hold-and-spin bonus.</span>
 
     <span
       class="feat-reels"
       aria-hidden="true"
     >
       <span
-        v-for="(sym, i) in MOTIF"
+        v-for="(t, i) in MOTIF"
         :key="i"
         class="feat-window"
       >
         <span
-          v-if="isSpecial(sym)"
           class="feat-tile"
-          :class="sym === 'CRASH' ? 'feat-tile-crash' : 'feat-tile-climb'"
+          :class="t.kind === 'seven' ? 'feat-tile-seven' : 'feat-tile-cash'"
         >
-          <span class="feat-tile-glyph">{{ sym === 'CRASH' ? '💥' : '▲' }}</span>
-          <span class="feat-tile-lab">{{ sym }}</span>
+          <span class="feat-tile-glyph">{{ t.label }}</span>
         </span>
-        <GameCardFace
-          v-else
-          :symbol="sym"
-        />
       </span>
     </span>
 
@@ -85,8 +83,8 @@ function play() {
     </span>
 
     <span class="feat-cta">
-      <span class="feat-play">▶ Play Flameout 21</span>
-      <span class="feat-meta">{{ formatCents(def.denominationCents) }}/credit · climb-or-crash</span>
+      <span class="feat-play">▶ Play Stop &amp; Lock 777</span>
+      <span class="feat-meta">{{ formatCents(def.denominationCents) }}/credit · lock &amp; collect</span>
     </span>
   </button>
 </template>
@@ -99,14 +97,16 @@ function play() {
   border: 3px solid #b8860b;
   border-radius: 22px;
   padding: 20px 18px 24px;
-  background: linear-gradient(180deg, #15392e, #0a2a20);
-  box-shadow: 0 0 0 5px #1c1206, 0 0 50px rgba(0,0,0,.55), inset 0 0 70px rgba(0,0,0,.4);
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(255, 210, 74, .14), transparent 55%),
+    linear-gradient(180deg, #2a2f37, #14171d);
+  box-shadow: 0 0 0 5px #1c1206, 0 0 50px rgba(0,0,0,.55), inset 0 0 70px rgba(0,0,0,.45);
   cursor: pointer;
-  color: #eafff9;
+  color: #f3f6fb;
   transition: transform .1s, box-shadow .2s;
 }
 .feat:hover {
-  box-shadow: 0 0 0 5px #1c1206, 0 0 60px rgba(255,210,74,.25), inset 0 0 70px rgba(0,0,0,.4);
+  box-shadow: 0 0 0 5px #1c1206, 0 0 60px rgba(255,210,74,.28), inset 0 0 70px rgba(0,0,0,.45);
 }
 .feat:active { transform: translateY(2px); }
 .feat:focus-visible {
@@ -161,7 +161,7 @@ function play() {
 .feat-title {
   display: block;
   font-family: 'Bungee', sans-serif;
-  font-size: clamp(40px, 9vw, 72px);
+  font-size: clamp(34px, 7.5vw, 60px);
   line-height: 1;
   letter-spacing: 2px;
   background: linear-gradient(180deg, #fff6c8, #ffd24a 45%, #b8860b);
@@ -173,7 +173,7 @@ function play() {
 .feat-tag {
   display: block;
   font-size: 13px;
-  color: #bfe9da;
+  color: #d6def0;
   letter-spacing: .5px;
   margin: 8px 0 16px;
 }
@@ -189,34 +189,26 @@ function play() {
   width: 40px;
   height: 57px;
   border-radius: 6px;
-  background: #05100d;
-  box-shadow: inset 0 0 10px rgba(0,0,0,.85);
+  background: #0a0d12;
+  box-shadow: inset 0 0 10px rgba(0,0,0,.85), 0 0 0 1px #3a4150;
   overflow: hidden;
 }
-.feat-window :deep(.pcard) {
-  transform: scale(0.66);
-  transform-origin: top left;
-  box-shadow: none;
-}
 
-/* CLIMB / CRASH tiles — the same look as the in-game reel tiles, sized to the
-   featured motif window (GameCardFace only knows deck cards). */
+/* Cash / vault-7 tiles — the same look as the in-game reel cells, sized to the
+   featured motif window. */
 .feat-tile {
   width: 100%;
   height: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
   border-radius: 6px;
-  font-family: 'Orbitron', monospace;
+  font-family: 'Bungee', sans-serif;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, .5);
 }
-.feat-tile-glyph { font-size: 18px; line-height: 1; }
-.feat-tile-lab { font-size: 7px; letter-spacing: 1px; font-family: 'Bungee', sans-serif; }
-.feat-tile-climb { background: linear-gradient(180deg, #7bffb0, #0f8f48); color: #04240f; }
-.feat-tile-crash { background: linear-gradient(180deg, #ff7d92, #cf1c39); color: #fff; }
+.feat-tile-glyph { font-size: 20px; line-height: 1; }
+.feat-tile-cash { background: linear-gradient(180deg, #7bffb0, #0f8f48); color: #04240f; }
+.feat-tile-seven { background: linear-gradient(180deg, #ffd76b, #cf8b14); color: #3a1d00; }
 
 .feat-facts {
   display: flex;
@@ -229,9 +221,9 @@ function play() {
   font-size: 11px;
   padding: 5px 10px;
   border-radius: 999px;
-  background: #02100c;
-  border: 1px solid #1d4a3b;
-  color: #9fe0cd;
+  background: #0a0d12;
+  border: 1px solid #3a4150;
+  color: #c7d2e6;
 }
 
 .feat-cta {
@@ -254,7 +246,7 @@ function play() {
 }
 .feat-meta {
   font-size: 11px;
-  color: #9fd9c8;
+  color: #c0cbe0;
   letter-spacing: 1px;
 }
 

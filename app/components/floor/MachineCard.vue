@@ -10,7 +10,7 @@ const props = defineProps<{ def: MachineDef }>()
 const store = useSlotsStore()
 
 const FAMILY_LABEL: Record<MachineDef['family'], string> = {
-  'video': 'Video', 'stepper': 'Stepper', 'bally-em': 'Vintage Bally', 'pachislo': 'Pachislo', 'blackjack-reel': 'Crash reel', 'lock-reel': 'Cash collect'
+  'video': 'Video', 'stepper': 'Stepper', 'bally-em': 'Vintage Bally', 'pachislo': 'Pachislo', 'blackjack-reel': 'Crash reel', 'lock-reel': 'Stop & Lock'
 }
 
 // Per-family neon accent colors — drives the bulb trim, glyph glow, and border

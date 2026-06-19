@@ -40,6 +40,12 @@ const SYMBOL_ART: Record<string, SymbolArt> = {
   'seven': { kind: 'text', text: '7', variant: 'seven', color: '#f59e0b' },
   'seven-red': { kind: 'text', text: '7', variant: 'seven', color: '#ef4444' },
   'seven-flame': { kind: 'text', text: '7', variant: 'seven', color: '#fb923c' },
+  // ---- Stop & Lock 777 (lock-reel) cash-collect symbols ----
+  // The bespoke cabinet renders its grid with its own CSS cells; these entries
+  // back the def's icon metadata so the floor-wide icon-coverage invariant holds.
+  'cash': { kind: 'svg', body: '<circle cx="12" cy="12" r="9" fill="#0f8f48"/><circle cx="12" cy="12" r="9" fill="none" stroke="#0a5e30" stroke-width="1.5"/><path d="M12 6.5v11M9.6 9.2c0-1.2 1.1-1.9 2.4-1.9s2.4.7 2.4 1.7c0 2.4-4.8 1.4-4.8 3.9 0 1.1 1.1 1.8 2.4 1.8s2.4-.7 2.4-1.9" fill="none" stroke="#d1fadf" stroke-width="1.7" stroke-linecap="round"/>' },
+  'prize': { kind: 'svg', body: '<path d="M5 8h14l-1.2 11H6.2z" fill="#fbbf24"/><path d="M6.2 19l-.7-6.5h13l-.7 6.5z" fill="#b45309"/><path d="M9 8c-2-1.5-2-4.5 0-4.5 1.4 0 2.4 1.7 3 4.5M15 8c2-1.5 2-4.5 0-4.5-1.4 0-2.4 1.7-3 4.5" fill="none" stroke="#fde68a" stroke-width="1.6"/>' },
+  'grand': { kind: 'svg', body: '<path d="M3 8l4 3.5L12 4l5 7.5L21 8l-2 11H5z" fill="#fbbf24"/><path d="M5 19l-.6-3.6h15.2L19 19z" fill="#b45309"/><circle cx="3" cy="8" r="1.5" fill="#fde68a"/><circle cx="21" cy="8" r="1.5" fill="#fde68a"/><circle cx="12" cy="4" r="1.6" fill="#fff7ed"/>' },
   'bar1': { kind: 'text', text: '1', variant: 'bar' },
   'bar2': { kind: 'text', text: '2', variant: 'bar' },
   'bar3': { kind: 'text', text: '3', variant: 'bar' },

@@ -11,7 +11,8 @@ const MACHINE_ART: Record<string, MarqueeArt> = {
   'series-e-multiplier': { accent: '#fbbf24', heroIcon: 'seven', tagline: 'Bally Multiplier · Dual Progressive' },
   'stock-rush': { accent: '#fb923c', heroIcon: 'seven-red', tagline: 'Pachislo · Skill-Stop Reels' },
   'ruby-of-gargoyle': { accent: '#e11d48', heroIcon: 'gargoyle', tagline: 'Hold & Spin · Gargoyle\'s Eye Multiplier' },
-  'flameout-21': { accent: '#ff7d4a', heroIcon: 'seven-flame', tagline: 'Crash Reel · Climb & Cash Out' }
+  'flameout-21': { accent: '#ff7d4a', heroIcon: 'seven-flame', tagline: 'Crash Reel · Climb & Cash Out' },
+  'stop-and-lock-777': { accent: '#fbbf24', heroIcon: 'vault', tagline: 'Hold & Spin · Stop the Reels, Lock the Cash' }
 }
 
 export function marqueeArtFor(id: string, family: string, denomCents: number): MarqueeArt {
