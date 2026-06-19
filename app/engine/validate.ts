@@ -339,6 +339,52 @@ export function validateMachineDef(def: MachineDef): void {
       if (!prizeIds.has(def.bonus.grandOnFill)) errors.push(`bonus.grandOnFill "${def.bonus.grandOnFill}" must be a prize id`)
       break
     }
+    case 'cascade': {
+      // Temple of Gold (tumbling scatter-pays) validation.
+      const cells = def.cols * def.rows
+      if (def.cols < 1) errors.push(`cols must be >= 1, got ${def.cols}`)
+      if (def.rows < 1) errors.push(`rows must be >= 1, got ${def.rows}`)
+      if (!Number.isInteger(def.minMatch) || def.minMatch < 1 || def.minMatch > cells) {
+        errors.push(`minMatch ${def.minMatch} out of range 1..${cells}`)
+      }
+      // weights: every entry declared, a positive integer; the idol included.
+      const weightIds = new Set<SymbolId>(Object.keys(def.weights))
+      for (const [id, w] of Object.entries(def.weights)) {
+        checkSymbol(id, `weights.${id}`)
+        if (!Number.isInteger(w) || w <= 0) errors.push(`weights.${id}: must be a positive integer`)
+      }
+      checkSymbol(def.idolSymbol, 'idolSymbol')
+      if (!weightIds.has(def.idolSymbol)) errors.push('idolSymbol must have a draw weight')
+      if (def.paytable[def.idolSymbol] !== undefined) errors.push('idolSymbol must not be a paying symbol (no paytable entry)')
+      if (!Number.isInteger(def.grandTrigger) || def.grandTrigger < 1 || def.grandTrigger > cells) {
+        errors.push(`grandTrigger ${def.grandTrigger} out of range 1..${cells}`)
+      }
+      // paytable: each paying symbol is drawable and has ascending tiers >= minMatch.
+      const payIds = Object.keys(def.paytable)
+      if (payIds.length === 0) errors.push('paytable must have at least one paying symbol')
+      for (const [sym, tiers] of Object.entries(def.paytable)) {
+        checkSymbol(sym, `paytable.${sym}`)
+        if (!weightIds.has(sym)) errors.push(`paytable.${sym}: paying symbol must have a draw weight`)
+        if (tiers.length === 0) errors.push(`paytable.${sym}: needs at least one tier`)
+        let prev = -1
+        tiers.forEach((t, i) => {
+          if (!Number.isInteger(t.countAtLeast) || t.countAtLeast < def.minMatch || t.countAtLeast > cells) {
+            errors.push(`paytable.${sym}[${i}]: countAtLeast ${t.countAtLeast} out of range ${def.minMatch}..${cells}`)
+          }
+          if (t.countAtLeast <= prev) errors.push(`paytable.${sym}[${i}]: tiers must be strictly ascending by countAtLeast`)
+          prev = t.countAtLeast
+          if (!(t.pay > 0)) errors.push(`paytable.${sym}[${i}]: pay must be > 0`)
+        })
+      }
+      if (def.multiplierLadder.length === 0) errors.push('multiplierLadder must not be empty')
+      def.multiplierLadder.forEach((m, i) => {
+        if (!(m >= 1)) errors.push(`multiplierLadder[${i}]: must be >= 1`)
+      })
+      if (!Number.isInteger(def.maxTumbles) || def.maxTumbles < 1) errors.push(`maxTumbles ${def.maxTumbles} must be a positive integer`)
+      // The Grand is integral to the family — the idol can only pay through a percent meter.
+      if (def.progressive === null) errors.push('cascade requires a percent progressive (the Grand)')
+      break
+    }
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

@@ -9,6 +9,7 @@ import { initProgressiveState, addCoinToProgressive } from './progressive'
 import { freshBlackjackState, dealReels, stopReel, cashOut } from './blackjackReel'
 import { makeOptimalStopFn } from './blackjackReelRtp'
 import { freshLockState, dealStart, stopReel as lockStopReel, bonusStop } from './lockReel'
+import { spinCascade } from './cascade'
 
 export * from './types'
 export { mulberry32, cryptoSeed } from './rng'
@@ -65,6 +66,9 @@ export function nextSpinCost(def: MachineDef, state: MachineSessionState, coins:
     // lock-reel is interactive; the ante is charged on dealStart
     case 'lock-reel':
       return coins
+    // cascade is fixed-bet, non-interactive; the whole tumble is one paid spin
+    case 'cascade':
+      return coins
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
@@ -91,6 +95,8 @@ export function spin(
       throw new Error('blackjack-reel is interactive; use dealReels/stopReel/cashOut')
     case 'lock-reel':
       throw new Error('lock-reel is interactive; use dealStart/stopReel/bonusStop')
+    case 'cascade':
+      return spinCascade(def, state, coins, rand)
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
@@ -273,7 +279,7 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
     }
     const out = spin(def, state, opts.coins, rand)
     if (
-      opts.progressiveMode === 'live' && def.family === 'video'
+      opts.progressiveMode === 'live' && (def.family === 'video' || def.family === 'cascade')
       && def.progressive !== null && state.progressive !== null
     ) {
       for (let c = 0; c < out.coinsIn; c++) addCoinToProgressive(state.progressive, def.progressive)

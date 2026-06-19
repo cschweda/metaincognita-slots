@@ -1,7 +1,7 @@
 // Single source of truth for engine types. Pure data + pure functions only —
 // nothing in app/engine may import from Vue, Nuxt, or Pinia.
 
-export type MachineFamily = 'stepper' | 'bally-em' | 'video' | 'pachislo' | 'blackjack-reel' | 'lock-reel'
+export type MachineFamily = 'stepper' | 'bally-em' | 'video' | 'pachislo' | 'blackjack-reel' | 'lock-reel' | 'cascade'
 
 export type SymbolId = string
 
@@ -346,7 +346,48 @@ export interface LockReelSessionState {
   ante: number
 }
 
-export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef | BlackjackReelMachineDef | LockReelMachineDef
+/**
+ * One count tier of a cascade scatter pay. A symbol pays its highest matching
+ * tier by grid count (first match from the TOP of a descending scan).
+ */
+export interface CascadeTier {
+  /** pays when the symbol's grid count is >= this (>= def.minMatch) */
+  countAtLeast: number
+  /** credits PER COIN paid at this tier (coin-linear; × chain multiplier at tumble) */
+  pay: number
+}
+
+/**
+ * Cascade / tumble machine (Temple of Gold). NON-INTERACTIVE: the whole tumble
+ * chain resolves inside one spin() call. Each cell is an independent weighted
+ * draw; a symbol landing >= minMatch times anywhere on the grid pays (scatter /
+ * pay-anywhere), those cells shatter and refill, and each successive tumble
+ * climbs the multiplier ladder — all one bet. A rare idol scatter feeds the
+ * percent Grand. Exact RTP via absorbing-Markov DP over symbol-count states.
+ */
+export interface CascadeMachineDef extends MachineDefBase {
+  family: 'cascade'
+  cols: number
+  rows: number
+  /** integer draw weights per cell, keyed by paying-symbol id AND the idol id */
+  weights: Record<SymbolId, number>
+  /** a symbol pays when its grid count reaches this threshold */
+  minMatch: number
+  /** per paying-symbol id: ascending count tiers (each countAtLeast >= minMatch) */
+  paytable: Record<SymbolId, CascadeTier[]>
+  /** chain k (1-based) multiplies its pay by ladder[min(k, len) - 1] */
+  multiplierLadder: number[]
+  /** hard cap on winning chains per spin (bounds the tumble; keeps exact RTP tractable) */
+  maxTumbles: number
+  /** non-paying scatter symbol that triggers the Grand (never in paytable) */
+  idolSymbol: SymbolId
+  /** >= grandTrigger idols on a grid awards the Grand meter (once per spin) */
+  grandTrigger: number
+  /** the percent Grand (Thunder Vault pattern), or null */
+  progressive: PercentProgressiveConfig | null
+}
+
+export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef | BlackjackReelMachineDef | LockReelMachineDef | CascadeMachineDef
 
 // ---------- spin results ----------
 
@@ -486,6 +527,26 @@ export type FeatureEvent
     | { type: 'grand' }
     | { type: 'collect', credits: number }
 
+/**
+ * One tumble of a cascade spin, in play order, for UI animation. Step 0's grid
+ * is the initial drop; each step records the winners scored on THAT grid (the
+ * cells about to shatter), the chain index + ladder multiplier applied, and the
+ * idol scatter count. The post-tumble grid is the next step's `grid` (or the
+ * SpinOutcome.grid for the final, no-win settle).
+ */
+export interface CascadeStep {
+  /** the grid this tumble is scored on (winners are about to shatter) */
+  grid: SymbolId[][]
+  /** winning symbols scored on this grid (empty on the final settle step) */
+  wins: LineWin[]
+  /** 1-based chain index */
+  chain: number
+  /** ladder multiplier applied to this chain's pays */
+  chainMult: number
+  /** idol scatter count on this grid */
+  idolCount: number
+}
+
 export interface SpinOutcome {
   machineId: string
   family: MachineFamily
@@ -506,5 +567,7 @@ export interface SpinOutcome {
   totalPayout: number
   progressiveEvents: ProgressiveEvent[]
   featureEvents: FeatureEvent[]
+  /** cascade family only: the tumble sequence for UI animation */
+  cascadeSteps?: CascadeStep[]
   trace: SpinTrace
 }
