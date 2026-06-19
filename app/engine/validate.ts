@@ -317,6 +317,24 @@ export function validateMachineDef(def: MachineDef): void {
           else if (!Number.isInteger(v) || v <= 0) errors.push(`reels[${r}]: cash symbol "${s}" must have a positive integer value`)
         })
       })
+      // Dedicated bonus strips: exactly 5, non-empty, cash + SEVEN + BLANK only.
+      // No prize/GRAND symbol may sit on a bonus strip — the GRAND is the grid-fill
+      // award (bonus.grandOnFill) and putting it on a strip would double-count it.
+      if (def.bonusReels.length !== 5) errors.push(`bonusReels needs 5 strips, got ${def.bonusReels.length}`)
+      def.bonusReels.forEach((strip, r) => {
+        if (strip.length === 0) errors.push(`bonusReels[${r}]: strip must not be empty`)
+        strip.forEach((s) => {
+          checkSymbol(s, `bonusReels[${r}]`)
+          if (s === def.sevenSymbol || s === def.blankSymbol) return
+          if (prizeIds.has(s)) {
+            errors.push(`bonusReels[${r}]: prize symbol "${s}" not allowed on a bonus strip (GRAND is grid-fill only)`)
+            return
+          }
+          const v = def.cashValues[s]
+          if (v === undefined) errors.push(`bonusReels[${r}]: cash symbol "${s}" missing from cashValues`)
+          else if (!Number.isInteger(v) || v <= 0) errors.push(`bonusReels[${r}]: cash symbol "${s}" must have a positive integer value`)
+        })
+      })
       if (!(def.bonus.respins >= 1)) errors.push('bonus.respins must be >= 1')
       if (!prizeIds.has(def.bonus.grandOnFill)) errors.push(`bonus.grandOnFill "${def.bonus.grandOnFill}" must be a prize id`)
       break

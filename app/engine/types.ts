@@ -309,6 +309,14 @@ export interface LockReelMachineDef {
   rows: number
   /** five strips of symbol ids (cash ids, prize ids, SEVEN, BLANK) */
   reels: SymbolId[][]
+  /**
+   * Five DEDICATED bonus strips (cash ids, SEVEN, BLANK — NO prize/GRAND
+   * symbols). Respins draw a single symbol per still-empty cell from these,
+   * independent of the sparse base `reels`, with a much higher non-blank density
+   * so the hold-and-spin actually locks cash and can fill the grid. The GRAND is
+   * never on a strip — it is the grid-fill award only (`bonus.grandOnFill`).
+   */
+  bonusReels: SymbolId[][]
   symbols: Record<string, { label: string, icon?: string }>
   /** symbol id -> credit value per coin (e.g. CASH25 -> 25) */
   cashValues: Record<string, number>

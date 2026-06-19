@@ -19,16 +19,19 @@
 // the four breakdown buckets, which sum to E[collect].
 //
 // The BONUS is a hold-and-spin with reset-on-lock over a 5×rows grid whose
-// columns have DIFFERENT strips (so different per-column lock/seven/value
-// distributions — Ruby of Gargoyle's uniform hnsFinalDist does not apply
-// directly). Each respin every still-empty cell re-draws one symbol uniformly
-// from its OWN reel's strip; a non-blank locks (sticky), any lock resets the
-// shared respin counter, a pure miss decrements it, a full grid ends with the
-// GRAND. The only coupling between columns is the shared counter, and cells in a
-// column are i.i.d., so the chain state is the per-column empty-cell counts plus
-// respins left — (rows+1)^5 · respins states — and we propagate the exact first
-// two moments of (bonusCash, bonusSevens, fill) through it. That yields exact
-// E[collect] AND exact Var(collect) (the band `pnpm verify` checks).
+// columns have DIFFERENT, DEDICATED bonus strips (`bonusReels`, denser than the
+// sparse base `reels` so respins lock readily; different per-column
+// lock/seven/value distributions — Ruby of Gargoyle's uniform hnsFinalDist does
+// not apply directly). Each respin every still-empty cell re-draws one symbol
+// uniformly from its OWN column's BONUS strip; a non-blank locks (sticky), any
+// lock resets the shared respin counter, a pure miss decrements it, a full grid
+// ends with the GRAND (no prize symbol is ever on a strip — the GRAND is the
+// grid-fill award alone). The only coupling between columns is the shared
+// counter, and cells in a column are i.i.d., so the chain state is the
+// per-column empty-cell counts plus respins left — (rows+1)^5 · respins states —
+// and we propagate the exact first two moments of (bonusCash, bonusSevens, fill)
+// through it. That yields exact E[collect] AND exact Var(collect) (the band
+// `pnpm verify` checks). The five base stops still draw from the base `reels`.
 
 import type { ExactRtpBreakdownEntry, ExactRtpOptions, ExactRtpReport } from './exactRtp'
 import type { LockReelMachineDef, SymbolId } from './types'
@@ -53,8 +56,7 @@ function symbolCredits(def: LockReelMachineDef, sym: SymbolId): number {
   return def.cashValues[sym] ?? def.prizes[sym] ?? 0
 }
 
-function reelStats(def: LockReelMachineDef, r: number): ReelStats {
-  const strip = def.reels[r]!
+function reelStats(def: LockReelMachineDef, strip: readonly SymbolId[]): ReelStats {
   const len = strip.length
   let blanks = 0
   let locks = 0
@@ -169,7 +171,9 @@ function binom(n: number, p: number): number[] {
  * given k, so the moments compose by the usual sum rules.
  */
 function makeBonusSolver(def: LockReelMachineDef): (empty: number[]) => BonusMoments {
-  const stats = def.reels.map((_, r) => reelStats(def, r))
+  // The respins draw from the DEDICATED bonus strips, NOT the sparse base reels,
+  // so the chain's per-column lock/seven/value moments come from `bonusReels`.
+  const stats = def.bonusReels.map(strip => reelStats(def, strip))
   const N = def.bonus.respins
   const memo = new Map<string, BonusMoments>()
 
@@ -374,7 +378,7 @@ export function lockReelExactRtp(def: LockReelMachineDef, opts: ExactRtpOptions 
   }
   // Cache on the full RTP-relevant shape (not just id): two defs can share an id
   // in tests/calibration, and the figures are coin-independent so coins is out.
-  const key = JSON.stringify([def.rows, def.reels, def.cashValues, def.prizes, def.sevenSymbol, def.blankSymbol, def.bonus])
+  const key = JSON.stringify([def.rows, def.reels, def.bonusReels, def.cashValues, def.prizes, def.sevenSymbol, def.blankSymbol, def.bonus])
   const cached = reportCache.get(key)
   if (cached !== undefined) return cached
 

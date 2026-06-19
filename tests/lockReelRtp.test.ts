@@ -19,12 +19,24 @@ function fixture(over: Partial<LockReelMachineDef> = {}): LockReelMachineDef {
     maxCoins: 10,
     history: 'fixture',
     rows: 4,
+    // Each reel carries ONE 7 (so bonus odds stay positive but the bonus is rare
+    // enough to keep this fixture's RTP O(1) — the strict breakdown-sum assertions
+    // below are absolute-tolerance, so a runaway RTP would defeat them).
     reels: [
-      r('C1', 'BLANK', 'SEVEN', 'BLANK', 'C2', 'BLANK', 'BLANK', 'SEVEN', 'C1', 'BLANK', 'BLANK', 'BLANK'),
-      r('C1', 'BLANK', 'BLANK', 'SEVEN', 'C2', 'BLANK', 'BLANK', 'BLANK', 'SEVEN', 'C1', 'BLANK', 'BLANK'),
-      r('C2', 'BLANK', 'SEVEN', 'BLANK', 'MINI', 'BLANK', 'C1', 'BLANK', 'BLANK', 'SEVEN', 'BLANK', 'C1'),
-      r('BLANK', 'C2', 'SEVEN', 'BLANK', 'MAJOR', 'BLANK', 'BLANK', 'C1', 'BLANK', 'BLANK', 'SEVEN', 'BLANK'),
-      r('C1', 'BLANK', 'C5', 'SEVEN', 'BLANK', 'GRAND', 'BLANK', 'BLANK', 'C1', 'BLANK', 'SEVEN', 'BLANK')
+      r('C1', 'BLANK', 'SEVEN', 'BLANK', 'C2', 'BLANK', 'BLANK', 'BLANK', 'C1', 'BLANK', 'BLANK', 'BLANK'),
+      r('C1', 'BLANK', 'BLANK', 'SEVEN', 'C2', 'BLANK', 'BLANK', 'BLANK', 'BLANK', 'C1', 'BLANK', 'BLANK'),
+      r('C2', 'BLANK', 'SEVEN', 'BLANK', 'MINI', 'BLANK', 'C1', 'BLANK', 'BLANK', 'BLANK', 'BLANK', 'C1'),
+      r('BLANK', 'C2', 'SEVEN', 'BLANK', 'MAJOR', 'BLANK', 'BLANK', 'C1', 'BLANK', 'BLANK', 'BLANK', 'BLANK'),
+      r('C1', 'BLANK', 'C5', 'SEVEN', 'BLANK', 'GRAND', 'BLANK', 'BLANK', 'C1', 'BLANK', 'BLANK', 'BLANK')
+    ],
+    // Dedicated bonus strips (cash + SEVEN + BLANK only) — denser than the base so
+    // respins lock, exercising the bonus chain on the rare round it fires.
+    bonusReels: [
+      r('C1', 'BLANK', 'BLANK', 'C2', 'BLANK', 'SEVEN', 'BLANK', 'BLANK', 'C1', 'BLANK', 'BLANK', 'BLANK'),
+      r('C1', 'BLANK', 'BLANK', 'C2', 'BLANK', 'BLANK', 'SEVEN', 'BLANK', 'C1', 'BLANK', 'BLANK', 'BLANK'),
+      r('C2', 'BLANK', 'BLANK', 'C1', 'BLANK', 'SEVEN', 'BLANK', 'BLANK', 'C1', 'BLANK', 'BLANK', 'BLANK'),
+      r('C1', 'BLANK', 'BLANK', 'C2', 'BLANK', 'SEVEN', 'BLANK', 'BLANK', 'C1', 'BLANK', 'BLANK', 'BLANK'),
+      r('C5', 'BLANK', 'BLANK', 'C1', 'BLANK', 'SEVEN', 'BLANK', 'BLANK', 'C1', 'BLANK', 'BLANK', 'BLANK')
     ],
     symbols: {
       C1: { label: '$1' }, C2: { label: '$2' }, C5: { label: '$5' },
@@ -188,7 +200,8 @@ describe('lockReelExactRtp — exact enumeration cross-check', () => {
   // full grid) exactly.
   function bonusDist(def: LockReelMachineDef, grid: Sym[][]): Map<string, number> {
     const N = def.bonus.respins
-    const cellDist = def.reels.map((strip) => {
+    // Respins draw from the DEDICATED bonus strips (mirrors the engine's bonusStop).
+    const cellDist = def.bonusReels.map((strip) => {
       const m = new Map<Sym, number>()
       for (const s of strip) m.set(s, (m.get(s) ?? 0) + 1 / strip.length)
       return [...m.entries()]
@@ -320,6 +333,14 @@ describe('lockReelExactRtp — exact enumeration cross-check', () => {
         ['SEVEN', 'C5', 'MAJOR', 'BLANK', 'SEVEN'],
         ['C5', 'SEVEN', 'BLANK', 'C10', 'SEVEN'],
         ['SEVEN', 'C5', 'GRAND', 'BLANK', 'SEVEN']
+      ],
+      // Dense bonus strips (cash + SEVEN + BLANK only) — a real hold-and-spin.
+      bonusReels: [
+        ['C5', 'C10', 'BLANK', 'C5', 'SEVEN'],
+        ['C5', 'C5', 'BLANK', 'C10', 'SEVEN'],
+        ['C10', 'C5', 'BLANK', 'C5', 'SEVEN'],
+        ['C5', 'C10', 'BLANK', 'C5', 'SEVEN'],
+        ['C5', 'C5', 'BLANK', 'C10', 'SEVEN']
       ],
       symbols: {
         C5: { label: '$5' }, C10: { label: '$10' },

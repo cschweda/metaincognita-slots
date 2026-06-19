@@ -51,6 +51,15 @@ function fixture(overrides: Partial<LockReelMachineDef> = {}): LockReelMachineDe
       ['SEVEN', 'BLANK', 'MINI', 'BLANK'],
       ['SEVEN', 'BLANK', 'BLANK', 'GRAND']
     ],
+    // Dedicated bonus strips (cash + SEVEN + BLANK only); bonus tests below
+    // override these to steer respins (the base reels drive only the five stops).
+    bonusReels: [
+      ['C5', 'BLANK', 'C5', 'C10'],
+      ['C5', 'BLANK', 'C5', 'C10'],
+      ['C5', 'BLANK', 'C5', 'C10'],
+      ['C5', 'BLANK', 'C5', 'C10'],
+      ['C5', 'BLANK', 'C5', 'C10']
+    ],
     symbols: {
       C5: { label: '$5' },
       C10: { label: '$10' },
@@ -234,11 +243,18 @@ describe('bonus respins (auto-playable)', () => {
   })
 
   it('a pure-miss respin decrements respinsLeft, then a new lock resets it', () => {
-    // Fixture where each empty cell can redraw to a BLANK (a miss) OR a C5 (a
-    // lock). Per-cell draw of strip ['SEVEN','BLANK','C5','C5']:
+    // Base reels seat 5 sevens + a BLANK row-1 cell; the RESPINS draw from the
+    // dedicated bonus strips. Per-cell draw of bonus strip ['SEVEN','BLANK','C5','C5']:
     //   rand 0.25 -> index 1 = BLANK (miss)   rand 0.5 -> index 2 = C5 (lock)
     const def = fixture({
       reels: [
+        ['SEVEN', 'BLANK', 'C5', 'C5'],
+        ['SEVEN', 'BLANK', 'C5', 'C5'],
+        ['SEVEN', 'BLANK', 'C5', 'C5'],
+        ['SEVEN', 'BLANK', 'C5', 'C5'],
+        ['SEVEN', 'BLANK', 'C5', 'C5']
+      ],
+      bonusReels: [
         ['SEVEN', 'BLANK', 'C5', 'C5'],
         ['SEVEN', 'BLANK', 'C5', 'C5'],
         ['SEVEN', 'BLANK', 'C5', 'C5'],
@@ -264,36 +280,48 @@ describe('bonus respins (auto-playable)', () => {
     expect(lr.respinsLeft).toBe(def.bonus.respins) // reset on the new lock
   })
 
-  it('filling the grid awards the GRAND prize and resolves', () => {
-    // Every reel: a 7 then all-C5 so the bonus fills on the first respin.
+  it('filling the grid over respins awards the GRAND prize and resolves', () => {
+    // A REALISTIC fill: the base seats one 7 + one empty (BLANK) per reel, then a
+    // dense, all-cash bonus strip locks every empty cell on the respin -> grid
+    // fills -> GRAND. (The grid is NOT full at bonus entry: the respins do it.)
     const def = fixture({
       reels: [
-        ['SEVEN', 'C5', 'C5', 'C5'],
-        ['SEVEN', 'C5', 'C5', 'C5'],
-        ['SEVEN', 'C5', 'C5', 'C5'],
-        ['SEVEN', 'C5', 'C5', 'C5'],
-        ['SEVEN', 'C5', 'C5', 'C5']
+        ['SEVEN', 'BLANK', 'C5', 'C5'],
+        ['SEVEN', 'BLANK', 'C5', 'C5'],
+        ['SEVEN', 'BLANK', 'C5', 'C5'],
+        ['SEVEN', 'BLANK', 'C5', 'C5'],
+        ['SEVEN', 'BLANK', 'C5', 'C5']
+      ],
+      // every draw locks a C5 — the respin can only fill, never miss
+      bonusReels: [
+        ['C5', 'C5', 'C5', 'C5'],
+        ['C5', 'C5', 'C5', 'C5'],
+        ['C5', 'C5', 'C5', 'C5'],
+        ['C5', 'C5', 'C5', 'C5'],
+        ['C5', 'C5', 'C5', 'C5']
       ]
     })
     const state = emptyState()
     dealStart(def, state, 1, seq([0]))
-    // start 0 -> [SEVEN, C5] on every reel: 5 sevens (bonus), row-1 all C5 (locked),
-    // row-0 all SEVEN (sticky). No BLANKs at all -> grid already full at bonus entry.
+    // start 0 -> [SEVEN, BLANK] on every reel: 5 sevens (bonus), row-0 SEVEN (sticky),
+    // row-1 BLANK (one empty per reel). Grid is NOT full at entry.
     for (let i = 0; i < 5; i++) stopReel(def, state, constRand(0))
     const lr = state.lockReel!
     expect(lr.phase).toBe('bonus')
-    expect(lockGridFull(def, lr)).toBe(true)
+    expect(lockGridFull(def, lr)).toBe(false)
+    // one respin: each of the 5 empty cells draws C5 -> all lock -> grid full -> GRAND
     const out = bonusStop(def, state, constRand(0))
     expect(lr.phase).toBe('resolved')
     expect(out.featureEvents.some(e => e.type === 'grand')).toBe(true)
-    // collect = base cash (5 reels * C5 in row 1 = 25) + 5 sticky sevens * upgrade(7)=35
+    // collect = bonus cash (5 cells * C5 = 25) + 5 sticky sevens * upgrade(7) = 35
     //           + GRAND(1000) = 1060; payout = ante(1) * 1060
     expect(lr.collectCredits).toBe(25 + 5 * def.bonus.sevenUpgrade + def.prizes.GRAND)
     expect(out.totalPayout).toBe(lr.collectCredits)
   })
 
   it('a respin that locks nothing decrements respinsLeft and eventually resolves', () => {
-    // A reel where, after the base, the empty cells can only redraw to BLANK.
+    // Base seats 5 sevens + one empty per reel; the bonus strips are all-BLANK so
+    // every respin is a pure miss (the counter only decrements, never resets).
     const def = fixture({
       reels: [
         ['SEVEN', 'BLANK', 'BLANK', 'BLANK'],
@@ -301,6 +329,13 @@ describe('bonus respins (auto-playable)', () => {
         ['SEVEN', 'BLANK', 'BLANK', 'BLANK'],
         ['SEVEN', 'BLANK', 'BLANK', 'BLANK'],
         ['SEVEN', 'BLANK', 'BLANK', 'BLANK']
+      ],
+      bonusReels: [
+        ['BLANK', 'BLANK', 'BLANK', 'BLANK'],
+        ['BLANK', 'BLANK', 'BLANK', 'BLANK'],
+        ['BLANK', 'BLANK', 'BLANK', 'BLANK'],
+        ['BLANK', 'BLANK', 'BLANK', 'BLANK'],
+        ['BLANK', 'BLANK', 'BLANK', 'BLANK']
       ]
     })
     const state = emptyState()

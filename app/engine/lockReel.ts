@@ -182,10 +182,12 @@ function resolveBase(
 
 /**
  * Resolve ONE bonus respin. Every still-empty (blank) cell re-draws a single
- * symbol uniformly from its reel's strip; any non-blank locks (sticky). Any new
- * lock resets `respinsLeft`; a pure miss decrements it. Filling the grid awards
- * the GRAND. The feature ends at 0 respins or a full grid — and only the
- * resolving call delivers the payout.
+ * symbol uniformly from its column's DEDICATED bonus strip (`def.bonusReels[r]`,
+ * denser than the sparse base `reels` so respins lock readily); any non-blank
+ * locks (sticky). Any new lock resets `respinsLeft`; a pure miss decrements it.
+ * Filling the grid awards the GRAND (a bonus strip never carries a prize/GRAND
+ * symbol — the GRAND is strictly the grid-fill award). The feature ends at 0
+ * respins or a full grid — and only the resolving call delivers the payout.
  *
  * Fully auto-playable: the simulator loops this with an RNG until
  * `phase === 'resolved'`; the math is identical whether stepped by a player or
@@ -203,7 +205,7 @@ export function bonusStop(
   const events: FeatureEvent[] = []
   let landed = 0
   for (let r = 0; r < 5; r++) {
-    const strip = def.reels[r]!
+    const strip = def.bonusReels[r]!
     const col = lr.grid[r]!
     for (let row = 0; row < def.rows; row++) {
       if (!isEmptyCell(def, col[row] ?? null)) continue

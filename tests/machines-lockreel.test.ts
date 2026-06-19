@@ -20,6 +20,14 @@ function makeDef(): LockReelMachineDef {
     history: 'A player-stopped cash-collect machine: stop each reel, lock the cash, collect.',
     rows: 4,
     reels: [strip(), strip(), strip(), strip(), strip()],
+    // dedicated bonus strips: cash + SEVEN + BLANK only (no prize/GRAND symbol)
+    bonusReels: [
+      ['CASH25', 'CASH50', 'BLANK', 'SEVEN', 'CASH25'],
+      ['CASH25', 'CASH50', 'BLANK', 'SEVEN', 'CASH25'],
+      ['CASH25', 'CASH50', 'BLANK', 'SEVEN', 'CASH25'],
+      ['CASH25', 'CASH50', 'BLANK', 'SEVEN', 'CASH25'],
+      ['CASH25', 'CASH50', 'BLANK', 'SEVEN', 'CASH25']
+    ],
     symbols: {
       CASH25: { label: '$25' },
       CASH50: { label: '$50' },
@@ -101,6 +109,31 @@ describe('lock-reel validation', () => {
     def.bonus.grandOnFill = 'CASH50' // a cash symbol, not a prize
     expect(() => validateMachineDef(def)).toThrow()
   })
+
+  it('rejects a bonusReels count other than 5', () => {
+    const def = makeDef()
+    def.bonusReels = def.bonusReels.slice(0, 4)
+    expect(() => validateMachineDef(def)).toThrow()
+  })
+
+  it('rejects an empty bonus strip', () => {
+    const def = makeDef()
+    def.bonusReels[2] = []
+    expect(() => validateMachineDef(def)).toThrow()
+  })
+
+  it('rejects a prize/GRAND symbol on a bonus strip (grid-fill award only)', () => {
+    const def = makeDef()
+    def.bonusReels[0] = ['CASH25', 'MINI', 'BLANK', 'SEVEN', 'CASH25'] // MINI is a prize
+    expect(() => validateMachineDef(def)).toThrow()
+  })
+
+  it('rejects a cash symbol on a bonus strip missing from cashValues', () => {
+    const def = makeDef()
+    def.bonusReels[0] = ['CASH99', 'BLANK', 'SEVEN', 'CASH25', 'CASH50']
+    def.symbols.CASH99 = { label: '$99' } // declared, but no cashValues entry
+    expect(() => validateMachineDef(def)).toThrow()
+  })
 })
 
 describe('Stop & Lock 777 — the shipped def', () => {
@@ -114,11 +147,12 @@ describe('Stop & Lock 777 — the shipped def', () => {
     expect(STOP_AND_LOCK_777.rows).toBe(4)
   })
 
-  // FROZEN exact RTP. The builder in stop-and-lock-777.ts reproduces the exact
-  // calibrated 692-cell strips; this pins the resulting per-coin RTP. If the
-  // strips or values change, recompute and update this number deliberately.
+  // FROZEN exact RTP. The builders in stop-and-lock-777.ts reproduce the exact
+  // calibrated 692-cell base strips AND the 40-cell dedicated bonus strips; this
+  // pins the resulting per-coin RTP. If the strips or values change, recompute and
+  // update this number deliberately.
   it('freezes the exact rtpPerCoin', () => {
     const rep = lockReelExactRtp(STOP_AND_LOCK_777)
-    expect(rep.rtpPerCoin).toBeCloseTo(0.944797599829155, 6)
+    expect(rep.rtpPerCoin).toBeCloseTo(0.9450725862575409, 6)
   })
 })
