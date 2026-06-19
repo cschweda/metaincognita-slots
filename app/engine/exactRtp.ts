@@ -3,6 +3,7 @@ import { ballyAwardForLine, bestStepperAward } from './awards'
 import { videoExactRtp } from './videoRtp'
 import { pachisloExactRtp } from './pachisloRtp'
 import { blackjackReelExactRtp } from './blackjackReelRtp'
+import { lockReelExactRtp } from './lockReelRtp'
 
 export interface ExactRtpOptions {
   /** coin level for multiplier/progressive-at-max machines (default: maxCoins) */
@@ -158,8 +159,7 @@ export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpR
   if (def.family === 'video') return videoExactRtp(def, opts)
   if (def.family === 'pachislo') return pachisloExactRtp(def, opts)
   if (def.family === 'blackjack-reel') return blackjackReelExactRtp(def, opts)
-  // TODO(Task 3): real lock-reel exact RTP (lockReelRtp.ts — base enumeration + bonus EV)
-  if (def.family === 'lock-reel') throw new Error('lock-reel: not yet implemented')
+  if (def.family === 'lock-reel') return lockReelExactRtp(def, opts)
   const coins = opts.coins ?? def.maxCoins
   if (coins < 1 || coins > def.maxCoins) {
     throw new Error(`${def.id}: coins ${coins} out of range 1..${def.maxCoins}`)

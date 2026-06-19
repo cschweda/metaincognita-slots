@@ -233,8 +233,10 @@ describe('bonus respins (auto-playable)', () => {
     expect(lastPayout).toBeGreaterThan(0)
   })
 
-  it('a new lock during the bonus resets respinsLeft to bonus.respins', () => {
-    // Fixture where every empty cell will lock a cash symbol on the next draw.
+  it('a pure-miss respin decrements respinsLeft, then a new lock resets it', () => {
+    // Fixture where each empty cell can redraw to a BLANK (a miss) OR a C5 (a
+    // lock). Per-cell draw of strip ['SEVEN','BLANK','C5','C5']:
+    //   rand 0.25 -> index 1 = BLANK (miss)   rand 0.5 -> index 2 = C5 (lock)
     const def = fixture({
       reels: [
         ['SEVEN', 'BLANK', 'C5', 'C5'],
@@ -252,16 +254,14 @@ describe('bonus respins (auto-playable)', () => {
     const lr = state.lockReel!
     expect(lr.phase).toBe('bonus')
     expect(lr.respinsLeft).toBe(3)
-    // Burn a respin down first with a draw that lands only BLANKs (start 1 -> [BLANK,C5],
-    // but the empty cells are row 1; per-cell draws use the whole strip). Use a draw that
-    // resolves empties to BLANK: rand picks start 1 -> position 1 = BLANK for a 1-window.
-    // Simpler: force a NEW lock and assert the reset.
-    const before = lr.respinsLeft
-    // A per-cell draw of 0.5 -> index 2 = C5 (a new lock) on every empty cell.
+    // 1) A pure-miss respin (every empty cell draws BLANK) MUST decrement 3 -> 2.
+    bonusStop(def, state, constRand(0.25))
+    expect(lr.respinsLeft).toBe(2)
+    expect(lr.phase).toBe('bonus')
+    // 2) A respin that locks (every empty cell draws C5) MUST reset 2 -> 3.
     const out = bonusStop(def, state, constRand(0.5))
     expect(out.featureEvents.some(e => e.type === 'respin')).toBe(true)
     expect(lr.respinsLeft).toBe(def.bonus.respins) // reset on the new lock
-    expect(before).toBe(3)
   })
 
   it('filling the grid awards the GRAND prize and resolves', () => {
