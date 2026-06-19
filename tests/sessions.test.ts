@@ -166,3 +166,68 @@ describe('simulateSession — flameout-21 (crash)', () => {
     expect(rtp).toBeLessThan(1.02)
   })
 })
+
+describe('simulateSession — stop-and-lock-777 (lock-reel cash-collect)', () => {
+  // Resolved from ALL_MACHINES — Stop & Lock 777 is parked (off the floor) but
+  // resolvable, so the Sim Lab can run it. (Closes the gap Flameout 21 shipped
+  // with, where selecting the machine in the Sim Lab errored.)
+  const def = byId('stop-and-lock-777')
+
+  it('runs without error and is reproducible for the same seed', () => {
+    const a = simulateSession(def, opts({ startCredits: 1000, bet: 1, spinCap: 200 }), mulberry32(deriveSeed(31, 0)))
+    const b = simulateSession(def, opts({ startCredits: 1000, bet: 1, spinCap: 200 }), mulberry32(deriveSeed(31, 0)))
+    expect(a).toEqual(b)
+  })
+
+  it('charges exactly the ante per round and never goes negative', () => {
+    for (let i = 0; i < 50; i++) {
+      const r = simulateSession(def, opts({ startCredits: 2000, bet: 2, spinCap: 300 }), mulberry32(deriveSeed(32, i)))
+      expect(r.endBalance).toBeGreaterThanOrEqual(0)
+      expect(r.maxDrawdown).toBeGreaterThanOrEqual(0)
+      expect(r.peak).toBeGreaterThanOrEqual(r.endBalance)
+      expect(r.peak).toBeGreaterThanOrEqual(2000) // peak is at least the starting bankroll
+      // each round charges exactly `bet` coins, so coins-in is rounds × bet
+      expect(r.totalIn).toBe(r.spinsPlayed * 2)
+    }
+  })
+
+  it('busts on a tiny bankroll against a huge cap (RTP < 1)', () => {
+    const r = simulateSession(def, opts({ startCredits: 5, bet: 1, spinCap: 1_000_000 }), mulberry32(deriveSeed(33, 0)))
+    expect(r.busted).toBe(true)
+    expect(r.spinsPlayed).toBeLessThan(1_000_000)
+    expect(r.endBalance).toBeLessThan(1) // couldn't afford the next 1-coin ante
+  })
+
+  it('survives (does not bust) when the cap is reached with a huge bankroll', () => {
+    const r = simulateSession(def, opts({ startCredits: 1_000_000, bet: 1, spinCap: 10 }), mulberry32(deriveSeed(34, 0)))
+    expect(r.busted).toBe(false)
+    expect(r.spinsPlayed).toBe(10)
+  })
+
+  it('records a trajectory only when asked', () => {
+    const off = simulateSession(def, opts({ startCredits: 1000, bet: 1, spinCap: 150 }), mulberry32(deriveSeed(35, 0)), false)
+    const on = simulateSession(def, opts({ startCredits: 1000, bet: 1, spinCap: 150 }), mulberry32(deriveSeed(35, 0)), true)
+    expect(off.trajectory).toEqual([])
+    expect(on.trajectory[0]).toBe(1000) // starts at startCredits
+    expect(on.trajectory.length).toBeGreaterThan(1)
+    expect(on.trajectory.length).toBeLessThanOrEqual(80) // downsampled
+  })
+
+  it('empirical RTP over long no-bust sessions sits in a sane band around ~0.945', () => {
+    // The lock-reel collect has a heavy GRAND tail (~1-in-10,600, ~4.6% of RTP),
+    // so pool several long no-bust sessions for a tight estimate of E[collect].
+    let totalIn = 0
+    let totalOut = 0
+    for (let i = 0; i < 4; i++) {
+      const r = simulateSession(def, opts({ startCredits: 50_000_000, bet: 1, spinCap: 400_000 }), mulberry32(deriveSeed(36, i)))
+      expect(r.busted).toBe(false)
+      expect(r.spinsPlayed).toBe(400_000)
+      expect(r.totalIn).toBe(400_000) // bet 1 → coins-in = rounds
+      totalIn += r.totalIn
+      totalOut += r.totalOut
+    }
+    const rtp = totalOut / totalIn
+    expect(rtp).toBeGreaterThan(0.92)
+    expect(rtp).toBeLessThan(0.98)
+  })
+})

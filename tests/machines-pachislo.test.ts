@@ -29,11 +29,16 @@ describe('stock-rush — machine integrity', () => {
     // Flameout 21 (blackjack-reel crash) is PARKED — off the floor, kept in the code.
     expect(FLOOR.some(m => m.id === 'flameout-21')).toBe(false)
   })
-  it('Flameout 21 is parked: resolvable + valid, but not on the floor', () => {
-    expect(PARKED.map(m => m.id)).toEqual(['flameout-21'])
-    expect(() => validateMachineDef(PARKED[0]!)).not.toThrow()
-    // the store resolves everything (floor + parked) so the parked game still loads
-    expect(ALL_MACHINES).toHaveLength(10)
+  it('the parked roster is resolvable + valid, but off the floor', () => {
+    // Flameout 21 (blackjack-reel crash) and Stop & Lock 777 (lock-reel cash-collect,
+    // built but not yet wired onto the floor) are both PARKED — kept in the code and
+    // resolvable, but not shown on the floor screen / Sim Lab listing / verify.
+    expect(PARKED.map(m => m.id)).toEqual(['flameout-21', 'stop-and-lock-777'])
+    for (const def of PARKED) expect(() => validateMachineDef(def)).not.toThrow()
+    expect(FLOOR.some(m => m.id === 'stop-and-lock-777')).toBe(false)
+    // the store resolves everything (floor + parked) so the parked games still load
+    expect(ALL_MACHINES).toHaveLength(11)
     expect(ALL_MACHINES.some(m => m.id === 'flameout-21')).toBe(true)
+    expect(ALL_MACHINES.some(m => m.id === 'stop-and-lock-777')).toBe(true)
   })
 })

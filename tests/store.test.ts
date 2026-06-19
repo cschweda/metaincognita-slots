@@ -8,6 +8,7 @@ import { mulberry32, simulateMachine } from '../app/engine'
 import { setLiveRand } from '../app/utils/liveRand'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
 import { FLAMEOUT_21 } from '../app/machines/flameout-21'
+import { STOP_AND_LOCK_777 } from '../app/machines/stop-and-lock-777'
 
 function freshStore() {
   setActivePinia(createPinia())
@@ -844,5 +845,498 @@ describe('blackjack-reel sanitizeMachineState — Flameout 21', () => {
     const store = freshStore()
     expect(store.resume()).toBe(true)
     expect(store.machineStates['flameout-21']!.blackjackReel).toEqual(crashState)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// lock-reel store actions: lockDeal / lockStop / lockReset (Stop & Lock 777)
+// ---------------------------------------------------------------------------
+
+describe('lock-reel interactive actions — Stop & Lock 777', () => {
+  // Stop & Lock 777: denomination 25¢, maxCoins 20.
+  const DENOM = STOP_AND_LOCK_777.denominationCents
+
+  it('lockDeal charges the ante once, sets phase spinning, books a deal record', () => {
+    setLiveRand(mulberry32(42))
+    const store = freshStore()
+    store.startSession(1_000_000)
+    store.selectMachine('stop-and-lock-777')
+    store.setBet(2) // 2-coin ante
+    const before = store.bankrollCents
+    store.lockDeal()
+
+    expect(store.spinning).toBe(true) // gate raised
+
+    // ante charged: 2 coins × 25¢ = 50¢; payout = 0
+    expect(store.bankrollCents).toBe(before - 50)
+
+    const lr = store.machineStates['stop-and-lock-777']!.lockReel!
+    expect(lr.phase).toBe('spinning')
+    expect(lr.ante).toBe(2)
+    expect(lr.idx).toBe(0) // deal stops no reels
+
+    expect(store.history).toHaveLength(1)
+    const rec = store.history[0]!
+    expect(rec.machineId).toBe('stop-and-lock-777')
+    expect(rec.coinsInCents).toBe(50)
+    expect(rec.payoutCents).toBe(0)
+
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
+    expect(saved.bankrollCents).toBe(store.bankrollCents)
+  })
+
+  it('a full round (deal → 5 stops → collect) charges the ante once, books one collect, +1 spin, round-trips', () => {
+    setLiveRand(mulberry32(7))
+    const store = freshStore()
+    store.startSession(1_000_000)
+    store.selectMachine('stop-and-lock-777')
+    store.setBet(1)
+    const start = store.bankrollCents
+    const spinsBefore = store.stats.spins
+
+    store.lockDeal()
+    const lr = store.machineStates['stop-and-lock-777']!.lockReel!
+    expect(lr.phase).toBe('spinning')
+    // Five stops, then drain any bonus the round happens to trigger — the round
+    // invariants (one ante, one collect, +1 spin) hold whether or not the 777
+    // bonus fires, so this stays robust to RNG drift.
+    for (let i = 0; i < 5; i++) {
+      store.revealDone()
+      store.lockStop()
+    }
+    let guard = 0
+    while (lr.phase === 'bonus') {
+      store.revealDone()
+      store.lockStop()
+      if (++guard > 1000) throw new Error('bonus did not resolve')
+    }
+    expect(lr.phase).toBe('resolved')
+    store.revealDone()
+
+    // The whole-credit collect was booked once on the fifth stop (ante × credits).
+    // ante = 1, so the booked credit payout equals collectCredits, in cents = ×denom.
+    const collectRec = store.history.at(-1)!
+    expect(collectRec.coinsInCents).toBe(0) // stops are free
+    expect(collectRec.payoutCents).toBe(lr.collectCredits * DENOM)
+
+    // exactly two history records: the deal (ante) + the collect
+    expect(store.history).toHaveLength(2)
+    expect(store.history[0]!.coinsInCents).toBe(DENOM) // 1-coin ante charged once
+    // one round = one spin counted
+    expect(store.stats.spins).toBe(spinsBefore + 1)
+    // net = -ante + collect
+    expect(store.bankrollCents).toBe(start - DENOM + lr.collectCredits * DENOM)
+
+    // round-trips through loadFromLocalStorage exactly
+    const b = freshStore()
+    expect(b.loadFromLocalStorage()).toBe(true)
+    expect(b.machineStates['stop-and-lock-777']!.lockReel).toEqual(lr)
+    expect(b.history).toHaveLength(2)
+    expect(b.stats.spins).toBe(store.stats.spins)
+    expect(b.bankrollCents).toBe(store.bankrollCents)
+  })
+
+  it('a forced 3-seven round enters the bonus and the bonus action books the full collect', () => {
+    setLiveRand(mulberry32(123))
+    const store = freshStore()
+    store.startSession(1_000_000)
+    store.selectMachine('stop-and-lock-777')
+    store.setBet(1)
+    const start = store.bankrollCents
+
+    store.lockDeal()
+    const lr = store.machineStates['stop-and-lock-777']!.lockReel!
+    // Force the first four reels stopped with three sticky 7s already locked, so
+    // the fifth honest stop keeps sevenCount ≥ 3 → the 777 BONUS opens. (We force
+    // state.lockReel directly, as the engine reads its reels from the def.)
+    lr.grid[0] = ['SEVEN', 'BLANK', 'BLANK', 'BLANK']
+    lr.grid[1] = ['SEVEN', 'BLANK', 'BLANK', 'BLANK']
+    lr.grid[2] = ['SEVEN', 'C1', 'BLANK', 'BLANK']
+    lr.grid[3] = ['C1', 'BLANK', 'BLANK', 'BLANK']
+    lr.idx = 4
+    lr.sevenCount = 3
+    lr.collectCredits = 2
+
+    const histBefore = store.history.length
+
+    // Fifth stop: resolves into the bonus (no collect booked yet).
+    store.revealDone()
+    store.lockStop()
+    expect(lr.phase).toBe('bonus')
+    expect(lr.sevenCount).toBeGreaterThanOrEqual(3)
+    expect(store.history.length).toBe(histBefore) // bonus trigger pays nothing yet
+
+    // Step the bonus via the SAME action until it resolves.
+    let guard = 0
+    while (lr.phase === 'bonus') {
+      store.revealDone()
+      store.lockStop()
+      if (++guard > 1000) throw new Error('bonus did not resolve')
+    }
+    expect(lr.phase).toBe('resolved')
+    store.revealDone()
+
+    // The full collect (base + bonus cash + sticky-7 upgrades [+ GRAND]) is booked
+    // once, on the resolving bonus step. Sticky 7s upgrade, so the collect strictly
+    // exceeds the pre-bonus cash.
+    expect(lr.collectCredits).toBeGreaterThan(2)
+    const collectRec = store.history.at(-1)!
+    expect(store.history.length).toBe(histBefore + 1)
+    expect(collectRec.coinsInCents).toBe(0) // the bonus step is free
+    expect(collectRec.payoutCents).toBe(lr.collectCredits * DENOM) // ante 1 → credits × denom
+    // net across the round = -ante(1) + collect
+    expect(store.bankrollCents).toBe(start - DENOM + lr.collectCredits * DENOM)
+  })
+
+  it('lockStop is a no-op outside spinning/bonus; lockDeal is a no-op while spinning or broke', () => {
+    setLiveRand(mulberry32(1))
+    const store = freshStore()
+    store.startSession(1_000_000)
+    store.selectMachine('stop-and-lock-777')
+    store.setBet(1)
+
+    // lockStop before any deal (phase idle) → no-op
+    store.lockStop()
+    expect(store.history).toHaveLength(0)
+
+    store.lockDeal()
+    expect(store.spinning).toBe(true) // gate up
+    // lockDeal again while spinning → no-op (no double-charge)
+    store.lockDeal()
+    expect(store.history).toHaveLength(1)
+    store.revealDone()
+
+    // drain bankroll below one coin and try to deal again (after resolving a round)
+    for (let i = 0; i < 5; i++) {
+      store.lockStop()
+      store.revealDone()
+    }
+    const lr = store.machineStates['stop-and-lock-777']!.lockReel!
+    if (lr.phase === 'bonus') {
+      let guard = 0
+      while (lr.phase === 'bonus') {
+        store.lockStop()
+        store.revealDone()
+        if (++guard > 1000) throw new Error('bonus did not resolve')
+      }
+    }
+    expect(lr.phase).toBe('resolved')
+    const histAfterRound = store.history.length
+    store.bankrollCents = 10 // 10¢ < 25¢ (one coin)
+    store.lockDeal()
+    expect(store.history).toHaveLength(histAfterRound) // no new deal record
+    expect(store.liveAnnouncement).toMatch(/out of credits/i)
+  })
+
+  it('lockReset returns a resolved round to idle without charging', () => {
+    setLiveRand(mulberry32(55))
+    const store = freshStore()
+    store.startSession(1_000_000)
+    store.selectMachine('stop-and-lock-777')
+    store.setBet(1)
+    store.lockDeal()
+    for (let i = 0; i < 5; i++) {
+      store.revealDone()
+      store.lockStop()
+    }
+    const lr = store.machineStates['stop-and-lock-777']!.lockReel!
+    let guard = 0
+    while (lr.phase === 'bonus') {
+      store.revealDone()
+      store.lockStop()
+      if (++guard > 1000) throw new Error('bonus did not resolve')
+    }
+    expect(lr.phase).toBe('resolved')
+    store.revealDone()
+    const histBefore = store.history.length
+    store.lockReset()
+    const fresh = store.machineStates['stop-and-lock-777']!.lockReel!
+    expect(fresh.phase).toBe('idle')
+    expect(fresh.idx).toBe(0)
+    expect(fresh.ante).toBe(0)
+    expect(fresh.collectCredits).toBe(0)
+    expect(fresh.grid.every(col => col.every(c => c === null))).toBe(true)
+    expect(store.history).toHaveLength(histBefore) // reset is free
+  })
+
+  it('spinOnce is a no-op for lock-reel (uses its own actions)', () => {
+    setLiveRand(mulberry32(2))
+    const store = freshStore()
+    store.startSession(1_000_000)
+    store.selectMachine('stop-and-lock-777')
+    store.spinOnce()
+    expect(store.history).toHaveLength(0)
+    expect(store.spinning).toBe(false)
+  })
+
+  it('defaults the lock-reel bet to 1 coin (small-bet pull)', () => {
+    const store = freshStore()
+    store.startSession(1_000_000)
+    store.selectMachine('stop-and-lock-777')
+    expect(store.currentBet).toBe(1)
+  })
+
+  it('bet is selectable for lock-reel (1..maxCoins), not forced to max', () => {
+    const store = freshStore()
+    store.startSession(1_000_000)
+    store.selectMachine('stop-and-lock-777')
+    store.setBet(1)
+    expect(store.currentBet).toBe(1)
+    store.setBet(10)
+    expect(store.currentBet).toBe(10)
+    store.setBet(99) // over max → clamped
+    expect(store.currentBet).toBe(STOP_AND_LOCK_777.maxCoins)
+  })
+})
+
+describe('lock-reel sanitizeMachineState — Stop & Lock 777', () => {
+  it('round-trips a mid-stop spinning grid exactly', () => {
+    const a = freshStore()
+    a.startSession(50_000)
+    a.selectMachine('stop-and-lock-777')
+    // Two reels stopped (idx=2): columns 0–1 locked, 2–4 still empty (all null).
+    // rows = 4. sevenCount/collectCredits reflect the locked columns.
+    const midState = {
+      phase: 'spinning' as const,
+      grid: [
+        ['SEVEN', 'C1', 'BLANK', 'BLANK'],
+        ['C2', 'BLANK', 'C1', 'BLANK'],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null]
+      ],
+      idx: 2,
+      sevenCount: 1,
+      collectCredits: 4, // C1 + C2 + C1
+      respinsLeft: 0,
+      ante: 3
+    }
+    a.machineStates['stop-and-lock-777']!.lockReel = midState
+    a.saveToLocalStorage()
+    const b = freshStore()
+    expect(b.resume()).toBe(true)
+    expect(b.machineStates['stop-and-lock-777']!.lockReel).toEqual(midState)
+  })
+
+  it('round-trips a resolved (bonus-fill GRAND) state exactly', () => {
+    const grandState = {
+      phase: 'resolved' as const,
+      grid: [
+        ['SEVEN', 'C1', 'C2', 'C5'],
+        ['SEVEN', 'C1', 'C1', 'C2'],
+        ['SEVEN', 'C2', 'C1', 'C1'],
+        ['C5', 'C1', 'C2', 'C1'],
+        ['C2', 'C1', 'C5', 'C1']
+      ],
+      idx: 5,
+      sevenCount: 3,
+      collectCredits: 500,
+      respinsLeft: 0,
+      ante: 1
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1,
+      bankrollCents: 5000,
+      currentMachineId: 'stop-and-lock-777',
+      machineStates: {
+        'stop-and-lock-777': {
+          progressive: null,
+          videoFeature: null,
+          pachislo: null,
+          blackjackReel: null,
+          lockReel: grandState
+        }
+      },
+      history: [],
+      stats: null,
+      settings: null
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    expect(store.machineStates['stop-and-lock-777']!.lockReel).toEqual(grandState)
+  })
+
+  it('restores a fresh idle state when the lockReel blob is corrupt', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1,
+      bankrollCents: 5000,
+      currentMachineId: 'stop-and-lock-777',
+      machineStates: {
+        'stop-and-lock-777': {
+          progressive: null,
+          videoFeature: null,
+          pachislo: null,
+          blackjackReel: null,
+          lockReel: {
+            phase: 'INVALID',
+            grid: 'not-an-array',
+            idx: 'lots',
+            sevenCount: -3,
+            collectCredits: 'free',
+            respinsLeft: null,
+            ante: 999
+          }
+        }
+      },
+      history: [],
+      stats: null,
+      settings: null
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    const lr = store.machineStates['stop-and-lock-777']!.lockReel!
+    expect(lr.phase).toBe('idle')
+    expect(lr.idx).toBe(0)
+    expect(lr.ante).toBe(0)
+    expect(lr.collectCredits).toBe(0)
+    expect(lr.grid).toHaveLength(5)
+    expect(lr.grid.every(col => col.length === STOP_AND_LOCK_777.rows && col.every(c => c === null))).toBe(true)
+  })
+
+  it('rejects wrong grid dimensions (4 columns instead of 5)', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1,
+      bankrollCents: 5000,
+      currentMachineId: 'stop-and-lock-777',
+      machineStates: {
+        'stop-and-lock-777': {
+          progressive: null,
+          videoFeature: null,
+          pachislo: null,
+          blackjackReel: null,
+          lockReel: {
+            phase: 'spinning',
+            grid: [ // only 4 columns
+              ['SEVEN', 'BLANK', 'BLANK', 'BLANK'],
+              ['C1', 'BLANK', 'BLANK', 'BLANK'],
+              [null, null, null, null],
+              [null, null, null, null]
+            ],
+            idx: 2,
+            sevenCount: 1,
+            collectCredits: 1,
+            respinsLeft: 0,
+            ante: 1
+          }
+        }
+      },
+      history: [],
+      stats: null,
+      settings: null
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    expect(store.machineStates['stop-and-lock-777']!.lockReel!.phase).toBe('idle')
+  })
+
+  it('rejects a bogus symbol id in the grid', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1,
+      bankrollCents: 5000,
+      currentMachineId: 'stop-and-lock-777',
+      machineStates: {
+        'stop-and-lock-777': {
+          progressive: null,
+          videoFeature: null,
+          pachislo: null,
+          blackjackReel: null,
+          lockReel: {
+            phase: 'spinning',
+            grid: [
+              ['NOPE', 'BLANK', 'BLANK', 'BLANK'], // NOPE is not a known symbol id
+              [null, null, null, null],
+              [null, null, null, null],
+              [null, null, null, null],
+              [null, null, null, null]
+            ],
+            idx: 1,
+            sevenCount: 0,
+            collectCredits: 0,
+            respinsLeft: 0,
+            ante: 1
+          }
+        }
+      },
+      history: [],
+      stats: null,
+      settings: null
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    expect(store.machineStates['stop-and-lock-777']!.lockReel!.phase).toBe('idle')
+  })
+
+  it('rejects an incoherent phase/idx (spinning with a stopped reel left null)', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1,
+      bankrollCents: 5000,
+      currentMachineId: 'stop-and-lock-777',
+      machineStates: {
+        'stop-and-lock-777': {
+          progressive: null,
+          videoFeature: null,
+          pachislo: null,
+          blackjackReel: null,
+          lockReel: {
+            phase: 'spinning',
+            grid: [
+              [null, null, null, null], // idx says 2 stopped, but column 0 is empty
+              ['C1', 'BLANK', 'BLANK', 'BLANK'],
+              [null, null, null, null],
+              [null, null, null, null],
+              [null, null, null, null]
+            ],
+            idx: 2,
+            sevenCount: 0,
+            collectCredits: 1,
+            respinsLeft: 0,
+            ante: 1
+          }
+        }
+      },
+      history: [],
+      stats: null,
+      settings: null
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    expect(store.machineStates['stop-and-lock-777']!.lockReel!.phase).toBe('idle')
+  })
+
+  it('rejects a bonus phase with fewer than three sevens (incoherent trigger)', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      v: 1,
+      bankrollCents: 5000,
+      currentMachineId: 'stop-and-lock-777',
+      machineStates: {
+        'stop-and-lock-777': {
+          progressive: null,
+          videoFeature: null,
+          pachislo: null,
+          blackjackReel: null,
+          lockReel: {
+            phase: 'bonus',
+            grid: [
+              ['SEVEN', 'C1', 'BLANK', 'BLANK'],
+              ['C1', 'BLANK', 'BLANK', 'BLANK'],
+              ['C2', 'BLANK', 'BLANK', 'BLANK'],
+              ['C1', 'BLANK', 'BLANK', 'BLANK'],
+              ['C5', 'BLANK', 'BLANK', 'BLANK']
+            ],
+            idx: 5,
+            sevenCount: 1, // a bonus needs ≥ 3 sevens
+            collectCredits: 10,
+            respinsLeft: 2,
+            ante: 1
+          }
+        }
+      },
+      history: [],
+      stats: null,
+      settings: null
+    }))
+    const store = freshStore()
+    expect(store.resume()).toBe(true)
+    expect(store.machineStates['stop-and-lock-777']!.lockReel!.phase).toBe('idle')
   })
 })

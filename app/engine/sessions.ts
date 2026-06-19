@@ -5,6 +5,7 @@ import { mulberry32 } from './rng'
 import { spin, nextSpinCost, initMachineState } from './index'
 import { dealReels, stopReel, cashOut } from './blackjackReel'
 import { makeOptimalStopFn } from './blackjackReelRtp'
+import { dealStart as lockDealStart, stopReel as lockStopReel, bonusStop as lockBonusStop } from './lockReel'
 import { addCoinToProgressive } from './progressive'
 import { exactRtp } from './exactRtp'
 
@@ -125,6 +126,34 @@ export function simulateSession(
       totalIn += handIn
       totalOut += handOut
       balance += handOut - handIn
+      if (balance > peak) peak = balance
+      if (peak - balance > maxDrawdown) maxDrawdown = peak - balance
+      paidSpins++
+      if (recordTrajectory) traj.push(balance)
+    }
+  } else if (def.family === 'lock-reel') {
+    // ── Stop & Lock 777 (cash-collect hold-and-spin) ────────────────────────
+    // One "paid spin" is one round. dealStart charges the ante (bet coins) once;
+    // the five stops and the bonus respins are free. The honest stop is a uniform
+    // window draw (skill-neutral), so there is no policy to optimise — stop every
+    // reel, then auto-loop the bonus to resolution. Payout is the whole-credit
+    // collect (ante × collectCredits) in the credit domain, so the empirical RTP
+    // tracks the exact-RTP enumeration the Sim Lab's house-edge figure comes from.
+    // Mirrors simulateMachine's lock-reel branch.
+    while (paidSpins < opts.spinCap) {
+      if (balance < opts.bet) {
+        busted = true
+        break
+      }
+      const dealOut = lockDealStart(def, state, opts.bet, rand)
+      const roundIn = dealOut.coinsIn
+      let roundOut = dealOut.totalPayout
+      const lr = state.lockReel!
+      for (let r = 0; r < 5; r++) roundOut += lockStopReel(def, state, rand).totalPayout
+      while (lr.phase === 'bonus') roundOut += lockBonusStop(def, state, rand).totalPayout
+      totalIn += roundIn
+      totalOut += roundOut
+      balance += roundOut - roundIn
       if (balance > peak) peak = balance
       if (peak - balance > maxDrawdown) maxDrawdown = peak - balance
       paidSpins++

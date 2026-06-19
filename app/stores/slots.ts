@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
-import { addCoinToProgressive, freshBlackjackState, initMachineState, nextSpinCost, spin, validateMachineDef } from '~/engine'
-import type { BlackjackReelMachineDef, MachineDef, MachineSessionState, PachisloFlag, PachisloBonusState, SpinOutcome } from '~/engine'
+import { addCoinToProgressive, freshBlackjackState, freshLockState, initMachineState, nextSpinCost, spin, validateMachineDef } from '~/engine'
+import type { BlackjackReelMachineDef, LockReelMachineDef, MachineDef, MachineSessionState, PachisloFlag, PachisloBonusState, SpinOutcome, SymbolId } from '~/engine'
 import { spinPachislo } from '~/engine/pachislo'
 import { dealReels, stopReel, cashOut as bjCashOut } from '~/engine/blackjackReel'
+import { dealStart as lockDealStart, stopReel as lockStopReel, bonusStop as lockBonusStop } from '~/engine/lockReel'
 import { ALL_MACHINES } from '~/machines'
 import { liveRand } from '~/utils/liveRand'
 
@@ -54,7 +55,10 @@ function emptyStats(): SessionStats {
 function defaultSettings(): SlotsSettings {
   return {
     xray: false,
-    betsByMachine: Object.fromEntries(ALL_MACHINES.map(def => [def.id, def.family === 'blackjack-reel' ? 1 : def.maxCoins]))
+    betsByMachine: Object.fromEntries(ALL_MACHINES.map(def =>
+      // blackjack-reel and lock-reel are small-bet, big-payout cabinets: default
+      // to a 1-coin pull (the demo's stance), not the machine's max.
+      [def.id, def.family === 'blackjack-reel' || def.family === 'lock-reel' ? 1 : def.maxCoins]))
   }
 }
 
@@ -250,6 +254,80 @@ function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSessionStat
       crashed: bj.crashed as boolean,
       natural: bj.natural as boolean,
       ante
+    }
+  }
+
+  // lock-reel (Stop & Lock 777 cash-collect): validate and restore a persisted
+  // session — the grid is 5 × rows, every cell is null or a known symbol id, and
+  // phase/idx/counters are mutually coherent; anything off returns a fresh idle.
+  if (def.family === 'lock-reel' && r.lockReel !== null && typeof r.lockReel === 'object') {
+    const lr = r.lockReel as Record<string, unknown>
+    const lrDef = def as LockReelMachineDef
+    const symbolIds = new Set<string>(Object.keys(lrDef.symbols))
+    const isSym = (s: unknown): s is string => typeof s === 'string' && symbolIds.has(s)
+    const bad = (): MachineSessionState => {
+      fresh.lockReel = freshLockState(lrDef)
+      return fresh
+    }
+
+    const phase = lr.phase
+    if (phase !== 'idle' && phase !== 'spinning' && phase !== 'bonus' && phase !== 'resolved') return bad()
+
+    const idx = lr.idx
+    if (!Number.isInteger(idx) || (idx as number) < 0 || (idx as number) > 5) return bad()
+    const sevenCount = lr.sevenCount
+    if (!Number.isInteger(sevenCount) || (sevenCount as number) < 0) return bad()
+    const collectCredits = lr.collectCredits
+    if (!Number.isInteger(collectCredits) || (collectCredits as number) < 0) return bad()
+    const respinsLeft = lr.respinsLeft
+    if (!Number.isInteger(respinsLeft) || (respinsLeft as number) < 0) return bad()
+    const ante = lr.ante
+    if (!Number.isInteger(ante) || (ante as number) < 0 || (ante as number) > lrDef.maxCoins) return bad()
+
+    // grid: exactly 5 columns of exactly `rows` cells; each cell null or a known id.
+    if (!Array.isArray(lr.grid) || (lr.grid as unknown[]).length !== 5) return bad()
+    const grid: (SymbolId | null)[][] = []
+    for (const colRaw of lr.grid as unknown[]) {
+      if (!Array.isArray(colRaw) || (colRaw as unknown[]).length !== lrDef.rows) return bad()
+      const col: (SymbolId | null)[] = []
+      for (const cell of colRaw as unknown[]) {
+        if (cell === null) col.push(null)
+        else if (isSym(cell)) col.push(cell)
+        else return bad()
+      }
+      grid.push(col)
+    }
+
+    // phase ↔ idx / grid-fill coherence:
+    //  - idle: untouched (the fresh empty grid). Restore a fresh state.
+    //  - spinning: idx in 0..4 (idx 5 would already have resolved); the first
+    //    `idx` columns are stopped (no null), the rest are fully null.
+    //  - bonus/resolved: every reel is stopped (idx === 5) and no cell is null
+    //    (the five window draws fill the grid; bonus respins only overwrite BLANKs).
+    //    bonus additionally requires the 3-seven trigger.
+    const colStopped = (c: (SymbolId | null)[]): boolean => c.every(x => x !== null)
+    const colEmpty = (c: (SymbolId | null)[]): boolean => c.every(x => x === null)
+    if (phase === 'idle') return bad()
+    if (phase === 'spinning') {
+      const i = idx as number
+      if (i > 4) return bad()
+      for (let c = 0; c < 5; c++) {
+        if (c < i ? !colStopped(grid[c]!) : !colEmpty(grid[c]!)) return bad()
+      }
+    } else {
+      // bonus or resolved
+      if ((idx as number) !== 5 || grid.some(c => !colStopped(c))) return bad()
+      if (phase === 'bonus' && (sevenCount as number) < 3) return bad()
+    }
+
+    fresh.lockReel = {
+      phase: phase as 'idle' | 'spinning' | 'bonus' | 'resolved',
+      grid,
+      idx: idx as number,
+      sevenCount: sevenCount as number,
+      collectCredits: collectCredits as number,
+      respinsLeft: respinsLeft as number,
+      ante: ante as number
     }
   }
 
@@ -465,8 +543,9 @@ export const useSlotsStore = defineStore('slots', {
       const state = this.currentState
       if (def === null || state === null || this.phase !== 'playing' || this.spinning) return
 
-      // blackjack-reel is interactive — it uses deal/stop/cashOut, not spinOnce
-      if (def.family === 'blackjack-reel') return
+      // blackjack-reel and lock-reel are interactive — they use their own
+      // deal/stop/cashOut (bj) or lockDeal/lockStop (lock-reel) actions, not spinOnce.
+      if (def.family === 'blackjack-reel' || def.family === 'lock-reel') return
 
       if (presses !== undefined) {
         for (const q of presses) {
@@ -680,7 +759,129 @@ export const useSlotsStore = defineStore('slots', {
       this.saveToLocalStorage()
     },
 
+    // ── Stop & Lock 777 (lock-reel) interactive actions ───────────────────
+    //
+    // One round = lockDeal (charge the ante once) → five lockStop calls to lock
+    // the reels left-to-right → on the fifth stop, either the collect is booked
+    // or the 777 bonus opens. In the bonus, each lockStop steps one respin until
+    // the feature resolves and the full collect is booked. lockReset returns a
+    // resolved round to idle for "play again" (the next lockDeal re-charges).
+    //
+    // A single lockStop drives BOTH the base stops and the bonus respins: to the
+    // player it is one STOP button, and the engine dispatches stopReel vs
+    // bonusStop by phase. Gated exactly like the blackjack-reel actions (no
+    // double-charge, the spinning/reveal lock, act only in the right phase).
+
+    /**
+     * Begin a Stop & Lock 777 round: charge the ante up-front (coinsIn =
+     * currentBet, payout = 0) via bookOutcome, start the reels spinning. Only
+     * fires when the current machine is lock-reel, phase is 'idle'/'resolved',
+     * the gate is down, and the bankroll covers the ante.
+     */
+    lockDeal(): void {
+      const def = this.currentDef
+      const state = this.currentState
+      if (
+        def === null || state === null
+        || this.phase !== 'playing' || this.spinning
+        || def.family !== 'lock-reel'
+        || state.lockReel === null
+      ) return
+
+      const lr = state.lockReel
+      if (lr.phase !== 'idle' && lr.phase !== 'resolved') return
+
+      const coins = this.currentBet
+      const costCents = coins * def.denominationCents
+      if (costCents > this.bankrollCents) {
+        this.liveAnnouncement = 'Out of credits — play another machine to rebuild your bankroll, or end the session.'
+        return
+      }
+
+      this.spinning = true
+      const out = lockDealStart(def as LockReelMachineDef, state, coins, liveRand)
+      // Charge the ante now (payout = 0); the collect is booked later at resolve.
+      this.bookOutcome(def, out)
+      this.lastOutcome = out
+      this.saveToLocalStorage()
+    },
+
+    /**
+     * Step the round one stop: in 'spinning' lock the next reel (the fifth stop
+     * resolves → collect or bonus); in 'bonus' play one respin (auto-ending the
+     * feature when it resolves). Free (coinsIn = 0). The collect is booked only
+     * on the call that lands the round in 'resolved'. No-op outside those phases.
+     */
+    lockStop(): void {
+      const def = this.currentDef
+      const state = this.currentState
+      if (
+        def === null || state === null
+        || this.phase !== 'playing' || this.spinning
+        || def.family !== 'lock-reel'
+        || state.lockReel === null
+      ) return
+
+      const phase = state.lockReel.phase
+      if (phase !== 'spinning' && phase !== 'bonus') return
+
+      this.spinning = true
+      const out = phase === 'spinning'
+        ? lockStopReel(def as LockReelMachineDef, state, liveRand)
+        : lockBonusStop(def as LockReelMachineDef, state, liveRand)
+      this.lastOutcome = out
+
+      // stopReel/bonusStop may move the round to 'resolved' (collect ready);
+      // 'spinning'/'bonus' continue with no record. A bonus TRIGGER (phase moved
+      // spinning → bonus on the fifth stop) pays nothing yet, so it is not booked.
+      if (state.lockReel!.phase === 'resolved') {
+        this.bookOutcome(def, out)
+        this.liveAnnouncement = this.describeOutcome(def, out)
+      }
+      this.saveToLocalStorage()
+    },
+
+    /**
+     * Return a resolved Stop & Lock 777 round to idle (the attract spin), ready
+     * for a fresh lockDeal — powers the result card's "Play Again". No charge:
+     * the next lockDeal deals and charges the ante.
+     */
+    lockReset(): void {
+      const def = this.currentDef
+      const state = this.currentState
+      if (
+        def === null || state === null
+        || this.phase !== 'playing' || this.spinning
+        || def.family !== 'lock-reel'
+        || state.lockReel === null
+        || state.lockReel.phase !== 'resolved'
+      ) return
+      state.lockReel = freshLockState(def as LockReelMachineDef)
+      this.saveToLocalStorage()
+    },
+
     describeOutcome(def: MachineDef, out: SpinOutcome): string {
+      if (def.family === 'lock-reel') {
+        // Spoken at resolve: the GRAND (grid fill) flag, then the collect, then
+        // the banked dollars + balance. A bonus TRIGGER would carry no collect
+        // (it pays at the bonus's own resolve), so a 0-payout outcome just reports
+        // the lock activity.
+        const dollars = (credits: number): string => `$${(credits * def.denominationCents / 100).toFixed(2)}`
+        const grand = out.featureEvents.some(e => e.type === 'grand')
+        const collect = out.featureEvents.find(e => e.type === 'collect')
+        const bonus = out.featureEvents.some(e => e.type === 'bonus-triggered')
+        const parts: string[] = []
+        if (grand) parts.push('GRAND — filled the grid!')
+        if (bonus && collect === undefined) parts.push('Three 7s — 777 BONUS!')
+        if (collect !== undefined) {
+          parts.push(collect.credits > 0
+            ? `Collected ${collect.credits.toLocaleString('en-US')} credits${out.totalPayout > 0 ? ` — banked ${dollars(out.totalPayout)}.` : '.'}`
+            : 'No cash locked — collected nothing.')
+        }
+        if (parts.length === 0) parts.push('Locked.')
+        parts.push(`Balance ${Math.floor(this.bankrollCents / def.denominationCents).toLocaleString('en-US')} credits.`)
+        return parts.join(' ')
+      }
       if (def.family === 'blackjack-reel') {
         const dollars = (credits: number): string => `$${(credits * def.denominationCents / 100).toFixed(2)}`
         for (const e of out.featureEvents) {
