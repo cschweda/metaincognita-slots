@@ -165,6 +165,9 @@ export function nearMisses(def: MachineDef, out: SpinOutcome): NearMissCallout[]
       return pachisloCallouts(def, out)
     case 'blackjack-reel':
       return []
+    // TODO(Task 2+): lock-reel near-miss callouts (e.g. the two-7s tease)
+    case 'lock-reel':
+      return []
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

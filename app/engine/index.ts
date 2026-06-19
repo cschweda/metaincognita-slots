@@ -32,7 +32,9 @@ export function initMachineState(def: MachineDef): MachineSessionState {
           bonus: null
         }
       : null,
-    blackjackReel: def.family === 'blackjack-reel' ? freshBlackjackState() : null
+    blackjackReel: def.family === 'blackjack-reel' ? freshBlackjackState() : null,
+    // TODO(Task 2): fresh lock-reel session state (step fns/dispatch)
+    lockReel: null
   }
 }
 
@@ -59,6 +61,9 @@ export function nextSpinCost(def: MachineDef, state: MachineSessionState, coins:
     }
     case 'blackjack-reel':
       return coins
+    // TODO(Task 2): real lock-reel logic (the ante is charged on dealStart)
+    case 'lock-reel':
+      return coins
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
@@ -83,6 +88,9 @@ export function spin(
       return spinPachislo(def, state, coins, rand)
     case 'blackjack-reel':
       throw new Error('blackjack-reel is interactive; use dealReels/stopReel/cashOut')
+    // TODO(Task 2): real lock-reel logic (interactive; use dealStart/stopReel/resolve/bonusStop)
+    case 'lock-reel':
+      throw new Error('lock-reel: not yet implemented')
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
@@ -178,6 +186,11 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
       maxDrawdown,
       byEntry
     }
+  }
+
+  // TODO(Task 4): real lock-reel simulation (optimal-policy Monte-Carlo, like blackjack-reel above)
+  if (def.family === 'lock-reel') {
+    throw new Error('lock-reel: not yet implemented')
   }
 
   // ── all other families ──────────────────────────────────────────────────────

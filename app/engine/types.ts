@@ -1,7 +1,7 @@
 // Single source of truth for engine types. Pure data + pure functions only —
 // nothing in app/engine may import from Vue, Nuxt, or Pinia.
 
-export type MachineFamily = 'stepper' | 'bally-em' | 'video' | 'pachislo' | 'blackjack-reel'
+export type MachineFamily = 'stepper' | 'bally-em' | 'video' | 'pachislo' | 'blackjack-reel' | 'lock-reel'
 
 export type SymbolId = string
 
@@ -298,7 +298,47 @@ export interface BlackjackReelSessionState {
   ante: number
 }
 
-export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef | BlackjackReelMachineDef
+export interface LockReelMachineDef {
+  id: string
+  name: string
+  family: 'lock-reel'
+  denominationCents: number
+  maxCoins: number
+  history: string
+  /** grid rows (4) */
+  rows: number
+  /** five strips of symbol ids (cash ids, prize ids, SEVEN, BLANK) */
+  reels: SymbolId[][]
+  symbols: Record<string, { label: string, icon?: string }>
+  /** symbol id -> credit value per coin (e.g. CASH25 -> 25) */
+  cashValues: Record<string, number>
+  /** MINI/MAJOR/GRAND -> credit value per coin */
+  prizes: Record<string, number>
+  /** 'SEVEN' */
+  sevenSymbol: SymbolId
+  /** 'BLANK' */
+  blankSymbol: SymbolId
+  /** grandOnFill = a prize id */
+  bonus: { respins: number, sevenUpgrade: number, grandOnFill: string }
+  progressive: null
+}
+
+export interface LockReelSessionState {
+  phase: 'idle' | 'spinning' | 'bonus' | 'resolved'
+  /** [reel][row], null = unstopped/empty */
+  grid: (SymbolId | null)[][]
+  /** reels stopped (0..5) */
+  idx: number
+  sevenCount: number
+  /** running locked-cash credits (per coin) */
+  collectCredits: number
+  /** bonus */
+  respinsLeft: number
+  /** coins */
+  ante: number
+}
+
+export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef | BlackjackReelMachineDef | LockReelMachineDef
 
 // ---------- spin results ----------
 
@@ -348,6 +388,7 @@ export interface MachineSessionState {
   videoFeature: VideoFeatureState | null
   pachislo: PachisloSessionState | null
   blackjackReel: BlackjackReelSessionState | null
+  lockReel: LockReelSessionState | null
 }
 
 export interface RngDraw {
@@ -428,6 +469,14 @@ export type FeatureEvent
     | { type: 'crash', reel: number, multiplier: number }
     | { type: 'cash-out', reel: number, multiplier: number, payout: number }
     | { type: 'topped-out', multiplier: number, payout: number }
+    // lock-reel (Stop & Lock 777 cash-collect) events
+    | { type: 'reel-stopped', reel: number, locked: SymbolId[] }
+    | { type: 'cash-locked', credits: number }
+    | { type: 'seven-locked', count: number }
+    | { type: 'bonus-triggered' }
+    | { type: 'respin', left: number }
+    | { type: 'grand' }
+    | { type: 'collect', credits: number }
 
 export interface SpinOutcome {
   machineId: string

@@ -289,6 +289,38 @@ export function validateMachineDef(def: MachineDef): void {
       if (!(def.naturalLaunch > 0)) errors.push(`naturalLaunch must be > 0, got ${def.naturalLaunch}`)
       break
     }
+    case 'lock-reel': {
+      // Stop & Lock 777 (cash-collect) validation.
+      if (def.reels.length !== 5) errors.push(`lock-reel needs 5 reels, got ${def.reels.length}`)
+      if (!(def.rows >= 1)) errors.push(`rows must be >= 1, got ${def.rows}`)
+      if (!known.has(def.sevenSymbol)) errors.push(`sevenSymbol "${def.sevenSymbol}" not declared in symbols`)
+      if (!known.has(def.blankSymbol)) errors.push(`blankSymbol "${def.blankSymbol}" not declared in symbols`)
+      const prizeIds = new Set<SymbolId>(Object.keys(def.prizes))
+      // prizes: positive integer credit values.
+      for (const [id, v] of Object.entries(def.prizes)) {
+        if (!Number.isInteger(v) || v <= 0) errors.push(`prizes.${id}: value must be a positive integer`)
+      }
+      // cashValues: positive integer credit values.
+      for (const [id, v] of Object.entries(def.cashValues)) {
+        if (!Number.isInteger(v) || v <= 0) errors.push(`cashValues.${id}: value must be a positive integer`)
+      }
+      // Every symbol on a strip must be declared; every non-seven/blank/prize
+      // symbol must be a cash symbol with a positive integer value.
+      def.reels.forEach((strip, r) => {
+        if (strip.length === 0) errors.push(`reels[${r}]: strip must not be empty`)
+        if (strip.length <= def.rows) errors.push(`reels[${r}] length ${strip.length} must exceed rows ${def.rows}`)
+        strip.forEach((s) => {
+          checkSymbol(s, `reels[${r}]`)
+          if (s === def.sevenSymbol || s === def.blankSymbol || prizeIds.has(s)) return
+          const v = def.cashValues[s]
+          if (v === undefined) errors.push(`reels[${r}]: cash symbol "${s}" missing from cashValues`)
+          else if (!Number.isInteger(v) || v <= 0) errors.push(`reels[${r}]: cash symbol "${s}" must have a positive integer value`)
+        })
+      })
+      if (!(def.bonus.respins >= 1)) errors.push('bonus.respins must be >= 1')
+      if (!prizeIds.has(def.bonus.grandOnFill)) errors.push(`bonus.grandOnFill "${def.bonus.grandOnFill}" must be a prize id`)
+      break
+    }
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

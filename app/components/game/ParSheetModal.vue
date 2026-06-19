@@ -35,7 +35,9 @@ interface StripRow { symbol: string, label: string, counts: number[], weights?: 
 const stripRows = computed<StripRow[]>(() => {
   const d = def.value
   if (d === null) return []
-  const strips = d.family === 'stepper' ? d.physicalStrips : d.family === 'blackjack-reel' ? d.reels : d.strips
+  const strips = d.family === 'stepper'
+    ? d.physicalStrips
+    : d.family === 'blackjack-reel' || d.family === 'lock-reel' ? d.reels : d.strips
   const symbols = Object.keys(d.symbols)
   return symbols.map((symbol) => {
     const counts = strips.map(strip => strip.filter(c => c === symbol).length)
@@ -126,6 +128,12 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
         ...reels.map((p, i) => ({ id: `crash-${i + 3}`, text: `Reel ${i + 3} crash chance`, pay: `${(p * 100).toFixed(0)}%` }))
       ]
     }
+    case 'lock-reel':
+      // TODO(Task 3): real lock-reel PAR rows (per-reel cash EV, P(bonus), bonus EV)
+      return [
+        ...Object.entries(d.cashValues).map(([id, v]) => ({ id, text: d.symbols[id]?.label ?? id, pay: `${v}` })),
+        ...Object.entries(d.prizes).map(([id, v]) => ({ id, text: d.symbols[id]?.label ?? id, pay: `${v}` }))
+      ]
     default: {
       const exhaustive: never = d
       throw new Error(`unhandled family: ${(exhaustive as MachineDef).family}`)
