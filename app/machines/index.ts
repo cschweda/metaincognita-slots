@@ -10,10 +10,12 @@ import { SERIES_E_MULTIPLIER } from './series-e-multiplier'
 import { STOCK_RUSH } from './stock-rush'
 import { FLAMEOUT_21 } from './flameout-21'
 import { STOP_AND_LOCK_777 } from './stop-and-lock-777'
+import { TEMPLE_OF_GOLD } from './temple-of-gold'
 
 // The floor — the machines shown on the selection screen (and the ones the Sim Lab
 // lists and `verify` checks).
 export const FLOOR: MachineDef[] = [
+  TEMPLE_OF_GOLD, // the Featured "big daddy" — a free-play cascade trainer
   CANAL_ROYALE,
   DRAGONS_HOARD,
   THUNDER_VAULT,

@@ -122,14 +122,20 @@ export function cascadeExactRtp(def: CascadeMachineDef, opts: ExactRtpOptions = 
     rec(0, N, 0)
   }
 
-  // memo: (state,depth) -> remaining per-coin {mean, 2nd moment}
-  const memo = new Map<string, { ev: number, ev2: number }>()
+  // memo: (state,depth) -> remaining per-coin {mean, 2nd moment}. A NUMERIC
+  // mixed-radix key (counts in base cells+1, then × depth) avoids the string
+  // allocation that otherwise dominates the tens of millions of memo lookups.
+  const memo = new Map<number, { ev: number, ev2: number }>()
+  const radix = cells + 1
+  const depthMod = def.maxTumbles + 1
 
   function evState(counts: number[], depth: number): { ev: number, ev2: number } {
     if (depth > def.maxTumbles) return { ev: 0, ev2: 0 }
     const { pay, winners } = stepPay(counts)
     if (winners.length === 0) return { ev: 0, ev2: 0 }
-    const memoKey = counts.join(',') + '@' + depth
+    let sk = 0
+    for (let i = nSym - 1; i >= 0; i--) sk = sk * radix + counts[i]!
+    const memoKey = sk * depthMod + depth
     const hit = memo.get(memoKey)
     if (hit) return hit
     const thisPay = pay * ladderMul(depth)

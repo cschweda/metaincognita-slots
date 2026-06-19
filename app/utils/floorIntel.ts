@@ -3,6 +3,7 @@ import type { ExactRtpReport, MachineDef } from '~/engine'
 
 /** Which breakdown entry is "the top award" per machine (for 1-in-x odds). */
 const TOP_AWARD_ENTRY: Record<string, string> = {
+  'temple-of-gold': 'grand',
   'canal-royale': 'li5',
   'dragons-hoard': 'dr5',
   'thunder-vault': 'grand',

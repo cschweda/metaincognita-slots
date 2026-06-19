@@ -18,6 +18,7 @@ function onKeydown(e: KeyboardEvent) {
   const target = e.target as HTMLElement | null
   if (target !== null && ['INPUT', 'BUTTON', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
   if (store.currentDef?.family === 'pachislo') return // pachislo spins via its own controls
+  if (store.currentDef?.family === 'cascade') return // cascade spins via its own cabinet
   if (store.currentDef?.family === 'blackjack-reel') {
     e.preventDefault()
     if (phase.value === 'resolved') playAgain()
@@ -58,9 +59,36 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- ── Temple of Gold (cascade): the Featured free-play tumble cabinet ── -->
+  <div
+    v-if="store.currentDef && store.currentDef.family === 'cascade'"
+    class="tg-page"
+  >
+    <div class="tg-page-grid">
+      <div class="tg-page-main">
+        <GameReelCascade :key="store.currentMachineId ?? ''" />
+      </div>
+      <aside class="tg-page-side">
+        <div class="tg-side-tools">
+          <UButton
+            :color="store.settings.xray ? 'primary' : 'neutral'"
+            :variant="store.settings.xray ? 'solid' : 'outline'"
+            :aria-pressed="store.settings.xray"
+            size="xs"
+            icon="i-lucide-scan-line"
+            @click="store.setXray(!store.settings.xray)"
+          >
+            X-ray
+          </UButton>
+        </div>
+        <GameCascadeXray />
+      </aside>
+    </div>
+  </div>
+
   <!-- ── Stop & Lock 777 (lock-reel): the "big daddy" cash-collect cabinet ── -->
   <div
-    v-if="store.currentDef && store.currentDef.family === 'lock-reel'"
+    v-else-if="store.currentDef && store.currentDef.family === 'lock-reel'"
     class="sl-page"
   >
     <div class="sl-page-grid">
@@ -208,6 +236,37 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Temple of Gold — full-bleed Featured page (Aztec-gold temple backdrop) */
+.tg-page {
+  position: relative;
+  min-height: 100%;
+  padding: 24px 14px 40px;
+  background: radial-gradient(120% 90% at 50% 0%, #4a3410 0%, #2a1c06 40%, #0c0802 100%);
+}
+.tg-page-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .tg-page-grid { grid-template-columns: minmax(0, 1fr) 320px; }
+}
+.tg-page-main { min-width: 0; }
+.tg-page-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tg-side-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* Stop & Lock 777 — full-bleed "big daddy" page (steel-room backdrop) */
 .sl-page {
   position: relative;

@@ -23,6 +23,11 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
   heading: FAMILY_HEADING[family]!,
   machines: FLOOR.filter(def => def.family === family)
 })).filter(group => group.machines.length > 0))
+
+// The Featured "big daddy" — Temple of Gold (cascade). Shown only as the big
+// card above the grid (cascade is deliberately omitted from FAMILY_ORDER so it
+// is not also listed below).
+const featured = computed(() => FLOOR.find(def => def.family === 'cascade') ?? null)
 </script>
 
 <template>
@@ -33,7 +38,7 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
           SLOTS SIMULATOR
         </h1>
         <p class="text-neutral-400 text-sm">
-          Nine authentic machines. Every number computed, never asserted — flip the X-ray on and see the guts.
+          Ten machines — nine you bet, one you can't lose. Every number computed, never asserted — flip the X-ray on and see the guts.
         </p>
       </div>
 
@@ -68,6 +73,11 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
             </UButton>
           </div>
         </div>
+
+        <FloorFeaturedMachine
+          v-if="featured"
+          :def="featured"
+        />
 
         <h2 class="floor-title text-2xl font-bold tracking-widest pt-2">
           CHOOSE YOUR MACHINE

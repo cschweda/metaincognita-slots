@@ -545,7 +545,9 @@ export const useSlotsStore = defineStore('slots', {
 
       // blackjack-reel and lock-reel are interactive — they use their own
       // deal/stop/cashOut (bj) or lockDeal/lockStop (lock-reel) actions, not spinOnce.
-      if (def.family === 'blackjack-reel' || def.family === 'lock-reel') return
+      // cascade (Temple of Gold) is FREE PLAY — it runs the engine via useCascade
+      // and never debits the bankroll, so it never goes through spinOnce either.
+      if (def.family === 'blackjack-reel' || def.family === 'lock-reel' || def.family === 'cascade') return
 
       if (presses !== undefined) {
         for (const q of presses) {

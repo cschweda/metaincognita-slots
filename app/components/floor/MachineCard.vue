@@ -10,7 +10,7 @@ const props = defineProps<{ def: MachineDef }>()
 const store = useSlotsStore()
 
 const FAMILY_LABEL: Record<MachineDef['family'], string> = {
-  'video': 'Video', 'stepper': 'Stepper', 'bally-em': 'Vintage Bally', 'pachislo': 'Pachislo', 'blackjack-reel': 'Crash reel', 'lock-reel': 'Stop & Lock'
+  'video': 'Video', 'stepper': 'Stepper', 'bally-em': 'Vintage Bally', 'pachislo': 'Pachislo', 'blackjack-reel': 'Crash reel', 'lock-reel': 'Stop & Lock', 'cascade': 'Cascade'
 }
 
 // Per-family neon accent colors — drives the bulb trim, glyph glow, and border
@@ -20,7 +20,8 @@ const FAMILY_COLOR: Record<MachineDef['family'], string> = {
   'bally-em': '#ec4899',
   'pachislo': '#22d3ee',
   'blackjack-reel': '#ff7d4a',
-  'lock-reel': '#fbbf24'
+  'lock-reel': '#fbbf24',
+  'cascade': '#ffd24a'
 }
 
 // Per-family decorative glyph (pure text, no external assets, CSP-clean)
@@ -30,7 +31,8 @@ const FAMILY_GLYPH: Record<MachineDef['family'], string> = {
   'bally-em': '★',
   'pachislo': '◎',
   'blackjack-reel': '🚀',
-  'lock-reel': '7'
+  'lock-reel': '7',
+  'cascade': '🗿'
 }
 
 // Floor-card payline / ways signpost

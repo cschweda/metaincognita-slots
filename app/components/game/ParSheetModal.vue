@@ -36,6 +36,7 @@ interface StripRow { symbol: string, label: string, counts: number[], weights?: 
 const stripRows = computed<StripRow[]>(() => {
   const d = def.value
   if (d === null) return []
+  if (d.family === 'cascade') return [] // cascade has no reel strips (it has its own panel)
   const strips = d.family === 'stepper'
     ? d.physicalStrips
     : d.family === 'blackjack-reel' || d.family === 'lock-reel' ? d.reels : d.strips
@@ -169,6 +170,16 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
         { id: 'bonus-ev', text: '777 BONUS — EV given trigger', pay: `${bonusEv(d).toFixed(2)} cr` }
       ]
     }
+    case 'cascade':
+      return [
+        ...Object.entries(d.paytable).flatMap(([sym, tiers]) =>
+          tiers.map(t => ({
+            id: `${sym}-${t.countAtLeast}`,
+            text: `${d.symbols[sym]?.label ?? sym} × ${t.countAtLeast}+ anywhere`,
+            pay: `×${t.pay}/coin`
+          }))),
+        { id: 'grand', text: `${d.symbols[d.idolSymbol]?.label ?? d.idolSymbol} × ${d.grandTrigger}+ — GRAND`, pay: `${d.progressive?.reset ?? 0}+ cr` }
+      ]
     default: {
       const exhaustive: never = d
       throw new Error(`unhandled family: ${(exhaustive as MachineDef).family}`)
