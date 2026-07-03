@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { describeOutcome } from '../app/utils/outcomeText'
 import { useSlotsStore, STORAGE_KEY } from '../app/stores/slots'
 import { CANAL_ROYALE } from '../app/machines/canal-royale'
 import { STOCK_RUSH } from '../app/machines/stock-rush'
@@ -435,7 +436,7 @@ describe('describeOutcome — spoken net parity', () => {
     const store = freshStore()
     store.startSession(100_000)
     const out = { totalPayout: 14, coinsIn: 25, featureEvents: [], progressiveEvents: [] }
-    const text = store.describeOutcome(CANAL_ROYALE, out as never)
+    const text = describeOutcome(CANAL_ROYALE, out as never, store.bankrollCents)
     expect(text).toContain('Won 14 credits.')
     expect(text).toContain('Net down 11.')
   })
@@ -444,14 +445,14 @@ describe('describeOutcome — spoken net parity', () => {
     const store = freshStore()
     store.startSession(100_000)
     const out = { totalPayout: 1030, coinsIn: 25, featureEvents: [], progressiveEvents: [] }
-    expect(store.describeOutcome(CANAL_ROYALE, out as never)).toContain('Net up 1,005.')
+    expect(describeOutcome(CANAL_ROYALE, out as never, store.bankrollCents)).toContain('Net up 1,005.')
   })
 
   it('a no-win announces the forfeited bet as a net loss', () => {
     const store = freshStore()
     store.startSession(100_000)
     const out = { totalPayout: 0, coinsIn: 25, featureEvents: [], progressiveEvents: [] }
-    const text = store.describeOutcome(CANAL_ROYALE, out as never)
+    const text = describeOutcome(CANAL_ROYALE, out as never, store.bankrollCents)
     expect(text).toContain('No win.')
     expect(text).toContain('Net down 25.')
   })
@@ -460,7 +461,7 @@ describe('describeOutcome — spoken net parity', () => {
     const store = freshStore()
     store.startSession(100_000)
     const out = { totalPayout: 14, coinsIn: 0, featureEvents: [], progressiveEvents: [] }
-    expect(store.describeOutcome(CANAL_ROYALE, out as never)).toContain('Net up 14.')
+    expect(describeOutcome(CANAL_ROYALE, out as never, store.bankrollCents)).toContain('Net up 14.')
   })
 })
 

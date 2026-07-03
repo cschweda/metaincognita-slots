@@ -181,3 +181,29 @@ export function cashOut(
   const payout = bj.ante * bj.multiplier
   return outcome(def, bj, 0, [{ type: 'cash-out', reel: bj.idx, multiplier: bj.multiplier, payout }], payout)
 }
+
+/**
+ * Play ONE hand to resolution: deal (charges the ante), then stop/cash under
+ * `policy` until the hand resolves. The single Monte-Carlo driver shared by
+ * simulateMachine and simulateSession, so their rand-consumption order can
+ * never drift. `onWin` observes every win (entry tallies), if given.
+ */
+export function playBlackjackHand(
+  def: BlackjackReelMachineDef,
+  state: MachineSessionState,
+  coins: number,
+  rand: RandomFn,
+  policy: (bj: BlackjackReelSessionState) => 'cash' | 'continue',
+  onWin?: (w: SpinOutcome['wins'][number]) => void
+): { coinsIn: number, payout: number } {
+  const dealOut = dealReels(def, state, coins, rand)
+  let payout = dealOut.totalPayout
+  if (onWin) for (const w of dealOut.wins) onWin(w)
+  const bj = state.blackjackReel!
+  while (bj.phase === 'spinning') {
+    const out = policy(bj) === 'cash' ? cashOut(def, state) : stopReel(def, state, rand)
+    payout += out.totalPayout
+    if (onWin) for (const w of out.wins) onWin(w)
+  }
+  return { coinsIn: dealOut.coinsIn, payout }
+}

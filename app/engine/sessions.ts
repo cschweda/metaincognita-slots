@@ -3,9 +3,9 @@ import type { MachineDef, MachineSessionState } from './types'
 import type { RandomFn } from './rng'
 import { mulberry32 } from './rng'
 import { spin, nextSpinCost, initMachineState } from './index'
-import { dealReels, stopReel, cashOut } from './blackjackReel'
+import { playBlackjackHand } from './blackjackReel'
 import { makeOptimalStopFn } from './blackjackReelRtp'
-import { dealStart as lockDealStart, stopReel as lockStopReel, bonusStop as lockBonusStop } from './lockReel'
+import { playLockRound } from './lockReel'
 import { feedProgressive } from './progressive'
 import { exactRtp } from './exactRtp'
 
@@ -103,17 +103,10 @@ export function simulateSession(
         busted = true
         break
       }
-      const dealOut = dealReels(def, state, opts.bet, rand)
-      const handIn = dealOut.coinsIn
-      let handOut = dealOut.totalPayout
-      const bj = state.blackjackReel!
-      while (bj.phase === 'spinning') {
-        const out = optStop(bj) === 'cash' ? cashOut(def, state) : stopReel(def, state, rand)
-        handOut += out.totalPayout
-      }
-      totalIn += handIn
-      totalOut += handOut
-      balance += handOut - handIn
+      const hand = playBlackjackHand(def, state, opts.bet, rand, optStop)
+      totalIn += hand.coinsIn
+      totalOut += hand.payout
+      balance += hand.payout - hand.coinsIn
       if (balance > peak) peak = balance
       if (peak - balance > maxDrawdown) maxDrawdown = peak - balance
       paidSpins++
@@ -133,15 +126,10 @@ export function simulateSession(
         busted = true
         break
       }
-      const dealOut = lockDealStart(def, state, opts.bet, rand)
-      const roundIn = dealOut.coinsIn
-      let roundOut = dealOut.totalPayout
-      const lr = state.lockReel!
-      for (let r = 0; r < 5; r++) roundOut += lockStopReel(def, state, rand).totalPayout
-      while (lr.phase === 'bonus') roundOut += lockBonusStop(def, state, rand).totalPayout
-      totalIn += roundIn
-      totalOut += roundOut
-      balance += roundOut - roundIn
+      const round = playLockRound(def, state, opts.bet, rand)
+      totalIn += round.coinsIn
+      totalOut += round.payout
+      balance += round.payout - round.coinsIn
       if (balance > peak) peak = balance
       if (peak - balance > maxDrawdown) maxDrawdown = peak - balance
       paidSpins++

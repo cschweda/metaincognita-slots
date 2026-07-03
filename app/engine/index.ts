@@ -6,9 +6,9 @@ import { spinBallyEm } from './ballyEm'
 import { spinVideo } from './video'
 import { spinPachislo } from './pachislo'
 import { initProgressiveState, feedProgressive } from './progressive'
-import { freshBlackjackState, dealReels, stopReel, cashOut } from './blackjackReel'
+import { freshBlackjackState, playBlackjackHand } from './blackjackReel'
 import { makeOptimalStopFn } from './blackjackReelRtp'
-import { freshLockState, dealStart, stopReel as lockStopReel, bonusStop } from './lockReel'
+import { freshLockState, playLockRound } from './lockReel'
 import { spinCascade } from './cascade'
 
 export * from './types'
@@ -162,21 +162,14 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
     const byEntry: Record<string, number> = {}
 
     while (cycles < opts.spins) {
-      const dealOut = dealReels(def, state, opts.coins, rand)
-      totalIn += dealOut.coinsIn
-      let handPay = dealOut.totalPayout
-      for (const w of dealOut.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-      const bj = state.blackjackReel!
-      while (bj.phase === 'spinning') {
-        const out = optStop(bj) === 'cash' ? cashOut(def, state) : stopReel(def, state, rand)
-        handPay += out.totalPayout
-        for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-      }
-      totalOut += handPay
-      net += handPay - opts.coins
+      const hand = playBlackjackHand(def, state, opts.coins, rand, optStop,
+        (w) => { byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1 })
+      totalIn += hand.coinsIn
+      totalOut += hand.payout
+      net += hand.payout - opts.coins
       if (net > peak) peak = net
       if (peak - net > maxDrawdown) maxDrawdown = peak - net
-      if (handPay > 0) hits++
+      if (hand.payout > 0) hits++
       cycles++
     }
 
@@ -213,26 +206,14 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
     const byEntry: Record<string, number> = {}
 
     while (cycles < opts.spins) {
-      const dealOut = dealStart(def, state, opts.coins, rand)
-      totalIn += dealOut.coinsIn
-      let roundPay = dealOut.totalPayout
-      for (const w of dealOut.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-      const lr = state.lockReel!
-      for (let r = 0; r < 5; r++) {
-        const out = lockStopReel(def, state, rand)
-        roundPay += out.totalPayout
-        for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-      }
-      while (lr.phase === 'bonus') {
-        const out = bonusStop(def, state, rand)
-        roundPay += out.totalPayout
-        for (const w of out.wins) byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1
-      }
-      totalOut += roundPay
-      net += roundPay - opts.coins
+      const round = playLockRound(def, state, opts.coins, rand,
+        (w) => { byEntry[w.entryId] = (byEntry[w.entryId] ?? 0) + 1 })
+      totalIn += round.coinsIn
+      totalOut += round.payout
+      net += round.payout - opts.coins
       if (net > peak) peak = net
       if (peak - net > maxDrawdown) maxDrawdown = peak - net
-      if (roundPay > 0) hits++
+      if (round.payout > 0) hits++
       cycles++
     }
 

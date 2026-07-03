@@ -68,8 +68,8 @@ export function lockGridFull(def: LockReelMachineDef, state: LockReelSessionStat
 
 /**
  * The two-7s "tease": a resolved round with exactly two locked 7s. Exposed as a
- * derived flag (no stored field, no auto re-stop) — the UI/store wire the actual
- * one-reel free re-stop in a later task. The base RTP is therefore a clean
+ * derived flag (no stored field, no auto re-stop). The UI re-stop was never
+ * wired — the machine is PARKED (off the floor) — so the base RTP is a clean
  * 5-stop collect + 3-seven bonus (the tease contributes nothing here), which is
  * what the exact-RTP module enumerates and the simulator below mirrors.
  */
@@ -255,4 +255,34 @@ function resolveBonus(
   const payout = lr.ante * lr.collectCredits
   events.push({ type: 'collect', credits: lr.collectCredits })
   return outcome(def, lr, 0, events, payout, 'respin')
+}
+
+/**
+ * Play ONE round to resolution: dealStart (charges the ante), stop all five
+ * reels, then auto-play any bonus respins until resolved. The single
+ * Monte-Carlo driver shared by simulateMachine and simulateSession, so their
+ * rand-consumption order can never drift. `onWin` observes every win, if given.
+ */
+export function playLockRound(
+  def: LockReelMachineDef,
+  state: MachineSessionState,
+  coins: number,
+  rand: RandomFn,
+  onWin?: (w: SpinOutcome['wins'][number]) => void
+): { coinsIn: number, payout: number } {
+  const dealOut = dealStart(def, state, coins, rand)
+  let payout = dealOut.totalPayout
+  if (onWin) for (const w of dealOut.wins) onWin(w)
+  const lr = state.lockReel!
+  for (let r = 0; r < 5; r++) {
+    const out = stopReel(def, state, rand)
+    payout += out.totalPayout
+    if (onWin) for (const w of out.wins) onWin(w)
+  }
+  while (lr.phase === 'bonus') {
+    const out = bonusStop(def, state, rand)
+    payout += out.totalPayout
+    if (onWin) for (const w of out.wins) onWin(w)
+  }
+  return { coinsIn: dealOut.coinsIn, payout }
 }
