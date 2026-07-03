@@ -10,9 +10,12 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.12.0.** The floor is open: ten machines, full game surfaces,
-per-machine cabinet chrome, X-ray mode, PAR sheets, session history, a
-Monte-Carlo Sim Lab, and /learn explainers on the math the floor never shows.
+**Status: v0.12.1.** The floor is open: ten machines, full game surfaces,
+per-machine cabinet chrome, X-ray mode, PAR sheets (each machine's internal
+math card — pays, odds, reel maps), session history, a Monte-Carlo Sim Lab,
+and /learn explainers on the math the floor never shows. 0.12.1 added the
+CASCADE! celebration beat, a per-spin X-ray trace inside the Temple cabinet,
+and a cabinet PAR button.
 
 > **Featured: Temple of Gold** — a gaudy Aztec **cascade** (tumble) machine and
 > the floor's first **free-play trainer**. It runs the same exact maths a real
@@ -21,7 +24,8 @@ Monte-Carlo Sim Lab, and /learn explainers on the math the floor never shows.
 > per-spin **trick-exposer** X-rays each result — loss-disguised-as-a-win,
 > engineered near-miss, clean loss, genuine win, and the Grand as the carrot
 > funded by everyone's losses. The spectacle and the lesson, loss-free. (Cascade
-> RTP is computed exactly by an absorbing-Markov tumble DP — see below.)
+> RTP — *return to player*, the share of all wagers a machine pays back over the
+> long run — is computed exactly by an absorbing-Markov tumble DP; see below.)
 
 > **Parked (two from-scratch experiments):** *Flameout 21* (a blackjack-meets-crash
 > game) and *Stop & Lock 777* (a stop-the-reels hold-and-spin cash-collect) were each
@@ -45,12 +49,13 @@ pnpm dev        # open http://localhost:3000
 2. **Machine** — spin, adjust your bet, watch the reels inside each
    machine's bespoke decorative cabinet chrome (nine themed `GameMachineChrome`
    frames: gothic stone, pachinko neon, baroque gold, emerald scales, riveted
-   steel, ice facets, rising flames, warm brass, cool turquoise). Hit **X-ray** to
+   steel, ice facets, rising flames, warm brass, cool turquoise — while the
+   Featured Temple of Gold runs its own full bespoke gold cabinet instead). Hit **X-ray** to
    open the side panel: labeled RNG trace, near-miss callouts, a live
    session-vs-exact RTP convergence sparkline, and machine internals.
 3. **PAR sheet** — click the spreadsheet icon for the full pay-table with
-   the exact-math derivation: enumerated cycle counts, hit frequency, and
-   variance.
+   the exact-math derivation: enumerated cycle counts, hit frequency (how
+   often *any* win lands), and variance.
 4. **Pachislo keys** — on Stock Rush press **1/2/3** to stop reels manually;
    the slip (≤ 4 stops) is visible in X-ray.
 5. **Sim Lab** — run thousands of bankroll sessions against any machine in a
@@ -80,6 +85,12 @@ This is an educational simulator. No real money is involved.
 | Thunder Vault | Video (lines) | 5 reels x 24 stops, 25-line, Grand progressive | 90.2948% @ Grand reset |
 | Ruby of Gargoyle | Video (lines) | 5 reels x 24 stops, 25-line, hold & spin, Gargoyle's Eye ×N multiplier, Grand progressive | 90.0802% @ Grand reset |
 | Stock Rush | Pachislo (skill-stop) | 3 reels x 21 stops, flag lottery, stock queue | 66.0012%–120.0028% by operator level (L4 default 91.5013%) |
+
+*Reading the table:* **RTP** (return to player) is the long-run share of
+wagers paid back — 90% RTP means a 10% house edge. **Lines** are fixed paths a
+win must land along; **ways** pay any left-to-right run of adjacent reels
+(243 = 3⁵). A *"1%/coin-in feed"* means 1% of every wager tops up the
+progressive jackpot meter.
 
 Every RTP shown is **computed** from the machine definition by exact
 enumeration (`exactRtp`) — never asserted — and verified by seeded
@@ -186,7 +197,8 @@ CI also enforces engine purity: a grep over `app/engine/` confirms no UI
 framework imports (`vue`, `nuxt`, `pinia`) have leaked into the headless
 engine layer.
 
-Full-run table (5M cycles/machine, seed 20260612):
+Full-run table (5M cycles/machine, seed 20260612; **HF** = hit frequency,
+the share of spins that pay anything):
 
 ```
 machine               coins   exact RTP    sim RTP      Δ           HF exact     HF sim      jackpots  σ-band
@@ -211,11 +223,18 @@ pure data.
 
 ## Sources
 
-Machine behavior is grounded in period documentation (see `docs/`): the
-Bally Series E service manual (Fey, 1995), Bally Manual 7050 parts catalog
-(1981, models E-1202/E-1203), the Bally FO-5140 Double Progressive
-instructions (1989), Bally Manual 6000 (1979, electromechanical), the
-Massachusetts Gaming Commission Slot Machine Activity Manual v8 (2022),
-and a pachislo owner's manual (2006). Weighted virtual reels follow the
-Telnaes patent (US 4,448,419, 1984). Reel strips and weights are original
-designs calibrated to documented real-world targets.
+Machine behavior is grounded in period documentation: the Bally Series E
+service manual (Fey, 1995), Bally Manual 7050 parts catalog (1981, models
+E-1202/E-1203), the Bally FO-5140 Double Progressive instructions (1989),
+Bally Manual 6000 (1979, electromechanical), the Massachusetts Gaming
+Commission Slot Machine Activity Manual v8 (2022), and a pachislo owner's
+manual (2006). The scanned manuals are kept local-only under `docs/` and are
+deliberately **not** committed or redistributed (they remain their publishers'
+copyright); only original specs and plans are tracked. Weighted virtual reels
+follow the Telnaes patent (US 4,448,419, 1984). Reel strips and weights are
+original designs calibrated to documented real-world targets.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The historical manuals referenced above are not
+part of this repository or its license.

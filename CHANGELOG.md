@@ -3,6 +3,57 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+- **The CASCADE! overlay no longer strobes.** The celebration's color wash was a
+  hard `steps(1)` cycle at ~25 color switches/sec — far over WCAG 2.3.1's
+  3-flashes/sec photosensitivity cap. It is now a smooth 1.2s hue-rotating wash
+  on a `::before` layer (same tri-color spectacle, zero hard flashes, and the
+  burst text/zaps are no longer hue-shifted with it); reduced-motion still shows
+  the static beat.
+- **Video reels no longer clip on phones.** The 556px reel window of the four
+  video machines scales to fit (new `useFitScale`: ResizeObserver → transform
+  with compensated height) instead of silently hiding reels 4–5 inside the
+  overflow-hidden chrome on narrow viewports.
+- **Ruby of Gargoyle's floor card shows its "Top award 1 in X" row again.** The
+  hand-maintained per-machine map in `floorIntel` had drifted (Ruby was missing);
+  the id now lives on each machine def (`topAwardEntryId`), the map is gone, and
+  a floor-wide test asserts every machine resolves real odds. `LockReelMachineDef`
+  now extends `MachineDefBase` so future base fields can't skip it.
+- **Live-progressive parity.** `simulateSession` fed only video Grands, missing
+  cascade (latent — the Sim Lab currently pins static mode). The
+  feed-before/after-by-family rule now lives in one `feedProgressive()` engine
+  helper used by live play, `simulateMachine`, `simulateSession`, and the
+  free-play driver; every floor RTP verified bit-identical after the refactor.
+- **The Temple sound toggle is honest and remembered.** Mute state is reactive
+  (label + `aria-pressed` update the instant you click) and persists across
+  visits.
+- **Leaving Temple mid-spin goes quiet.** The tumble's awaited timer chain
+  cancels on unmount — no more SFX or ledger updates bleeding onto the floor
+  page after navigation.
+
+### Added
+- **`pnpm smoke`** — serves `dist/` with the generated `_headers` (real CSP,
+  real 404s, first-match-wins like Netlify), closing the documented dev/preview
+  gap that once hid two production CSP bugs.
+- **CSP hash guard** — the build now *fails* if a pinned runtime-injected inline
+  script no longer exists verbatim in the installed `@nuxt/ui`, instead of
+  shipping a CSP that would block it after an upgrade.
+- **Typecheck now covers tests + scripts** (`tsconfig.tests.json`): `pnpm
+  typecheck` sees all suites and `verify-floor.ts` (it surfaced 8 latent fixture
+  type errors on arrival — fixed).
+- **`pnpm check`** — lint + typecheck + test + verify as one gate.
+- **MIT LICENSE** (a public educational repo was all-rights-reserved by default).
+
+### Changed
+- `netlify.toml`: Node pinned to 22 (matches CI), HSTS header, a lint + test
+  gate before deploy so a red push cannot ship, and the dead SPA catch-all
+  rewrite removed (the preset's `/* /404.html 404` already wins).
+- README: v0.12.1 status, plain-English glosses at first use (RTP, PAR sheet,
+  hit frequency, lines vs ways, progressive feed), a corrected `docs/` note
+  (scanned manuals are local-only, never redistributed), and a License section.
+
 ## [0.12.1] - 2026-06-19
 
 ### Added
