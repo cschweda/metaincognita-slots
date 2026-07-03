@@ -23,11 +23,16 @@ if (!existsSync(path.join(DIST, 'index.html'))) {
 // ---------------------------------------------------------------------------
 // Parse dist/_headers (Netlify format): unindented `/path` lines open a rule,
 // indented `Header: value` lines belong to the last opened rule.
+// Parsed PER REQUEST on purpose: the per-build CSP hashes change on every
+// `pnpm generate`, and a long-running smoke server that cached the rules once
+// served a stale CSP that blocked the new build's own inline scripts.
 // ---------------------------------------------------------------------------
-/** @type {{ pattern: RegExp, headers: [string, string][] }[]} */
-const rules = []
 const headersFile = path.join(DIST, '_headers')
-if (existsSync(headersFile)) {
+
+/** @returns {{ pattern: RegExp, headers: [string, string][] }[]} */
+function loadRules() {
+  const rules = []
+  if (!existsSync(headersFile)) return rules
   let current = null
   for (const raw of readFileSync(headersFile, 'utf8').split('\n')) {
     if (!raw.trim() || raw.trim().startsWith('#')) continue
@@ -43,12 +48,13 @@ if (existsSync(headersFile)) {
       current.headers.push([raw.slice(0, idx).trim(), raw.slice(idx + 1).trim()])
     }
   }
+  return rules
 }
 
 /** First matching rule wins per header name, like Netlify. */
 function headersFor(urlPath) {
   const out = new Map()
-  for (const rule of rules) {
+  for (const rule of loadRules()) {
     if (!rule.pattern.test(urlPath)) continue
     for (const [name, value] of rule.headers) {
       const key = name.toLowerCase()
@@ -103,5 +109,5 @@ createServer((req, res) => {
   res.end(readFileSync(target))
 }).listen(PORT, () => {
   console.log(`Smoke server (Netlify _headers applied): http://localhost:${PORT}`)
-  console.log(`${rules.length} header rule(s) loaded from dist/_headers — Ctrl+C to stop.`)
+  console.log(`${loadRules().length} header rule(s) in dist/_headers (re-read per request) — Ctrl+C to stop.`)
 })

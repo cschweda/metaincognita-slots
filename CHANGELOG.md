@@ -34,6 +34,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   page after navigation.
 
 ### Added
+- **Four new /learn pages — the mission's biggest gaps closed.**
+  *Cascades (tumble math)*: scatter pays, the shatter-fall-refill chain, the
+  multiplier ladder, closed-form first-drop and Grand-trigger odds computed at
+  render, and an honest account of why exact tumble RTP needs an
+  absorbing-Markov DP (with a pointer to the cabinet's PAR sheet for the full
+  enumeration). *Pachislo: the flag lottery*: the lottery decides / the reels
+  obey — flags, stock, the ≤4-stop slip, and a live exact-RTP table for all
+  six operator-key settings (~66% to over 100%). *LDWs & near misses*: the
+  floor's two best tricks defined and then MEASURED — a seeded 10,000-spin
+  Canal Royale experiment runs in the reader's browser and reports how many
+  "wins" were net losses and how many losing spins flashed an engineered near
+  miss. *Glossary*: every floor term in plain English (guidelines §2.2),
+  cross-linked to the deep-dive pages. The Learn hub now lists eight topics;
+  all four new routes prerender.
 - **`pnpm smoke`** — serves `dist/` with the generated `_headers` (real CSP,
   real 404s, first-match-wins like Netlify), closing the documented dev/preview
   gap that once hid two production CSP bugs.

@@ -56,7 +56,11 @@ export default defineNuxtConfig({
         '/learn/house-edge',
         '/learn/telnaes-reels',
         '/learn/hold-and-spin',
-        '/learn/gargoyles-eye'
+        '/learn/gargoyles-eye',
+        '/learn/cascade-tumble',
+        '/learn/pachislo',
+        '/learn/ldw-near-miss',
+        '/learn/glossary'
       ]
     }
   },

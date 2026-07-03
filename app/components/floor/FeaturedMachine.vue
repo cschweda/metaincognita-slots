@@ -27,9 +27,10 @@ function play() {
 </script>
 
 <template>
+  <!-- No aria-label: the accessible name IS the visible content (eyebrow +
+       title + tag), which keeps WCAG 2.5.3 label-in-name exact. -->
   <button
     class="feat"
-    :aria-label="`Play ${def.name} — featured machine`"
     @click="play"
   >
     <span class="feat-eyebrow">★ Featured machine</span>
@@ -45,7 +46,9 @@ function play() {
       />
     </span>
 
-    <span class="feat-title">TEMPLE&nbsp;OF&nbsp;GOLD</span>
+    <!-- real spaces (not &nbsp;) so the visible text matches the accessible
+         name (WCAG 2.5.3 label-in-name); nowrap keeps the one-line marquee -->
+    <span class="feat-title">TEMPLE OF GOLD</span>
     <span class="feat-tag">A gaudy Aztec cascade — and the floor's honest, free-play trainer. Watch how the machine really works, loss-free.</span>
 
     <span
@@ -146,6 +149,7 @@ function play() {
 
 .feat-title {
   display: block;
+  white-space: nowrap;
   font-family: 'Bungee', sans-serif;
   font-size: clamp(34px, 7.5vw, 60px);
   line-height: 1;

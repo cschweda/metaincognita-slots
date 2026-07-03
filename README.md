@@ -62,10 +62,14 @@ pnpm dev        # open http://localhost:3000
    Web Worker (live progress, cancel mid-run). Outputs risk of ruin, median/mean
    ending bankroll, survival curve, drawdown histogram, sample trajectories, and
    empirical RTP.
-6. **Learn** — four explainer pages covering house edge (live floor-wide table),
+6. **Learn** — eight explainer pages: house edge (live floor-wide table),
    Telnaes virtual-reel mechanics, hold-and-spin as an absorbing Markov chain,
-   and the Gargoyle's Eye additive multiplier. Each page layers intuition first,
-   then a collapsible rigorous derivation with live numbers.
+   the Gargoyle's Eye additive multiplier, cascade/tumble math (the Featured
+   machine's branching process), the pachislo flag lottery + operator key
+   (exact RTP at all six settings), losses-disguised-as-wins and engineered
+   near misses (a 10,000-spin experiment run live in your browser), and a
+   plain-English glossary. Each page layers intuition first, then a
+   collapsible rigorous derivation with live numbers.
 7. Everything persists in **localStorage** — reload mid-feature and your
    free spins are still waiting exactly where you left them.
 
