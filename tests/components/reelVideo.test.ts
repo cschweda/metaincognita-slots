@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ReelVideo from '../../app/components/game/ReelVideo.vue'
@@ -58,5 +59,33 @@ describe('ReelVideo', () => {
     const board = wrapper.find('[data-test="lock-board"]')
     expect(board.exists()).toBe(true)
     expect(board.text()).toContain('×2')
+  })
+
+  it('shrinks the 556px reel window on narrow hosts instead of clipping', async () => {
+    type ROCallback = () => void
+    class FakeRO {
+      static last: FakeRO | null = null
+      cb: ROCallback
+      observe = vi.fn()
+      disconnect = vi.fn()
+      constructor(cb: ROCallback) {
+        this.cb = cb
+        FakeRO.last = this
+      }
+    }
+    vi.stubGlobal('ResizeObserver', FakeRO)
+    try {
+      const { wrapper } = setup()
+      const host = wrapper.find('[data-test="reel-window-fit"]')
+      expect(host.exists()).toBe(true)
+      Object.defineProperty(host.element, 'clientWidth', { value: 334, configurable: true })
+      FakeRO.last!.cb()
+      await nextTick()
+      const inner = host.element.firstElementChild as HTMLElement
+      expect(inner.style.transform).toContain('scale(0.600')
+      expect((host.element as HTMLElement).style.height).toMatch(/^182\.6/)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

@@ -2,10 +2,10 @@
 // but never debits the session bankroll — instead it keeps an honest House
 // Ledger (what a $1/spin player would have fed/won/netted) and classifies each
 // result for the trick-exposer. Drives the synth SFX and the tumble animation.
-import { ref, shallowRef, computed } from 'vue'
+import { ref, shallowRef, computed, getCurrentScope, onScopeDispose } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { spinCascade, cascadeAlphabet, countSymbols } from '~/engine/cascade'
-import { initMachineState, addCoinToProgressive } from '~/engine'
+import { initMachineState, feedProgressive } from '~/engine'
 import { liveRand } from '~/utils/liveRand'
 import type { CascadeMachineDef, MachineSessionState, SymbolId, SpinOutcome } from '~/engine'
 import {
@@ -22,6 +22,21 @@ export function useCascade() {
   const store = useSlotsStore()
   const def = computed<CascadeMachineDef | null>(() =>
     store.currentDef?.family === 'cascade' ? store.currentDef : null)
+
+  // Cancellation: navigating away mid-tumble disposes the component scope; the
+  // awaited timer chain must stop there (no SFX bleeding onto the floor page,
+  // no state mutation for a cabinet that no longer exists).
+  let disposed = false
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      disposed = true
+    })
+  }
+  /** Await one animation beat; false = the scope died mid-sleep, abandon the spin. */
+  const beat = async (ms: number): Promise<boolean> => {
+    await wait(ms)
+    return !disposed
+  }
 
   // Free-play session state — holds the climbing Grand meter. Never touches the bankroll.
   let state: MachineSessionState | null = null
@@ -121,15 +136,13 @@ export function useCascade() {
     // brief spin shuffle for spectacle
     for (let f = 0; f < 3; f++) {
       grid.value = attractGrid(d)
-      await wait(110)
+      if (!(await beat(110))) return
     }
 
     const out = spinCascade(d, state!, d.maxCoins, liveRand)
     // Feed the Grand live so it visibly climbs (spectacle; RTP-neutral in free play).
-    if (state!.progressive?.kind === 'percent' && d.progressive !== null) {
-      for (let c = 0; c < out.coinsIn; c++) addCoinToProgressive(state!.progressive, d.progressive)
-      grandMeter.value = Math.floor(state!.progressive.value)
-    }
+    feedProgressive(d, state!.progressive, 'after', out.coinsIn)
+    if (state!.progressive?.kind === 'percent') grandMeter.value = Math.floor(state!.progressive.value)
 
     // Ledger (honest, in real cents).
     spins.value += 1
@@ -162,18 +175,18 @@ export function useCascade() {
       if (step.chain >= 2) {
         cascadeFlash.value = { active: true, chain: step.chain, mult: step.chainMult }
         sfxCascade(step.chain)
-        await wait(900)
+        if (!(await beat(900))) return
       }
       winners.value = new Set(step.wins.map(w => w.entryId))
       sfxWin(step.chain)
-      await wait(460)
+      if (!(await beat(460))) return
       sfxShatter()
       spinWinCredits.value += step.wins.reduce((a, w) => a + w.payCredits, 0)
-      await wait(250)
+      if (!(await beat(250))) return
       winners.value = new Set()
       cascadeFlash.value = { active: false, chain: 0, mult: 1 }
       sfxDrop()
-      await wait(210)
+      if (!(await beat(210))) return
     }
     grid.value = out.grid
     if (out.progressiveEvents.length > 0) {

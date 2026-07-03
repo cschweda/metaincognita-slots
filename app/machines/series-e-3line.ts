@@ -17,6 +17,7 @@ export const SERIES_E_3LINE: BallyEmMachineDef = {
   family: 'bally-em',
   denominationCents: 100,
   maxCoins: 3,
+  topAwardEntryId: 's7x5',
   symbols: {
     S7: { label: 'Seven', icon: 'seven' },
     BAR: { label: 'Bar', icon: 'bar1' },

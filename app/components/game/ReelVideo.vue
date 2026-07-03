@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useReelSpin, REEL_CELL_PX, REEL_GAP_PX } from '~/composables/useReelSpin'
 import { useReelSymbols } from '~/composables/useReelSymbols'
+import { useFitScale } from '~/composables/useFitScale'
 import { summariseWins } from '~/utils/winLines'
 import { formatCredits } from '~/utils/format'
 import type { VideoMachineDef } from '~/engine'
@@ -39,6 +40,10 @@ const glow = computed(() => {
 const { iconFor, labelFor, isWild } = useReelSymbols(def)
 
 const GUTTER = 36
+const WINDOW_W = GUTTER + 5 * (REEL_CELL_PX + REEL_GAP_PX)
+const WINDOW_H = REEL_CELL_PX * 3 + REEL_GAP_PX * 2 // ReelColumn's winH
+// Phones: shrink the fixed-pixel window instead of clipping reels 4-5.
+const { host: fitHost, scale: fitScale } = useFitScale(WINDOW_W)
 
 type LockCell = { credits: number, label?: string } | { mult: number } | null | undefined
 function lockText(cell: LockCell): { mult: boolean, text: string, label?: string } | null {
@@ -111,40 +116,51 @@ function lockText(cell: LockCell): { mult: boolean, text: string, label?: string
       </template>
     </div>
 
-    <!-- base / free-spin reel grid -->
+    <!-- base / free-spin reel grid (scaled to fit narrow viewports) -->
     <div
       v-else
-      class="relative mx-auto"
-      :style="{ width: GUTTER + 5 * (REEL_CELL_PX + REEL_GAP_PX) + 'px' }"
+      ref="fitHost"
+      class="overflow-hidden"
+      :style="{ height: fitScale < 1 ? WINDOW_H * fitScale + 'px' : undefined }"
+      data-test="reel-window-fit"
     >
       <div
-        class="flex"
-        :style="{ paddingLeft: GUTTER + 'px', gap: REEL_GAP_PX + 'px' }"
+        class="relative mx-auto"
+        :style="{
+          width: WINDOW_W + 'px',
+          transform: fitScale < 1 ? `scale(${fitScale})` : undefined,
+          transformOrigin: 'top left'
+        }"
       >
-        <GameReelColumn
-          v-for="(strip, r) in strips"
-          :key="r"
-          :reel="r"
-          :strip="strip"
-          :offset-y="offsetY[r] ?? 0"
-          :blur="blur[r] ?? 0"
-          :duration-ms="durationMs[r] ?? 0"
-          :revealed="revealed"
-          :reel-count="5"
-          :glow="glow"
-          :icon-for="iconFor"
-          :label-for="labelFor"
-          :is-wild="isWild"
+        <div
+          class="flex"
+          :style="{ paddingLeft: GUTTER + 'px', gap: REEL_GAP_PX + 'px' }"
+        >
+          <GameReelColumn
+            v-for="(strip, r) in strips"
+            :key="r"
+            :reel="r"
+            :strip="strip"
+            :offset-y="offsetY[r] ?? 0"
+            :blur="blur[r] ?? 0"
+            :duration-ms="durationMs[r] ?? 0"
+            :revealed="revealed"
+            :reel-count="5"
+            :glow="glow"
+            :icon-for="iconFor"
+            :label-for="labelFor"
+            :is-wild="isWild"
+          />
+        </div>
+        <GamePaylineOverlay
+          :lines="wins"
+          :gutter="GUTTER"
+          :cell-px="REEL_CELL_PX"
+          :gap-px="REEL_GAP_PX"
+          :rows="3"
+          :cols="5"
         />
       </div>
-      <GamePaylineOverlay
-        :lines="wins"
-        :gutter="GUTTER"
-        :cell-px="REEL_CELL_PX"
-        :gap-px="REEL_GAP_PX"
-        :rows="3"
-        :cols="5"
-      />
     </div>
   </div>
 </template>

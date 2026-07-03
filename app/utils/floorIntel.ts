@@ -1,19 +1,6 @@
 import { exactRtp } from '~/engine'
 import type { ExactRtpReport, MachineDef } from '~/engine'
 
-/** Which breakdown entry is "the top award" per machine (for 1-in-x odds). */
-const TOP_AWARD_ENTRY: Record<string, string> = {
-  'temple-of-gold': 'grand',
-  'canal-royale': 'li5',
-  'dragons-hoard': 'dr5',
-  'thunder-vault': 'grand',
-  'diamond-doubler': '3dw',
-  'sevens-ablaze': '3f7',
-  'series-e-3line': 's7x5',
-  'series-e-multiplier': 's7x4',
-  'stock-rush': 'big'
-}
-
 export interface FloorIntel {
   rtp: number
   hitFrequency: number
@@ -44,7 +31,7 @@ export function floorIntel(def: MachineDef, opts: FloorIntelOptions = {}): Floor
     ...(opts.oddsLevel === undefined ? {} : { oddsLevel: opts.oddsLevel }),
     ...(opts.coins === undefined ? {} : { coins: opts.coins })
   })
-  const topId = TOP_AWARD_ENTRY[def.id] ?? null
+  const topId = def.topAwardEntryId ?? null
   const top = topId === null ? undefined : report.breakdown.find(b => b.entryId === topId)
   const intel: FloorIntel = {
     rtp: report.rtpPerCoin,

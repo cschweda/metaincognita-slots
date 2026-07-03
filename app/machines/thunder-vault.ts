@@ -17,6 +17,7 @@ export const THUNDER_VAULT: VideoMachineDef = {
   family: 'video',
   denominationCents: 1,
   maxCoins: 25,
+  topAwardEntryId: 'grand',
   symbols: {
     VA: { label: 'Vault', icon: 'vault' },
     LT: { label: 'Lightning', icon: 'lightning' },

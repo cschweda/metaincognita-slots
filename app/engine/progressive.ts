@@ -1,5 +1,5 @@
 import type {
-  MeterConfig, ProgressiveConfig, ProgressiveState
+  MachineDef, MeterConfig, ProgressiveConfig, ProgressiveState
 } from './types'
 
 export function initProgressiveState(cfg: ProgressiveConfig): ProgressiveState {
@@ -35,6 +35,27 @@ function tickMeter(value: number, coins: number, m: MeterConfig): { value: numbe
  * toward the LIVE meter, then the toggle counter advances. The evaluator owns
  * reset-on-hit; this controller owns feed-on-coin (see ballyEm.ts JSDoc).
  */
+/**
+ * Feed the live meter for one spin at the moment the family's hardware does it
+ * (FO-5140 semantics): stepper/bally-em eat the INTENDED coins BEFORE the spin;
+ * video/cascade feed AFTER the spin by ACTUAL coins-in (free feature spins cost
+ * 0 and feed nothing). The one shared rule for live play, simulateMachine,
+ * simulateSession, and the free-play driver — call sites cannot drift.
+ */
+export function feedProgressive(
+  def: MachineDef,
+  progressive: ProgressiveState | null,
+  when: 'before' | 'after',
+  coins: number
+): void {
+  if (def.progressive === null || progressive === null) return
+  const feedsNow = def.family === 'stepper' || def.family === 'bally-em'
+    ? when === 'before'
+    : (def.family === 'video' || def.family === 'cascade') && when === 'after'
+  if (!feedsNow) return
+  for (let c = 0; c < coins; c++) addCoinToProgressive(progressive, def.progressive)
+}
+
 export function addCoinToProgressive(state: ProgressiveState, cfg: ProgressiveConfig): void {
   if (state.kind === 'dual' && cfg.kind === 'dual') {
     if (state.live === 'upper') {

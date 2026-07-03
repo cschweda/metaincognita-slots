@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
-  initProgressiveState, addCoinToProgressive
+  initProgressiveState, addCoinToProgressive, feedProgressive
 } from '../app/engine/progressive'
 import { SERIES_E_MULTIPLIER } from '../app/machines/series-e-multiplier'
-import type { DualProgressiveConfig, DualProgressiveState, PercentProgressiveState, SingleProgressiveState } from '../app/engine/types'
+import { THUNDER_VAULT } from '../app/machines/thunder-vault'
+import { TEMPLE_OF_GOLD } from '../app/machines/temple-of-gold'
+import type { DualProgressiveConfig, DualProgressiveState, MachineDef, PercentProgressiveState, SingleProgressiveState } from '../app/engine/types'
 import { exactRtp } from '../app/engine/exactRtp'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
 
@@ -116,5 +118,32 @@ describe('break-even meter identity (self-validating, no hand constants)', () =>
     expect(beMeter).toBeLessThan(3550)
     const atBe = exactRtp(def, { progressiveValues: { meter: beMeter } })
     expect(atBe.rtpPerCoin).toBeCloseTo(1.0, 10)
+  })
+})
+
+describe('feedProgressive — one family rule for all call sites', () => {
+  const feedAt = (def: MachineDef, when: 'before' | 'after', coins: number) => {
+    const st = initProgressiveState(def.progressive!)
+    const frozen = JSON.stringify(st)
+    feedProgressive(def, st, when, coins)
+    return JSON.stringify(st) !== frozen
+  }
+
+  it('stepper and bally-em feed BEFORE the spin only', () => {
+    expect(feedAt(SEVENS_ABLAZE, 'before', 8)).toBe(true)
+    expect(feedAt(SEVENS_ABLAZE, 'after', 8)).toBe(false)
+    expect(feedAt(SERIES_E_MULTIPLIER, 'before', 8)).toBe(true)
+    expect(feedAt(SERIES_E_MULTIPLIER, 'after', 8)).toBe(false)
+  })
+
+  it('video and cascade feed AFTER the spin only', () => {
+    expect(feedAt(THUNDER_VAULT, 'after', 3)).toBe(true)
+    expect(feedAt(THUNDER_VAULT, 'before', 3)).toBe(false)
+    expect(feedAt(TEMPLE_OF_GOLD, 'after', 3)).toBe(true)
+    expect(feedAt(TEMPLE_OF_GOLD, 'before', 3)).toBe(false)
+  })
+
+  it('is a safe no-op without a live meter state', () => {
+    expect(() => feedProgressive(SEVENS_ABLAZE, null, 'before', 5)).not.toThrow()
   })
 })

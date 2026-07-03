@@ -447,12 +447,20 @@ const busy = computed(() => c.phase.value !== 'idle')
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  animation: tg-strobe .12s steps(1) infinite;
 }
-@keyframes tg-strobe {
-  0%   { background: radial-gradient(circle at 50% 45%, rgba(255,40,120,.55), rgba(0,0,0,.55) 72%); }
-  33%  { background: radial-gradient(circle at 50% 45%, rgba(90,220,255,.55), rgba(0,0,0,.55) 72%); }
-  66%  { background: radial-gradient(circle at 50% 45%, rgba(255,220,40,.6), rgba(0,0,0,.55) 72%); }
+/* The color wash rides a ::before so the burst/zaps aren't hue-shifted with it.
+   Smooth hue-cycle, ~0.8 color trips/sec — WCAG 2.3.1 caps FLASHES at 3/sec,
+   so no steps()/hard background switches here, ever. */
+.tg-cascade::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(255, 40, 120, .55), rgba(0, 0, 0, .55) 72%);
+  animation: tg-wash 1.2s linear infinite;
+}
+@keyframes tg-wash {
+  from { filter: hue-rotate(0deg); }
+  to   { filter: hue-rotate(360deg); }
 }
 .tg-cascade-burst { text-align: center; z-index: 1; }
 .tg-cascade-word {
@@ -463,7 +471,7 @@ const busy = computed(() => c.phase.value !== 'idle')
   letter-spacing: 2px;
   color: #fff;
   text-shadow: 0 0 12px #ffd24a, 0 0 30px #ff5cc8, 0 0 48px #5ad8ff;
-  animation: tg-cascade-pop .4s ease-out, tg-rainbow .6s linear infinite;
+  animation: tg-cascade-pop .4s ease-out, tg-rainbow 1s linear infinite;
 }
 @keyframes tg-cascade-pop {
   0%   { transform: scale(.3) rotate(-8deg); opacity: 0; }
@@ -532,7 +540,8 @@ const busy = computed(() => c.phase.value !== 'idle')
 @media (prefers-reduced-motion: reduce) {
   .tg-bulb, .tg-torch, .tg-ladder-arrow, .tg-grand-hit, .tg-cell-win,
   .tg-cascade, .tg-cascade-word, .tg-cascade-mult, .tg-shake { animation: none !important; }
-  /* CASCADE! still shows (static) under reduced motion — just no strobe/shake. */
+  /* CASCADE! still shows (static) under reduced motion — just no wash/shake. */
+  .tg-cascade::before { display: none; }
   .tg-cascade { background: radial-gradient(circle at 50% 45%, rgba(255, 220, 40, .5), rgba(0, 0, 0, .6) 72%); }
   .tg-zap { display: none; }
 }

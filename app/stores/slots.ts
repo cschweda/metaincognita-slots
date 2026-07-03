@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { addCoinToProgressive, freshBlackjackState, freshLockState, initMachineState, nextSpinCost, spin, validateMachineDef } from '~/engine'
+import { feedProgressive, freshBlackjackState, freshLockState, initMachineState, nextSpinCost, spin, validateMachineDef } from '~/engine'
 import type { BlackjackReelMachineDef, LockReelMachineDef, MachineDef, MachineSessionState, PachisloFlag, PachisloBonusState, SpinOutcome, SymbolId } from '~/engine'
 import { spinPachislo } from '~/engine/pachislo'
 import { dealReels, stopReel, cashOut as bjCashOut } from '~/engine/blackjackReel'
@@ -571,22 +571,13 @@ export const useSlotsStore = defineStore('slots', {
 
       this.spinning = true
 
-      if (
-        (def.family === 'stepper' || def.family === 'bally-em')
-        && def.progressive !== null && state.progressive !== null
-      ) {
-        for (let c = 0; c < coins; c++) addCoinToProgressive(state.progressive, def.progressive)
-      }
+      feedProgressive(def, state.progressive, 'before', coins)
 
       const out = def.family === 'pachislo'
         ? spinPachislo(def, state, coins, liveRand, presses)
         : spin(def, state, coins, liveRand)
 
-      if (
-        def.family === 'video' && def.progressive !== null && state.progressive !== null
-      ) {
-        for (let c = 0; c < out.coinsIn; c++) addCoinToProgressive(state.progressive, def.progressive)
-      }
+      feedProgressive(def, state.progressive, 'after', out.coinsIn)
 
       if (out.coinsIn !== costCoins) {
         throw new Error(`${def.id}: nextSpinCost predicted ${costCoins} but spin charged ${out.coinsIn}`)

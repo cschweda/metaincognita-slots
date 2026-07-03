@@ -5,7 +5,7 @@ import { spinStepper } from './stepper'
 import { spinBallyEm } from './ballyEm'
 import { spinVideo } from './video'
 import { spinPachislo } from './pachislo'
-import { initProgressiveState, addCoinToProgressive } from './progressive'
+import { initProgressiveState, feedProgressive } from './progressive'
 import { freshBlackjackState, dealReels, stopReel, cashOut } from './blackjackReel'
 import { makeOptimalStopFn } from './blackjackReelRtp'
 import { freshLockState, dealStart, stopReel as lockStopReel, bonusStop } from './lockReel'
@@ -18,7 +18,7 @@ export { exactRtp } from './exactRtp'
 export type { ExactRtpReport } from './exactRtp'
 export { nearMisses } from './nearMiss'
 export { validateMachineDef } from './validate'
-export { initProgressiveState, addCoinToProgressive } from './progressive'
+export { initProgressiveState, addCoinToProgressive, feedProgressive } from './progressive'
 export { freshBlackjackState } from './blackjackReel'
 export { freshLockState } from './lockReel'
 
@@ -268,22 +268,9 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
   const byEntry: Record<string, number> = {}
 
   const playOne = (): void => {
-    // FO-5140 semantics: stepper/bally meters feed per intended coin BEFORE
-    // the spin (Plan 1 behavior, preserved bit-for-bit). Video's Grand feeds
-    // AFTER the spin by actual coinsIn — feature spins cost 0 and feed nothing.
-    if (
-      opts.progressiveMode === 'live' && def.progressive !== null && state.progressive !== null
-      && (def.family === 'stepper' || def.family === 'bally-em')
-    ) {
-      for (let c = 0; c < opts.coins; c++) addCoinToProgressive(state.progressive, def.progressive)
-    }
+    if (opts.progressiveMode === 'live') feedProgressive(def, state.progressive, 'before', opts.coins)
     const out = spin(def, state, opts.coins, rand)
-    if (
-      opts.progressiveMode === 'live' && (def.family === 'video' || def.family === 'cascade')
-      && def.progressive !== null && state.progressive !== null
-    ) {
-      for (let c = 0; c < out.coinsIn; c++) addCoinToProgressive(state.progressive, def.progressive)
-    }
+    if (opts.progressiveMode === 'live') feedProgressive(def, state.progressive, 'after', out.coinsIn)
     totalIn += out.coinsIn
     totalOut += out.totalPayout
     jackpotHits += out.progressiveEvents.length

@@ -15,6 +15,7 @@ export const DIAMOND_DOUBLER: StepperMachineDef = {
   family: 'stepper',
   denominationCents: 100,
   maxCoins: 3,
+  topAwardEntryId: '3dw',
   symbols: {
     DW: { label: 'Diamond Wild', icon: 'diamond' },
     S7: { label: 'Seven', icon: 'seven' },

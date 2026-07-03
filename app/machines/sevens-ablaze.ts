@@ -15,6 +15,7 @@ export const SEVENS_ABLAZE: StepperMachineDef = {
   family: 'stepper',
   denominationCents: 100,
   maxCoins: 2,
+  topAwardEntryId: '3f7',
   symbols: {
     F7: { label: 'Flaming Seven', icon: 'seven-flame' },
     S7: { label: 'Red Seven', icon: 'seven-red' },

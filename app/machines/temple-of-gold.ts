@@ -23,6 +23,7 @@ export const TEMPLE_OF_GOLD: CascadeMachineDef = {
   family: 'cascade',
   denominationCents: 1,
   maxCoins: 100, // a flat $1.00 bet at 1¢/credit
+  topAwardEntryId: 'grand',
   cols: 5,
   rows: 4,
   minMatch: 8,

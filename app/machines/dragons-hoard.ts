@@ -15,6 +15,7 @@ export const DRAGONS_HOARD: VideoMachineDef = {
   family: 'video',
   denominationCents: 1,
   maxCoins: 25,
+  topAwardEntryId: 'dr5',
   symbols: {
     DR: { label: 'Dragon', icon: 'dragon' },
     PH: { label: 'Phoenix', icon: 'phoenix' },

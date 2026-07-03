@@ -17,6 +17,7 @@ export const CANAL_ROYALE: VideoMachineDef = {
   family: 'video',
   denominationCents: 1,
   maxCoins: 25,
+  topAwardEntryId: 'li5',
   symbols: {
     LI: { label: 'Winged Lion', icon: 'lion' },
     MA: { label: 'Carnival Mask', icon: 'mask' },

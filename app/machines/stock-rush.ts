@@ -20,6 +20,7 @@ export const STOCK_RUSH: PachisloMachineDef = {
   family: 'pachislo',
   denominationCents: 25,
   maxCoins: 3,
+  topAwardEntryId: 'big',
   symbols: {
     R7: { label: 'Red Seven', icon: 'seven-red' },
     BB: { label: 'Bonus Bar', icon: 'bar-bonus' },

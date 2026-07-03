@@ -4,6 +4,7 @@ import { mulberry32 } from '../app/engine'
 import { ALL_MACHINES } from '../app/machines'
 import { deriveSeed, simulateSession } from '../app/engine/sessions'
 import type { SessionOptions } from '../app/engine/sessions'
+import type { CascadeMachineDef } from '../app/engine/types'
 
 // resolve from ALL_MACHINES so the parked Flameout 21 (off the floor) still resolves
 const byId = (id: string) => ALL_MACHINES.find(m => m.id === id)!
@@ -229,5 +230,49 @@ describe('simulateSession — stop-and-lock-777 (lock-reel cash-collect)', () =>
     const rtp = totalOut / totalIn
     expect(rtp).toBeGreaterThan(0.92)
     expect(rtp).toBeLessThan(0.98)
+  })
+})
+
+describe('live progressive parity — cascade', () => {
+  // A grand-happy cascade def: 2×2 grid, grandTrigger 3 idols (~1 in 9 spins),
+  // fat feedRate so a live-fed meter visibly outpays the static reset on hits.
+  function grandHappy(): CascadeMachineDef {
+    return {
+      id: 'grand-happy-cascade',
+      name: 'Grand Happy',
+      family: 'cascade',
+      denominationCents: 1,
+      maxCoins: 1,
+      cols: 2,
+      rows: 2,
+      minMatch: 3,
+      weights: { A: 1, B: 1, I: 1 },
+      paytable: {
+        A: [{ countAtLeast: 3, pay: 2 }],
+        B: [{ countAtLeast: 3, pay: 1 }]
+      },
+      multiplierLadder: [1, 3, 5],
+      maxTumbles: 10,
+      idolSymbol: 'I',
+      grandTrigger: 3,
+      progressive: { kind: 'percent', reset: 100, max: 100000, feedRate: 5 },
+      symbols: { A: { label: 'A' }, B: { label: 'B' }, I: { label: 'Idol' } },
+      history: 'test'
+    }
+  }
+
+  it('live mode feeds the Grand per coin-in, mirroring simulateMachine', () => {
+    const def = grandHappy()
+    const run = (mode: 'static' | 'live') => simulateSession(
+      def,
+      opts({ startCredits: 100_000, spinCap: 300, progressiveMode: mode }),
+      mulberry32(deriveSeed(21, 0))
+    )
+    const stat = run('static')
+    const live = run('live')
+    // Feeding consumes no randomness: identical spin sequence, identical coins-in.
+    expect(live.totalIn).toBe(stat.totalIn)
+    // The drifted path never fed cascade, leaving every grand at the reset value.
+    expect(live.totalOut).toBeGreaterThan(stat.totalOut)
   })
 })

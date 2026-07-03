@@ -16,6 +16,7 @@ export const SERIES_E_MULTIPLIER: BallyEmMachineDef = {
   family: 'bally-em',
   denominationCents: 100,
   maxCoins: 3,
+  topAwardEntryId: 's7x4',
   symbols: {
     S7: { label: 'Seven', icon: 'seven' },
     BAR: { label: 'Bar', icon: 'bar1' },

@@ -20,6 +20,7 @@ export const RUBY_OF_GARGOYLE: VideoMachineDef = {
   family: 'video',
   denominationCents: 1,
   maxCoins: 25,
+  topAwardEntryId: 'grand',
   symbols: {
     GA: { label: 'Gargoyle', icon: 'gargoyle' },
     CH: { label: 'Chalice', icon: 'chalice' },

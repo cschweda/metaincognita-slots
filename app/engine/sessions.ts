@@ -6,7 +6,7 @@ import { spin, nextSpinCost, initMachineState } from './index'
 import { dealReels, stopReel, cashOut } from './blackjackReel'
 import { makeOptimalStopFn } from './blackjackReelRtp'
 import { dealStart as lockDealStart, stopReel as lockStopReel, bonusStop as lockBonusStop } from './lockReel'
-import { addCoinToProgressive } from './progressive'
+import { feedProgressive } from './progressive'
 import { exactRtp } from './exactRtp'
 
 export interface SessionOptions {
@@ -75,21 +75,9 @@ export function simulateSession(
   const traj: number[] = recordTrajectory ? [balance] : []
 
   const applySpin = (): void => {
-    // Mirror simulateMachine's progressive feeding (FO-5140 semantics):
-    // stepper/bally feed BEFORE the spin by intended coins; video feeds AFTER by actual coinsIn.
-    if (
-      opts.progressiveMode === 'live' && def.progressive !== null && state.progressive !== null
-      && (def.family === 'stepper' || def.family === 'bally-em')
-    ) {
-      for (let c = 0; c < opts.bet; c++) addCoinToProgressive(state.progressive, def.progressive)
-    }
+    if (opts.progressiveMode === 'live') feedProgressive(def, state.progressive, 'before', opts.bet)
     const out = spin(def, state, opts.bet, rand)
-    if (
-      opts.progressiveMode === 'live' && def.family === 'video'
-      && def.progressive !== null && state.progressive !== null
-    ) {
-      for (let c = 0; c < out.coinsIn; c++) addCoinToProgressive(state.progressive, def.progressive)
-    }
+    if (opts.progressiveMode === 'live') feedProgressive(def, state.progressive, 'after', out.coinsIn)
     totalIn += out.coinsIn
     totalOut += out.totalPayout
     balance += out.totalPayout - out.coinsIn

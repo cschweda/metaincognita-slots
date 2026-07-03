@@ -11,8 +11,23 @@
  * motion shortens the longest fanfares.
  */
 
+import { ref } from 'vue'
+
+const MUTE_KEY = 'slots-sound-muted'
+
 let ctx: AudioContext | null = null
-let muted = false
+// Reactive so cabinet mute buttons (label + aria-pressed) track it live;
+// seeded from localStorage so the choice survives a revisit.
+const muted = ref(loadMuted())
+
+function loadMuted(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(MUTE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 function reducedMotion(): boolean {
   return typeof window !== 'undefined'
@@ -32,16 +47,20 @@ export function unlockAudio(): void {
 }
 
 export function setMuted(on: boolean): void {
-  muted = on
+  muted.value = on
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(MUTE_KEY, on ? '1' : '0')
+  } catch { /* storage unavailable (private mode) — session-only mute */ }
 }
 
 export function isMuted(): boolean {
-  return muted
+  return muted.value
 }
 
 /** True when a sound may actually play right now. */
 function live(): boolean {
-  return !muted && ctx !== null && ctx.state === 'running'
+  return !muted.value && ctx !== null && ctx.state === 'running'
 }
 
 /** A single oscillator note with an attack/decay envelope. */

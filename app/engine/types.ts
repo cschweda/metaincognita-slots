@@ -161,6 +161,8 @@ export interface MachineDefBase {
   /** denomination of one coin/credit, in cents */
   denominationCents: number
   maxCoins: number
+  /** breakdown entryId shown as "Top award 1 in X" on the floor card (omit to hide the row) */
+  topAwardEntryId?: string
   /** symbol id → display label + optional icon id (see components/game/symbols/registry) */
   symbols: Record<SymbolId, { label: string, icon?: string }>
   /** prose history connecting the machine to its real-world archetype */
@@ -298,13 +300,8 @@ export interface BlackjackReelSessionState {
   ante: number
 }
 
-export interface LockReelMachineDef {
-  id: string
-  name: string
+export interface LockReelMachineDef extends MachineDefBase {
   family: 'lock-reel'
-  denominationCents: number
-  maxCoins: number
-  history: string
   /** grid rows (4) */
   rows: number
   /** five strips of symbol ids (cash ids, prize ids, SEVEN, BLANK) */
@@ -317,7 +314,6 @@ export interface LockReelMachineDef {
    * never on a strip — it is the grid-fill award only (`bonus.grandOnFill`).
    */
   bonusReels: SymbolId[][]
-  symbols: Record<string, { label: string, icon?: string }>
   /** symbol id -> credit value per coin (e.g. CASH25 -> 25) */
   cashValues: Record<string, number>
   /** MINI/MAJOR/GRAND -> credit value per coin */
