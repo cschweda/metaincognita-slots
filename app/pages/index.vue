@@ -42,7 +42,23 @@ const featured = computed(() => FLOOR.find(def => def.family === 'cascade') ?? n
         </p>
       </div>
 
-      <FloorBankrollSetup v-if="store.phase === 'floor'" />
+      <!-- First run: the free-play Featured machine needs no bankroll — never
+           hide it behind the session gate. The nine betting machines stay gated. -->
+      <template v-if="store.phase === 'floor'">
+        <FloorFeaturedMachine
+          v-if="featured"
+          :def="featured"
+        />
+        <p class="text-center text-sm text-neutral-400">
+          Temple of Gold is <span class="text-amber-300">free play</span> — walk up, no bankroll needed.
+          New to slots? Start with the
+          <NuxtLink
+            to="/learn"
+            class="text-sky-300 underline underline-offset-2 hover:text-sky-200"
+          >/learn explainers</NuxtLink>.
+        </p>
+        <FloorBankrollSetup />
+      </template>
 
       <template v-else>
         <div class="flex items-center justify-between rounded-xl bg-neutral-900/70 border border-neutral-800 px-4 py-2.5">

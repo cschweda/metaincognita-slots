@@ -165,7 +165,8 @@ export function nearMisses(def: MachineDef, out: SpinOutcome): NearMissCallout[]
       return pachisloCallouts(def, out)
     case 'blackjack-reel':
       return []
-    // TODO(Task 2+): lock-reel near-miss callouts (e.g. the two-7s tease)
+    // lock-reel is PARKED — no callouts were built (the two-7s tease would be
+    // the natural one if it ever returns to the floor)
     case 'lock-reel':
       return []
     // cascade surfaces its own near-miss in the cabinet's trick-exposer

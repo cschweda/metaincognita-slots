@@ -41,7 +41,7 @@ const denomTag = computed(() => store.currentDef ? denominationLabel(store.curre
         <div
           data-test="last-win"
           class="text-xl"
-          :class="showWin && lastWin > 0 ? 'text-emerald-400' : 'text-neutral-600'"
+          :class="showWin && lastWin > 0 ? 'text-emerald-400' : 'text-neutral-400'"
         >
           {{ showWin ? formatCredits(lastWin) : '—' }}
         </div>

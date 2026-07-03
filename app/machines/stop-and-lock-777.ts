@@ -1,8 +1,9 @@
 import type { LockReelMachineDef, SymbolId } from '../engine/types'
 
 /**
- * Stop & Lock 777 — the floor's Featured "big daddy" (the `lock-reel` engine
- * family: a player-stopped hold-and-spin cash-collect machine).
+ * Stop & Lock 777 — ⛔ PARKED (off the floor since v0.11.1; still resolvable
+ * via ALL_MACHINES so saved sessions load). The `lock-reel` engine family:
+ * a player-stopped hold-and-spin cash-collect machine.
  *
  * Five reels over a 5 × 4 grid. The reels spin nonstop; you press STOP to lock
  * each reel left-to-right, and every locked cash symbol + fixed prize BANKS —
@@ -13,8 +14,8 @@ import type { LockReelMachineDef, SymbolId } from '../engine/types'
  * cash genuinely keeps locking — this is a real hold-and-spin, not a re-roll of
  * the sparse base). Any new lock resets the respins, the trigger's 7s are sticky
  * and upgrade, and filling the whole 20-cell grid awards the GRAND (a reachable
- * ~1-in-10,600 dream). Two 7s leave a one-reel re-stop "tease" (EV 0, wired by
- * the UI later).
+ * ~1-in-10,600 dream). Two 7s leave a one-reel re-stop "tease" (EV 0; the UI
+ * re-stop was never wired — the machine parked first).
  *
  * Honest stop: each STOP is a uniform window draw from the reel's strip — the
  * timing feels skillful but does not change the odds (same stance as the pachislo

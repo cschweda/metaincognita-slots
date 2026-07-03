@@ -75,7 +75,7 @@ const rows = computed(() => [...store.history].reverse())
         </td>
         <td
           class="px-4 py-2 text-right font-mono"
-          :class="r.payoutCents > 0 ? 'text-emerald-400' : 'text-neutral-600'"
+          :class="r.payoutCents > 0 ? 'text-emerald-400' : 'text-neutral-400'"
         >
           {{ formatCents(r.payoutCents) }}
         </td>

@@ -115,25 +115,26 @@ const busy = computed(() => c.phase.value !== 'idle')
         <span class="tg-ladder-arrow">▼</span>
       </div>
 
-      <!-- the 5×4 tumbling grid -->
+      <!-- the 5×4 tumbling grid — a non-interactive DISPLAY, so image semantics
+           (role="grid" implies keyboard-navigable cells, and column divs would
+           read as transposed "rows"). Results are announced via the live region
+           and itemized in the X-ray trace. -->
       <div
         class="tg-grid"
-        role="grid"
-        :aria-label="`Temple of Gold ${c.def.value?.cols ?? 5} by ${c.def.value?.rows ?? 4} grid`"
+        role="img"
+        :aria-label="`Temple of Gold ${c.def.value?.cols ?? 5} by ${c.def.value?.rows ?? 4} symbol grid — spin results are announced and listed in the X-ray trace`"
       >
         <div
           v-for="(col, ci) in c.grid.value"
           :key="ci"
           class="tg-col"
-          role="row"
+          aria-hidden="true"
         >
           <div
             v-for="(sym, ri) in col"
             :key="ri"
             class="tg-cell"
             :class="[`tg-cell-${sym.toLowerCase()}`, { 'tg-cell-win': c.winners.value.has(sym) }]"
-            role="gridcell"
-            :aria-label="c.def.value?.symbols[sym]?.label ?? sym"
           >
             <span class="tg-glyph">{{ EMOJI[sym] ?? '◆' }}</span>
           </div>

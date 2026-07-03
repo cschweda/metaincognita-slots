@@ -107,7 +107,7 @@ onUnmounted(() => {
   >
     <div class="sl-page-grid">
       <div class="sl-page-main">
-        <GameReelLockReel :key="store.currentMachineId ?? ''" />
+        <LazyGameReelLockReel :key="store.currentMachineId ?? ''" />
       </div>
       <aside class="sl-page-side">
         <div class="sl-side-tools">
@@ -143,11 +143,11 @@ onUnmounted(() => {
     v-else-if="store.currentDef && store.currentDef.family === 'blackjack-reel'"
     class="l21-page"
   >
-    <GameChromeFlameoutChrome side="left" />
-    <GameChromeFlameoutChrome side="right" />
+    <LazyGameChromeFlameoutChrome side="left" />
+    <LazyGameChromeFlameoutChrome side="right" />
     <div class="l21-page-grid">
       <div class="l21-page-main">
-        <GameReelBlackjackReel :key="store.currentMachineId ?? ''" />
+        <LazyGameReelBlackjackReel :key="store.currentMachineId ?? ''" />
       </div>
       <aside class="l21-page-side">
         <div class="l21-side-tools">

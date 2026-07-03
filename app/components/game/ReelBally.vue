@@ -72,7 +72,7 @@ function meterCents(credits: number): string {
       >
         <div
           class="text-[9px] uppercase tracking-widest"
-          :class="dual.live === meter ? 'text-amber-400' : 'text-neutral-600'"
+          :class="dual.live === meter ? 'text-amber-400' : 'text-neutral-400'"
         >
           {{ meter }} {{ dual.live === meter ? '· live' : '' }}
         </div>
