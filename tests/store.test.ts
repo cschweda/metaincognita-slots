@@ -106,7 +106,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
     const b = freshStore()
     expect(b.resume()).toBe(true)
     const f = b.machineStates['ruby-of-gargoyle']!.videoFeature!
-    expect(f.kind).toBe('holdAndSpin')
+    if (f.kind !== 'holdAndSpin') throw new Error('expected holdAndSpin')
     expect(f.locked[0]).toEqual({ mult: 2 })
     expect(f.locked[1]).toEqual({ credits: 25, label: 'mini' })
     expect(f.locked.slice(2).every(c => c === null)).toBe(true)

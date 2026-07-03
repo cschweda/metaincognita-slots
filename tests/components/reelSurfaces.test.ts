@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ReelStepper from '../../app/components/game/ReelStepper.vue'
@@ -82,7 +83,7 @@ describe('Reel surfaces', () => {
     bj.ante = 2
     bj.landed = ['9S', '9D', 'CRASH', null, null]
     bj.hand = ['9S', '9D']
-    await wrapper.vm.$nextTick()
+    await nextTick()
     // The result is rendered in-page (no modal/dialog).
     const card = wrapper.find('[data-test="result-card"]')
     expect(card.exists()).toBe(true)
@@ -104,7 +105,7 @@ describe('Reel surfaces', () => {
     bj.ante = 1
     bj.landed = ['9S', '9D', 'CLIMB', null, null]
     bj.hand = ['9S', '9D']
-    await wrapper.vm.$nextTick()
+    await nextTick()
     expect(wrapper.find('[data-test="result-card"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="result-title"]').text()).toContain('CASHED OUT')
     expect(wrapper.find('[data-test="result-amount"]').text()).toContain('$')

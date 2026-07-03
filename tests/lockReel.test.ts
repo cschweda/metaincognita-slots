@@ -315,7 +315,7 @@ describe('bonus respins (auto-playable)', () => {
     expect(out.featureEvents.some(e => e.type === 'grand')).toBe(true)
     // collect = bonus cash (5 cells * C5 = 25) + 5 sticky sevens * upgrade(7) = 35
     //           + GRAND(1000) = 1060; payout = ante(1) * 1060
-    expect(lr.collectCredits).toBe(25 + 5 * def.bonus.sevenUpgrade + def.prizes.GRAND)
+    expect(lr.collectCredits).toBe(25 + 5 * def.bonus.sevenUpgrade + def.prizes.GRAND!)
     expect(out.totalPayout).toBe(lr.collectCredits)
   })
 

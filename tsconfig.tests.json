@@ -1,0 +1,21 @@
+{
+  // Typechecks what `nuxt typecheck` cannot see: the vitest suites in tests/**
+  // and the tsx-run scripts/ (verify-floor.ts). Extends the generated app
+  // project so ~ aliases, .vue imports, and auto-import types all resolve.
+  // Run via `pnpm typecheck` (nuxt typecheck && vue-tsc -p tsconfig.tests.json).
+  "extends": "./.nuxt/tsconfig.app.json",
+  "include": [
+    ".nuxt/nuxt.d.ts",
+    "app/**/*",
+    "tests/**/*",
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false
+  }
+}

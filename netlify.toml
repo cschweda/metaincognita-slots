@@ -1,11 +1,17 @@
 [build]
-  command = "pnpm generate"
+  # Fast red-build gate: a push that fails lint or tests must not deploy.
+  # (CI runs the deeper gates — typecheck + million-spin verify — on every push.)
+  command = "pnpm lint && pnpm test && pnpm generate"
   publish = "dist"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[build.environment]
+  # Match .github/workflows/ci.yml so Netlify never builds on a different Node.
+  NODE_VERSION = "22"
+
+# No [[redirects]] block here: every route is prerendered (ssr: false +
+# netlify_static), and the preset writes dist/_redirects with `/* /404.html 404`
+# so unknown URLs are REAL 404s. A catch-all rewrite to index.html would only
+# mislead — dist/_redirects takes precedence over rules defined in this file.
 
 [[headers]]
   # Non-CSP security headers for all routes.
@@ -19,3 +25,4 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"

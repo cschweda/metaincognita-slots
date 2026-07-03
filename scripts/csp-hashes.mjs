@@ -72,6 +72,35 @@ for (const file of htmlFiles) {
 const RUNTIME_INJECTED = [
   `document.head.removeChild(document.querySelector('[data-nuxt-ui-colors]'))`
 ]
+
+// Guard: every pinned runtime-injected script must still exist VERBATIM in the
+// installed @nuxt/ui dist (currently dist/runtime/plugins/colors.js). The hash
+// is byte-exact, so any upstream change — even requoting — would ship a CSP
+// that blocks the script in production. Fail the build instead.
+const NUXT_UI_DIR = new URL('../node_modules/@nuxt/ui/dist/', import.meta.url).pathname
+const uiSources = []
+for await (const f of glob('**/*', { cwd: NUXT_UI_DIR })) {
+  if (/\.(m|c)?js$/.test(f)) uiSources.push(path.join(NUXT_UI_DIR, f))
+}
+for (const text of RUNTIME_INJECTED) {
+  const found = uiSources.some((f) => {
+    try {
+      return readFileSync(f, 'utf8').includes(text)
+    } catch {
+      return false
+    }
+  })
+  if (!found) {
+    console.error('ERROR: pinned runtime-injected script not found in the installed @nuxt/ui dist:')
+    console.error(`  ${text}`)
+    console.error('A dependency upgrade likely changed the injected script, so its pinned hash would')
+    console.error('no longer match and the production CSP would block it. Serve the new build with the')
+    console.error('generated headers (pnpm smoke), re-capture the injected script from the console, and')
+    console.error('update RUNTIME_INJECTED in scripts/csp-hashes.mjs.')
+    process.exit(1)
+  }
+}
+
 for (const text of RUNTIME_INJECTED) {
   const hash = 'sha256-' + createHash('sha256').update(text, 'utf8').digest('base64')
   if (!seen.has(hash)) {

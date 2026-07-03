@@ -10,10 +10,12 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "typecheck": "nuxt typecheck",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm verify",
+    "typecheck": "nuxt typecheck && vue-tsc -p tsconfig.tests.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "smoke": "node scripts/smoke-serve.mjs",
     "verify": "tsx scripts/verify-floor.ts"
   },
   "dependencies": {
@@ -37,5 +39,8 @@
     "vue": "^3.5.38",
     "vue-tsc": "^3.2.6"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  }
 }
