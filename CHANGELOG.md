@@ -47,6 +47,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **MIT LICENSE** (a public educational repo was all-rights-reserved by default).
 
 ### Changed
+- **First run shows the free machine first.** The floor page used to hide
+  everything — including the walk-up, free-play Temple of Gold — behind the
+  bankroll form. The Featured card and a /learn pointer now render above the
+  gate; only the nine betting machines wait for a session.
+- **The Temple grid reads honestly to screen readers.** The non-interactive
+  symbol display no longer claims `role="grid"` (which implied keyboard cells
+  and read the columns as transposed rows); it is an image with a summary
+  label, with results announced via the live region and the X-ray trace.
+- Zero-value readouts (last-win, history payouts, the inactive Bally meter
+  label) brightened from near-invisible `neutral-600` to readable `neutral-400`
+  — they are data, not disabled controls.
+- **Internals, no behavior change** (every RTP re-verified bit-identical):
+  the localStorage restore sanitizers moved out of the 965-line store into
+  `app/engine/restore.ts` and the outcome narration into
+  `app/utils/outcomeText.ts` (store now ~630 lines); the interactive
+  Monte-Carlo hand/round drivers are shared engine helpers instead of
+  duplicated between `simulateMachine` and `simulateSession`; the two PARKED
+  machines' cabinets lazy-load so floor visitors stop downloading them; the
+  cost-prediction property test now fails loudly on an unhandled family; stale
+  "wired in a later task" comments on parked-machine code now say PARKED.
 - `netlify.toml`: Node pinned to 22 (matches CI), HSTS header, a lint + test
   gate before deploy so a red push cannot ship, and the dead SPA catch-all
   rewrite removed (the preset's `/* /404.html 404` already wins).
