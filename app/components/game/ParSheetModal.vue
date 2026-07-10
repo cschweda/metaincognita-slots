@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { exactRtp } from '~/engine'
+import { exactRtpAsync } from '~/utils/rtpClient'
 import { crashOdds } from '~/engine/blackjackReelRtp'
 import { bonusEv, bonusOdds } from '~/engine/lockReelRtp'
 import { pachisloBonusValues } from '~/engine/pachisloRtp'
@@ -22,20 +22,23 @@ watch([() => props.open, def], ([open]) => {
   if (open && !tabs.value.includes(tab.value)) tab.value = tabs.value[0]!
 }, { immediate: true })
 
-/** the joint pass for video machines costs ~1s on first compute — load lazily */
+/** the joint pass for video machines costs ~1s — computed in the rtp.worker */
 const report = ref<ExactRtpReport | null>(null)
 const computing = ref(false)
+let reportToken = 0
 watch([() => props.open, def, tab], async ([open, d, t]) => {
+  const token = ++reportToken
   if (!open || d === null || t !== 'math') return
   report.value = null
   computing.value = true
-  await new Promise(resolve => setTimeout(resolve, 30)) // let the modal paint first
   // Report hit frequency/volatility at the active line count for 'lines'
   // machines (currentBet); RTP/coin is unaffected. Pachislo is keyed by level.
   const opts = d.family === 'pachislo'
     ? { oddsLevel: store.currentState?.pachislo?.oddsLevel ?? undefined }
     : { coins: store.currentBet }
-  report.value = exactRtp(d, opts)
+  const result = await exactRtpAsync(d, opts)
+  if (token !== reportToken) return // tab/machine changed mid-compute
+  report.value = result
   computing.value = false
 }, { immediate: true })
 

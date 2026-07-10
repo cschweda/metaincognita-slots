@@ -103,6 +103,7 @@ describe('ldw-near-miss', () => {
   it('defines LDW and near-miss and runs a live seeded experiment', async () => {
     const w = mount(LdwNearMiss, { global: { stubs } })
     await nextTick() // the experiment runs onMounted so first paint never blocks
+    await nextTick() // …and resolves through the rtpClient fallback's microtask
     const t = w.text().toLowerCase()
     expect(t).toContain('loss disguised as a win')
     expect(t).toContain('near miss')

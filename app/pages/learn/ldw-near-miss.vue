@@ -6,14 +6,17 @@ import { onMounted, ref } from 'vue'
 // every visit (that's the point: it's math, not luck). The experiment itself
 // lives in ~/utils/ldwExperiment so the worker, the fallback, and the tests
 // all run the same code.
-import { LDW_PAID_SPINS as N, runLdwExperiment, type LdwExperimentResult } from '~/utils/ldwExperiment'
+import { LDW_PAID_SPINS as N, type LdwExperimentResult } from '~/utils/ldwExperiment'
+import { ldwExperimentAsync } from '~/utils/rtpClient'
 import { formatPercent } from '~/utils/format'
 import LearnSection from '~/components/learn/LearnSection.vue'
 import LearnDisclosure from '~/components/learn/LearnDisclosure.vue'
 
 const exp = ref<LdwExperimentResult | null>(null)
-onMounted(() => {
-  exp.value = runLdwExperiment()
+onMounted(async () => {
+  // Runs in the rtp.worker in real browsers — first paint and first tap never
+  // wait on 10,000 spins. Same seed, same numbers, exactly as before.
+  exp.value = await ldwExperimentAsync()
 })
 </script>
 
