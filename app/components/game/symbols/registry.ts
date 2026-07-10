@@ -40,6 +40,10 @@ const SYMBOL_ART: Record<string, SymbolArt> = {
   'seven': { kind: 'text', text: '7', variant: 'seven', color: '#f59e0b' },
   'seven-red': { kind: 'text', text: '7', variant: 'seven', color: '#ef4444' },
   'seven-flame': { kind: 'text', text: '7', variant: 'seven', color: '#fb923c' },
+  // ---- Wonder Wheel (wheel family) ----
+  'seven-neon': { kind: 'text', text: '7', variant: 'seven', color: '#22d3ee' },
+  'star-shoot': { kind: 'svg', body: '<path d="M14 3l1.6 4.6 4.9.2-3.9 3 1.4 4.7-4-2.8-4 2.8 1.4-4.7-3.9-3 4.9-.2z" fill="#facc15"/><path d="M14 3l1.6 4.6 3-.1z" fill="#fde047"/><path d="M4 20c2.5-1 4.5-2.5 6.5-5M2.5 16.5c2-.8 3.5-1.8 5-3.5" stroke="#a5f3fc" stroke-width="1.8" fill="none" stroke-linecap="round"/>' },
+  'wheel': { kind: 'svg', body: '<circle cx="12" cy="12" r="9.5" fill="#fbbf24"/><circle cx="12" cy="12" r="8" fill="#7c3aed"/><g fill="#ec4899"><path d="M12 4a8 8 0 0 1 5.66 2.34L12 12z"/><path d="M20 12a8 8 0 0 1-2.34 5.66L12 12z"/><path d="M12 20a8 8 0 0 1-5.66-2.34L12 12z"/><path d="M4 12a8 8 0 0 1 2.34-5.66L12 12z"/></g><g fill="#06b6d4"><path d="M17.66 6.34A8 8 0 0 1 20 12h-8z"/><path d="M17.66 17.66A8 8 0 0 1 12 20v-8z"/><path d="M6.34 17.66A8 8 0 0 1 4 12h8z"/><path d="M6.34 6.34A8 8 0 0 1 12 4v8z"/></g><circle cx="12" cy="12" r="2.6" fill="#fbbf24"/><path d="M12 .8l1.4 2.4h-2.8z" fill="#f43f5e"/>' },
   // ---- Stop & Lock 777 (lock-reel) cash-collect symbols ----
   // The bespoke cabinet renders its grid with its own CSS cells; these entries
   // back the def's icon metadata so the floor-wide icon-coverage invariant holds.

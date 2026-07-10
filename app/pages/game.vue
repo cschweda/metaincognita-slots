@@ -145,6 +145,10 @@ onUnmounted(() => {
             v-else-if="store.currentDef?.family === 'pachislo'"
             :key="store.currentMachineId ?? ''"
           />
+          <GameReelWheelGame
+            v-else-if="store.currentDef?.family === 'wheel'"
+            :key="store.currentMachineId ?? ''"
+          />
         </GameMachineChrome>
         <GameResultBar />
         <GameBetControls>

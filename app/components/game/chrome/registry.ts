@@ -12,6 +12,7 @@ const MODULES: Record<string, () => Promise<{ default: Component }>> = {
   'sevens-ablaze': () => import('./SevensAblazeChrome.vue'),
   'series-e-3line': () => import('./SeriesE3LineChrome.vue'),
   'series-e-multiplier': () => import('./SeriesEMultiplierChrome.vue'),
+  'wonder-wheel': () => import('./WonderWheelChrome.vue'),
   'flameout-21': () => import('./FlameoutChrome.vue')
   // Stop & Lock 777 (lock-reel) deliberately has no entry: it renders its own
   // full-page bespoke cabinet (GameReelLockReel) instead of the standard

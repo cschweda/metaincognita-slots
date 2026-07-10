@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { FLOOR } from '~/machines'
+import { FEATURED_ID, FLOOR } from '~/machines'
 import { formatCents } from '~/utils/format'
 
 const store = useSlotsStore()
@@ -11,23 +11,29 @@ onMounted(() => {
   if (store.phase === 'floor' && store.peekSavedSession()) store.resume()
 })
 
-const FAMILY_ORDER = ['video', 'stepper', 'bally-em', 'pachislo'] as const
+const FAMILY_ORDER = ['wheel', 'cascade', 'video', 'stepper', 'bally-em', 'pachislo'] as const
 const FAMILY_HEADING: Record<string, string> = {
+  'wheel': 'Wheel bonus (1996 lineage)',
+  'cascade': 'Cascade (tumble)',
   'video': 'Video slots',
   'stepper': 'Telnaes steppers (1984)',
   'bally-em': 'Vintage Bally Series E (1979)',
   'pachislo': 'Pachislo skill-stop'
 }
+
+// The revolving Featured headliner (curated in machines/index.ts). The grid
+// lists everything EXCEPT the current headliner — a resting former headliner
+// (e.g. Temple) rejoins the grid under its family group.
+const featured = computed(() => FLOOR.find(def => def.id === FEATURED_ID) ?? null)
 const groups = computed(() => FAMILY_ORDER.map(family => ({
   family,
   heading: FAMILY_HEADING[family]!,
-  machines: FLOOR.filter(def => def.family === family)
+  machines: FLOOR.filter(def => def.family === family && def.id !== FEATURED_ID)
 })).filter(group => group.machines.length > 0))
 
-// The Featured "big daddy" — Temple of Gold (cascade). Shown only as the big
-// card above the grid (cascade is deliberately omitted from FAMILY_ORDER so it
-// is not also listed below).
-const featured = computed(() => FLOOR.find(def => def.family === 'cascade') ?? null)
+// The first-run screen keeps the FREE-PLAY trainer up front regardless of who
+// is featured: it is the one machine playable without a bankroll.
+const freePlayTrainer = computed(() => FLOOR.find(def => def.family === 'cascade') ?? null)
 </script>
 
 <template>
@@ -38,7 +44,7 @@ const featured = computed(() => FLOOR.find(def => def.family === 'cascade') ?? n
           SLOTS SIMULATOR
         </h1>
         <p class="text-neutral-400 text-sm">
-          Ten machines — nine you bet, one you can't lose. Every number computed, never asserted — flip the X-ray on and see the guts.
+          Eleven machines — ten you bet, one you can't lose. Every number computed, never asserted — flip the X-ray on and see the guts.
         </p>
       </div>
 
@@ -66,8 +72,8 @@ const featured = computed(() => FLOOR.find(def => def.family === 'cascade') ?? n
           />
         </div>
         <FloorFeaturedMachine
-          v-if="featured"
-          :def="featured"
+          v-if="freePlayTrainer"
+          :def="freePlayTrainer"
         />
         <p class="text-center text-sm text-neutral-400">
           Temple of Gold is <span class="text-amber-300">free play</span> — walk up, no bankroll needed.

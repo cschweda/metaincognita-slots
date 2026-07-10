@@ -20,7 +20,8 @@ const BY_FAMILY: Record<MachineDef['family'], LearnLink> = {
   'pachislo': { to: '/learn/pachislo', label: 'the flag lottery behind skill stop' },
   'cascade': { to: '/learn/cascade-tumble', label: 'the tumble math' },
   'blackjack-reel': { to: '/learn/house-edge', label: 'the house edge, machine by machine' },
-  'lock-reel': { to: '/learn/hold-and-spin', label: 'the hold & spin fill math' }
+  'lock-reel': { to: '/learn/hold-and-spin', label: 'the hold & spin fill math' },
+  'wheel': { to: '/learn/telnaes-reels', label: 'weighted odds behind equal-looking stops' }
 }
 
 export function learnLink(def: MachineDef): LearnLink {

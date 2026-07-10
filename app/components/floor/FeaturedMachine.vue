@@ -1,24 +1,25 @@
 <!-- app/components/floor/FeaturedMachine.vue -->
-<!-- Big, gaudy "Featured machine" card for the floor — Temple of Gold, the
-     free-play cascade trainer: the one machine that shows you exactly how it
-     would take your money, without ever taking it. -->
+<!-- Big, gaudy "Featured machine" card for the floor. DATA-DRIVEN: the def
+     comes from machines/index.ts FEATURED_ID and the words from
+     featuredCopy.ts, so revolving the spotlight is a one-line curation change
+     — the gold marquee housing stays the same for every headliner. -->
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { formatCents } from '~/utils/format'
+import { FEATURED_COPY } from './featuredCopy'
 import type { MachineDef } from '~/engine'
 
 const props = defineProps<{ def: MachineDef }>()
 const store = useSlotsStore()
 
-// Decorative cascade motif — a row of tumbling treasures.
-const MOTIF = ['🎭', '🐆', '👑', '🪙', '🗿'] as const
-
-const FACTS = [
-  'Tumbling reels — wins cascade, the multiplier climbs',
-  'FREE PLAY — spin forever, lose nothing',
-  'A trick-exposer X-rays every single spin',
-  'Honest ledger · ~90% RTP shown, taken from no one'
-] as const
+const copy = computed(() => FEATURED_COPY[props.def.id] ?? {
+  title: props.def.name.toUpperCase(),
+  tagline: '',
+  motif: ['🎰', '🎰', '🎰', '🎰', '🎰'],
+  facts: [],
+  playLabel: `▼ Play ${props.def.name}`,
+  meta: ''
+})
 
 function play() {
   store.selectMachine(props.def.id)
@@ -48,15 +49,15 @@ function play() {
 
     <!-- real spaces (not &nbsp;) so the visible text matches the accessible
          name (WCAG 2.5.3 label-in-name); nowrap keeps the one-line marquee -->
-    <span class="feat-title">TEMPLE OF GOLD</span>
-    <span class="feat-tag">A gaudy Aztec cascade — and the floor's honest, free-play trainer. Watch how the machine really works, loss-free.</span>
+    <span class="feat-title">{{ copy.title }}</span>
+    <span class="feat-tag">{{ copy.tagline }}</span>
 
     <span
       class="feat-reels"
       aria-hidden="true"
     >
       <span
-        v-for="(t, i) in MOTIF"
+        v-for="(t, i) in copy.motif"
         :key="i"
         class="feat-window"
       >
@@ -68,15 +69,15 @@ function play() {
 
     <span class="feat-facts">
       <span
-        v-for="(f, i) in FACTS"
+        v-for="(f, i) in copy.facts"
         :key="i"
         class="feat-chip"
       >{{ f }}</span>
     </span>
 
     <span class="feat-cta">
-      <span class="feat-play">▼ Play Temple of Gold</span>
-      <span class="feat-meta">{{ formatCents(def.denominationCents) }}/credit · free play · the honest machine</span>
+      <span class="feat-play">{{ copy.playLabel }}</span>
+      <span class="feat-meta">{{ copy.meta }}</span>
     </span>
   </button>
 </template>
