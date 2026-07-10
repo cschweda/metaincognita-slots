@@ -1,11 +1,17 @@
 import { describe, it, expect } from 'vitest'
 import { validateMachineDef } from '../app/engine/validate'
+import { exactRtp } from '../app/engine'
 import { STOCK_RUSH } from '../app/machines/stock-rush'
 import { FLOOR, PARKED, ALL_MACHINES } from '../app/machines'
 
 describe('stock-rush — machine integrity', () => {
   it('is a valid machine', () => {
     expect(() => validateMachineDef(STOCK_RUSH)).not.toThrow()
+  })
+  it('freezes the exact default-level rtpPerCoin', () => {
+    // The published number (README, PAR sheet: 91.5013%). If this moves, the
+    // machine's math changed — update docs deliberately, never casually.
+    expect(exactRtp(STOCK_RUSH).rtpPerCoin).toBeCloseTo(0.9150131165863137, 6)
   })
   it('strip compositions match the searched layout', () => {
     const counts = STOCK_RUSH.strips.map((strip) => {

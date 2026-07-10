@@ -4,8 +4,9 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import XrayPanel from '../../app/components/game/XrayPanel.vue'
 import { useSlotsStore } from '../../app/stores/slots'
-import { bonusEv, reelCashEvs } from '../../app/engine/lockReelRtp'
+import { bonusEv, lockReelExactRtp, reelCashEvs } from '../../app/engine/lockReelRtp'
 import { STOP_AND_LOCK_777 } from '../../app/machines/stop-and-lock-777'
+import { formatPercent } from '../../app/utils/format'
 
 function withLockReel() {
   setActivePinia(createPinia())
@@ -30,10 +31,12 @@ describe('XrayPanel — Stop & Lock 777 (lock-reel)', () => {
     const panel = wrapper.find('[data-test="lock-odds-panel"]')
     expect(panel.exists()).toBe(true)
     const text = panel.text()
-    // exact RTP + house edge line
-    expect(text).toContain('94.5073%') // RTP
+    // exact RTP + house edge line — derived the way the panel computes them;
+    // the engine-side FROZEN value lives in machines-lockreel.test.ts.
+    const report = lockReelExactRtp(STOP_AND_LOCK_777)
+    expect(text).toContain(formatPercent(report.rtpPerCoin, 4)) // RTP
     expect(text).toMatch(/House edge/i)
-    expect(text).toContain('5.4927%') // 1 - RTP
+    expect(text).toContain(formatPercent(1 - report.rtpPerCoin, 4)) // 1 - RTP
     // per-reel cash EV: reel 3's expected cash (highest, 0.168) appears
     const evs = reelCashEvs(STOP_AND_LOCK_777)
     expect(text).toContain(evs[2]!.toFixed(3))

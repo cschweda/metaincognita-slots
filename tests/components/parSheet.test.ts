@@ -4,6 +4,8 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ParSheetModal from '../../app/components/game/ParSheetModal.vue'
 import { useSlotsStore } from '../../app/stores/slots'
+import { exactRtp } from '../../app/engine'
+import { formatPercent } from '../../app/utils/format'
 
 function setup(machineId: string) {
   setActivePinia(createPinia())
@@ -28,12 +30,17 @@ describe('ParSheetModal', () => {
   beforeEach(() => localStorage.clear())
 
   it('stock-rush: shows the exact level-4 RTP, flag table, and bonus values', async () => {
-    const { wrapper } = setup('stock-rush')
+    const { store, wrapper } = setup('stock-rush')
     await wrapper.find('[data-test="tab-math"]').trigger('click')
     // the report computes lazily (30 ms paint delay) — wait it out
     await new Promise(resolve => setTimeout(resolve, 80))
     await wrapper.vm.$nextTick()
-    expect(wrapper.text()).toContain('91.5013%')
+    // Derived exactly the way the modal computes it (ParSheetModal.vue math
+    // watcher); the engine-side FROZEN value lives in machines-pachislo.test.ts.
+    const report = exactRtp(store.currentDef!, { oddsLevel: store.currentState!.pachislo!.oddsLevel })
+    expect(report.rtpPerCoin).toBeGreaterThan(0.5) // guard against a degenerate derivation
+    expect(report.rtpPerCoin).toBeLessThan(1.05)
+    expect(wrapper.text()).toContain(formatPercent(report.rtpPerCoin, 4))
     expect(wrapper.text()).toMatch(/big/i)
     await wrapper.find('[data-test="tab-paytable"]').trigger('click')
     expect(wrapper.text()).toContain('16384') // the lottery denominator is shown, not hidden
@@ -80,13 +87,18 @@ describe('ParSheetModal', () => {
     expect(bonus.text()).toMatch(/hold-and-spin/i)
   })
 
-  it('lock-reel: math tab shows the exact 94.5073% RTP and friendly breakdown labels', async () => {
-    const { wrapper } = setup('stop-and-lock-777')
+  it('lock-reel: math tab shows the exact computed RTP and friendly breakdown labels', async () => {
+    const { store, wrapper } = setup('stop-and-lock-777')
     await wrapper.find('[data-test="tab-math"]').trigger('click')
     await new Promise(resolve => setTimeout(resolve, 80))
     await wrapper.vm.$nextTick()
     const text = wrapper.text()
-    expect(text).toContain('94.5073%')
+    // Derived the way the modal computes it; engine-side frozen value lives
+    // in machines-lockreel.test.ts ('freezes the exact rtpPerCoin').
+    const report = exactRtp(store.currentDef!, { coins: store.currentBet })
+    expect(report.rtpPerCoin).toBeGreaterThan(0.5)
+    expect(report.rtpPerCoin).toBeLessThan(1.05)
+    expect(text).toContain(formatPercent(report.rtpPerCoin, 4))
     expect(text).toMatch(/Base collect/i)
     expect(text).toMatch(/GRAND \(grid fill\)/i)
   })
