@@ -208,22 +208,24 @@ export function useLockReel() {
   })
   const canBonusStop = computed(() => !store.spinning && phase.value === 'bonus')
 
-  function deal(): void {
+  // The parked engine loads on first use (store actions dynamic-import it) —
+  // every chained call must await, or the next guard reads a stale phase.
+  async function deal(): Promise<void> {
     if (!canDeal.value) return
-    store.lockDeal()
+    await store.lockDeal()
     store.revealDone()
   }
   // STOP from idle deals + locks the first reel in one press; otherwise steps
   // one stop (a base reel lock or one bonus respin).
-  function stop(): void {
+  async function stop(): Promise<void> {
     if (!canStop.value) return
     if (phase.value === 'idle') {
-      store.lockDeal()
+      await store.lockDeal()
       store.revealDone()
-      store.lockStop()
+      await store.lockStop()
       store.revealDone()
     } else {
-      store.lockStop()
+      await store.lockStop()
       store.revealDone()
     }
   }
@@ -236,12 +238,12 @@ export function useLockReel() {
     store.revealDone()
   }
   // "Same Bet": from a resolved round (or idle) deal + lock the first reel.
-  function sameBet(): void {
+  async function sameBet(): Promise<void> {
     if (!canDeal.value) return
     store.lockReset()
-    store.lockDeal()
+    await store.lockDeal()
     store.revealDone()
-    store.lockStop()
+    await store.lockStop()
     store.revealDone()
   }
 

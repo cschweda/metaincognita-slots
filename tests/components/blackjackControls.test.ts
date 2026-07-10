@@ -1,11 +1,16 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { mulberry32 } from '../../app/engine'
 import { setLiveRand } from '../../app/utils/liveRand'
 import ReelBlackjackReel from '../../app/components/game/ReelBlackjackReel.vue'
 import { useSlotsStore } from '../../app/stores/slots'
+
+// The store's parked actions dynamic-import ~/engine/parked; a COLD import
+// inside a pinia action isn't pumped by flushPromises in this harness (the
+// browser's real event loop has no such dependence) — warm it up front.
+await import('../../app/engine/parked')
 
 type SlotsStore = ReturnType<typeof useSlotsStore>
 
@@ -91,6 +96,7 @@ describe('Flameout 21 crash cabinet — STOP / CASH controls (no Deal button)', 
     const { store, wrapper } = setup()
     expect(store.currentState!.blackjackReel!.phase).toBe('idle')
     await wrapper.find('[data-test="stop"]').trigger('click')
+    await flushPromises()
     await wrapper.vm.$nextTick()
     // Reels 1–2 are pure cards, so reel 1 can never crash → spinning.
     const p = store.currentState!.blackjackReel!.phase
@@ -102,6 +108,7 @@ describe('Flameout 21 crash cabinet — STOP / CASH controls (no Deal button)', 
     const { store, wrapper } = setup()
     const bankrollBefore = store.bankrollCents
     await wrapper.find('[data-test="stop"]').trigger('click')
+    await flushPromises()
     await wrapper.vm.$nextTick()
     const bankrollAfter = store.bankrollCents
     const def = store.currentDef as { denominationCents: number }
@@ -112,10 +119,12 @@ describe('Flameout 21 crash cabinet — STOP / CASH controls (no Deal button)', 
   it('Stop advances the reel index from the spinning phase', async () => {
     const { store, wrapper } = setup()
     await wrapper.find('[data-test="stop"]').trigger('click')
+    await flushPromises()
     await wrapper.vm.$nextTick()
     const before = store.currentState!.blackjackReel!.idx
     if (store.currentState!.blackjackReel!.phase === 'spinning') {
       await wrapper.find('[data-test="stop"]').trigger('click')
+      await flushPromises()
       await wrapper.vm.$nextTick()
       const after = store.currentState!.blackjackReel!.idx
       expect(after).toBeGreaterThanOrEqual(before)
@@ -127,13 +136,16 @@ describe('Flameout 21 crash cabinet — STOP / CASH controls (no Deal button)', 
     const { store, wrapper } = setup()
     // STOP×2: deal + lock reels 1 and 2 (pure cards, can't crash).
     await wrapper.find('[data-test="stop"]').trigger('click')
+    await flushPromises()
     await wrapper.vm.$nextTick()
     if (store.currentState!.blackjackReel!.phase === 'spinning') {
       await wrapper.find('[data-test="stop"]').trigger('click')
+      await flushPromises()
       await wrapper.vm.$nextTick()
     }
     if (store.currentState!.blackjackReel!.phase === 'spinning') {
       await wrapper.find('[data-test="cash-out"]').trigger('click')
+      await flushPromises()
       await wrapper.vm.$nextTick()
     }
     expect(store.currentState!.blackjackReel!.phase).toBe('resolved')
@@ -150,6 +162,7 @@ describe('Flameout 21 crash cabinet — STOP / CASH controls (no Deal button)', 
     expect(wrapper.find('[data-test="result-amount"]').text()).toContain('$0')
     // Play Again resets to idle (the attract spin).
     await wrapper.find('[data-test="play-again"]').trigger('click')
+    await flushPromises()
     await wrapper.vm.$nextTick()
     expect(store.currentState!.blackjackReel!.phase).toBe('idle')
     expect(wrapper.find('[data-test="result-card"]').exists()).toBe(false)

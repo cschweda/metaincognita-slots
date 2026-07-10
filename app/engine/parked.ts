@@ -12,9 +12,12 @@
 import { blackjackReelExactRtp } from './blackjackReelRtp'
 import { lockReelExactRtp } from './lockReelRtp'
 import { registerExactRtpSolver } from './exactRtp'
+import type { BlackjackReelMachineDef, LockReelMachineDef } from './types'
 
-registerExactRtpSolver('blackjack-reel', blackjackReelExactRtp)
-registerExactRtpSolver('lock-reel', lockReelExactRtp)
+// The registry dispatches only when def.family already matches, so the
+// narrowing casts are sound by construction.
+registerExactRtpSolver('blackjack-reel', (def, opts) => blackjackReelExactRtp(def as BlackjackReelMachineDef, opts))
+registerExactRtpSolver('lock-reel', (def, opts) => lockReelExactRtp(def as LockReelMachineDef, opts))
 
 export { dealReels, stopReel, cashOut, playBlackjackHand } from './blackjackReel'
 export { blackjackReelExactRtp, makeOptimalStopFn } from './blackjackReelRtp'

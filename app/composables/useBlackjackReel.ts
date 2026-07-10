@@ -133,26 +133,28 @@ export function useBlackjackReel() {
   })
   const canCash = computed(() => !store.spinning && phase.value === 'spinning' && idx.value >= 1)
 
-  function deal(): void {
+  // The parked engine loads on first use (store actions dynamic-import it) —
+  // every chained call must await, or the next guard reads a stale phase.
+  async function deal(): Promise<void> {
     if (!canDeal.value) return
-    store.deal()
+    await store.deal()
     store.revealDone()
   }
-  function stop(): void {
+  async function stop(): Promise<void> {
     if (!canStop.value) return
     if (phase.value === 'idle') {
-      store.deal()
+      await store.deal()
       store.revealDone()
-      store.stop()
+      await store.stop()
       store.revealDone()
     } else {
-      store.stop()
+      await store.stop()
       store.revealDone()
     }
   }
-  function cashOut(): void {
+  async function cashOut(): Promise<void> {
     if (!canCash.value) return
-    store.cashOut()
+    await store.cashOut()
     store.revealDone()
   }
   function playAgain(): void {
@@ -161,11 +163,11 @@ export function useBlackjackReel() {
   }
   // "Same Bet": deal a fresh hand at the current bet — works from idle OR a
   // resolved result (store.deal() accepts both phases and resets the state).
-  function sameBet(): void {
+  async function sameBet(): Promise<void> {
     if (!canDeal.value) return
-    store.deal()
+    await store.deal()
     store.revealDone()
-    store.stop()
+    await store.stop()
     store.revealDone()
   }
 

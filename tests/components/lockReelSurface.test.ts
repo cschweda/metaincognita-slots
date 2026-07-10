@@ -1,9 +1,14 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ReelLockReel from '../../app/components/game/ReelLockReel.vue'
 import { useSlotsStore } from '../../app/stores/slots'
+
+// The store's parked actions dynamic-import ~/engine/parked; a COLD import
+// inside a pinia action isn't pumped by flushPromises in this harness (the
+// browser's real event loop has no such dependence) — warm it up front.
+await import('../../app/engine/parked')
 
 function withLockReel() {
   setActivePinia(createPinia())
@@ -74,6 +79,7 @@ describe('Stop & Lock 777 surface (big-daddy cabinet)', () => {
     const { wrapper, store } = withLockReel()
     // deal first (idle → stop deals + locks reel 1)
     await wrapper.find('[data-test="stop-1"]').trigger('click')
+    await flushPromises()
     const lr = store.currentState!.lockReel!
     expect(lr.phase).toBe('spinning')
     expect(lr.idx).toBe(1)
