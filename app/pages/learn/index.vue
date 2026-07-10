@@ -11,6 +11,7 @@ const topics = [
   { to: '/learn/pachislo', icon: 'i-lucide-cherry', title: 'Pachislo: the flag lottery', blurb: 'You stop the reels; a hidden lottery already decided. Flags, stock, the ≤4-stop slip — and the operator key.' },
   { to: '/learn/ldw-near-miss', icon: 'i-lucide-party-popper', title: 'LDWs & near misses', blurb: 'The win that loses money and the almost-jackpot that never was — the floor\'s two best tricks, measured live.' },
   { to: '/learn/myths', icon: 'i-lucide-flame', title: 'Myths: due, hot & cold', blurb: 'No machine is ever due and none of them run hot — a quarter-million live spins prove the reels have no memory.' },
+  { to: '/learn/psychology', icon: 'i-lucide-brain', title: 'The psychology of the floor', blurb: 'LDW parties, the variable-ratio hook, credits-not-dollars, buttons that don\'t steer — every trick, running here with the receipts on.' },
   { to: '/learn/glossary', icon: 'i-lucide-book-open', title: 'Glossary', blurb: 'Every term on this floor in plain English — RTP to ways, no jargon left standing.' }
 ]
 </script>

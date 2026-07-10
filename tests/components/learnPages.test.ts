@@ -11,9 +11,10 @@ import CascadeTumble from '../../app/pages/learn/cascade-tumble.vue'
 import Pachislo from '../../app/pages/learn/pachislo.vue'
 import LdwNearMiss from '../../app/pages/learn/ldw-near-miss.vue'
 import Myths from '../../app/pages/learn/myths.vue'
+import Psychology from '../../app/pages/learn/psychology.vue'
 import Glossary from '../../app/pages/learn/glossary.vue'
 
-const stubs = { NuxtLink: { template: '<a><slot /></a>' }, UIcon: true }
+const stubs = { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' }, UIcon: true }
 
 describe('LearnDisclosure', () => {
   it('renders a native details/summary with the label and slotted body', () => {
@@ -138,6 +139,29 @@ describe('myths', () => {
     await nextTick()
     expect(w.text()).toMatch(/1 in 13,824/) // formatOdds of the exact 3×F7 probability
     expect(w.text().toLowerCase()).toContain('drought')
+  })
+})
+
+describe('psychology', () => {
+  it('names the persuasion toolkit and demonstrates it with live floor numbers', async () => {
+    const w = mount(Psychology, { global: { stubs } })
+    await nextTick() // the LDW experiment fills onMounted…
+    await nextTick() // …through the rtpClient fallback's microtask
+    const t = w.text().toLowerCase()
+    expect(t).toContain('reinforcement')
+    expect(t).toContain('illusion of control')
+    expect(t).toContain('time on device')
+    expect(t).toContain('loss disguised as a win')
+    expect(w.text()).toMatch(/63\.3\d%/) // the live LDW celebration share
+  })
+
+  it('points at this floor\'s own machinery and the deep-dive pages', () => {
+    const w = mount(Psychology, { global: { stubs } })
+    const hrefs = w.findAll('a').map(a => a.attributes('href'))
+    expect(hrefs).toContain('/learn/ldw-near-miss')
+    expect(hrefs).toContain('/learn/pachislo')
+    expect(hrefs).toContain('/learn/myths')
+    expect(w.text().toLowerCase()).toContain('x-ray')
   })
 })
 
