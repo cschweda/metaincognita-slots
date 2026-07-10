@@ -7,6 +7,7 @@ import { spinPachislo } from './pachislo'
 import { initProgressiveState } from './progressive'
 import { freshBlackjackState, freshLockState } from './sessionState'
 import { spinCascade } from './cascade'
+import { spinWheel } from './wheelGame'
 
 export * from './types'
 export { mulberry32, cryptoSeed } from './rng'
@@ -32,7 +33,8 @@ export function initMachineState(def: MachineDef): MachineSessionState {
         }
       : null,
     blackjackReel: def.family === 'blackjack-reel' ? freshBlackjackState() : null,
-    lockReel: def.family === 'lock-reel' ? freshLockState(def) : null
+    lockReel: def.family === 'lock-reel' ? freshLockState(def) : null,
+    wheel: def.family === 'wheel' ? { pending: false } : null
   }
 }
 
@@ -65,6 +67,9 @@ export function nextSpinCost(def: MachineDef, state: MachineSessionState, coins:
     // cascade is fixed-bet, non-interactive; the whole tumble is one paid spin
     case 'cascade':
       return coins
+    // an armed wheel topper is a FREE spin (the classic contract)
+    case 'wheel':
+      return state.wheel?.pending === true ? 0 : coins
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)
@@ -93,6 +98,8 @@ export function spin(
       throw new Error('lock-reel is interactive; use dealStart/stopReel/bonusStop')
     case 'cascade':
       return spinCascade(def, state, coins, rand)
+    case 'wheel':
+      return spinWheel(def, state, coins, rand)
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

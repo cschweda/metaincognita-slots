@@ -56,7 +56,7 @@ export function runMythsExperiment(): MythsExperimentResult {
   // no progressive meter to explain away. All-null session state is safe — the
   // meter branch requires maxCoins AND live progressive state.
   const state: MachineSessionState = {
-    progressive: null, videoFeature: null, pachislo: null, blackjackReel: null, lockReel: null
+    progressive: null, videoFeature: null, pachislo: null, blackjackReel: null, lockReel: null, wheel: null
   }
   const rand = mulberry32(20260709)
   const samples = new Array<number>(BUCKET_LABELS.length).fill(0)

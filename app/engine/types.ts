@@ -1,7 +1,7 @@
 // Single source of truth for engine types. Pure data + pure functions only —
 // nothing in app/engine may import from Vue, Nuxt, or Pinia.
 
-export type MachineFamily = 'stepper' | 'bally-em' | 'video' | 'pachislo' | 'blackjack-reel' | 'lock-reel' | 'cascade'
+export type MachineFamily = 'stepper' | 'bally-em' | 'video' | 'pachislo' | 'blackjack-reel' | 'lock-reel' | 'cascade' | 'wheel'
 
 export type SymbolId = string
 
@@ -184,6 +184,33 @@ export interface StepperMachineDef extends MachineDefBase {
   wildMultiplier: number
   paytable: StepperAward[]
   progressive: PercentProgressiveConfig | null
+}
+
+/** One wedge of the Wonder Wheel topper: drawn equal-sized, weighted unequal. */
+export interface WheelWedge {
+  /** fixed credit award (NOT multiplied by coins — the classic 1996 contract) */
+  credits: number
+  /** integer draw weight; visual share is 1/24 each, TRUE odds are weight/Σweights */
+  weight: number
+}
+
+/**
+ * The `wheel` family (Wheel-of-Fortune 1996 archetype): a 3-reel Telnaes
+ * stepper base whose reel-3 WHEEL symbol — at MAX COINS only — arms a free
+ * weighted-wedge topper draw consumed through the ordinary spin() path.
+ */
+export interface WheelMachineDef extends MachineDefBase {
+  family: 'wheel'
+  physicalStrips: SymbolId[][]
+  virtualMaps: number[][]
+  wildSymbol: SymbolId | null
+  wildMultiplier: number
+  paytable: StepperAward[]
+  /** the trigger symbol; validator enforces reel 3 only */
+  wheelSymbol: SymbolId
+  /** exactly 24 wedges (validator-enforced) */
+  wedges: WheelWedge[]
+  progressive: null
 }
 
 export interface BallyEmMachineDef extends MachineDefBase {
@@ -383,7 +410,7 @@ export interface CascadeMachineDef extends MachineDefBase {
   progressive: PercentProgressiveConfig | null
 }
 
-export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef | BlackjackReelMachineDef | LockReelMachineDef | CascadeMachineDef
+export type MachineDef = StepperMachineDef | BallyEmMachineDef | VideoMachineDef | PachisloMachineDef | BlackjackReelMachineDef | LockReelMachineDef | CascadeMachineDef | WheelMachineDef
 
 // ---------- spin results ----------
 
@@ -428,12 +455,18 @@ export interface PachisloSessionState {
   bonus: PachisloBonusState | null
 }
 
+/** wheel family: a pending topper spin (the next spin is the free wheel resolve) */
+export interface WheelSessionState {
+  pending: boolean
+}
+
 export interface MachineSessionState {
   progressive: ProgressiveState | null
   videoFeature: VideoFeatureState | null
   pachislo: PachisloSessionState | null
   blackjackReel: BlackjackReelSessionState | null
   lockReel: LockReelSessionState | null
+  wheel: WheelSessionState | null
 }
 
 export interface RngDraw {
@@ -486,7 +519,7 @@ export interface ProgressiveEvent {
  * pachislo bonus games. Steppers/bally are always 'base'. Simulation counts
  * cycles over base/normal games only.
  */
-export type GameKind = 'base' | 'free-spin' | 'respin' | 'normal' | 'jac' | 'interlude' | 'deal'
+export type GameKind = 'base' | 'free-spin' | 'respin' | 'normal' | 'jac' | 'interlude' | 'deal' | 'wheel'
 
 export type FeatureEvent
   = | { type: 'free-spins-triggered', count: number, multiplier: number }
@@ -522,6 +555,10 @@ export type FeatureEvent
     | { type: 'respin', left: number }
     | { type: 'grand' }
     | { type: 'collect', credits: number }
+    // wheel (Wonder Wheel topper) events
+    | { type: 'wheel-armed' }
+    | { type: 'wheel-wasted' }
+    | { type: 'wheel-landed', wedgeIndex: number, credits: number }
 
 /**
  * One tumble of a cascade spin, in play order, for UI animation. Step 0's grid

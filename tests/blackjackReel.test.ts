@@ -8,7 +8,7 @@ function seq(values: number[]) {
   return () => (i < values.length ? values[i++]! : 0)
 }
 function emptyState(): MachineSessionState {
-  return { progressive: null, videoFeature: null, pachislo: null, blackjackReel: null, lockReel: null }
+  return { progressive: null, videoFeature: null, pachislo: null, blackjackReel: null, lockReel: null, wheel: null }
 }
 
 describe('launch/velocity tables', () => {

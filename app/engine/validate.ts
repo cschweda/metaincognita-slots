@@ -339,6 +339,71 @@ export function validateMachineDef(def: MachineDef): void {
       if (!prizeIds.has(def.bonus.grandOnFill)) errors.push(`bonus.grandOnFill "${def.bonus.grandOnFill}" must be a prize id`)
       break
     }
+    case 'wheel': {
+      if (def.physicalStrips.length !== 3 || def.virtualMaps.length !== 3) {
+        errors.push(`wheel family requires exactly 3 reels (got ${def.physicalStrips.length} strips / ${def.virtualMaps.length} maps)`)
+      }
+      def.physicalStrips.forEach((strip, r) => {
+        strip.forEach(s => checkSymbol(s, `physicalStrips[${r}]`))
+      })
+      def.virtualMaps.forEach((vmap, r) => {
+        const strip = def.physicalStrips[r]
+        if (!strip) return
+        const covered = new Set<number>()
+        vmap.forEach((idx) => {
+          if (!Number.isInteger(idx) || idx < 0 || idx >= strip.length) {
+            errors.push(`virtual map [${r}] index ${idx} out of range 0..${strip.length - 1}`)
+          } else {
+            covered.add(idx)
+          }
+        })
+        for (let i = 0; i < strip.length; i++) {
+          if (!covered.has(i)) {
+            errors.push(`virtual map [${r}] never references physical stop ${i} (unreachable on the payline)`)
+          }
+        }
+      })
+      checkSymbol(def.wheelSymbol, 'wheelSymbol')
+      // The trigger lives on reel 3 ONLY — the arming odds the X-ray publishes
+      // are P(WHEEL on reel 3); a stray WHEEL on reels 1-2 would silently pay
+      // as a dead symbol and confuse every published number.
+      def.physicalStrips.forEach((strip, r) => {
+        if (r !== 2 && strip.includes(def.wheelSymbol)) {
+          errors.push(`wheelSymbol "${def.wheelSymbol}" must appear on reel 3 only (found on reel ${r + 1})`)
+        }
+      })
+      if (!def.physicalStrips[2]?.includes(def.wheelSymbol)) {
+        errors.push(`wheelSymbol "${def.wheelSymbol}" missing from reel 3`)
+      }
+      if (def.wedges.length !== 24) {
+        errors.push(`the wheel must have exactly 24 wedges (got ${def.wedges.length})`)
+      }
+      const seenCredits = new Set<number>()
+      for (const wedge of def.wedges) {
+        if (!Number.isInteger(wedge.credits) || wedge.credits <= 0) {
+          errors.push(`wedge credits must be positive integers (got ${wedge.credits})`)
+        }
+        if (!Number.isInteger(wedge.weight) || wedge.weight <= 0) {
+          errors.push(`wedge weight must be a positive integer (got ${wedge.weight} for ${wedge.credits})`)
+        }
+        // distinct values keep the per-wedge breakdown rows (wedge-<credits>)
+        // one-to-one with wedges — the PAR sheet and floor card rely on it
+        if (seenCredits.has(wedge.credits)) {
+          errors.push(`duplicate wedge credit value ${wedge.credits}`)
+        }
+        seenCredits.add(wedge.credits)
+      }
+      if (def.wildSymbol !== null) checkSymbol(def.wildSymbol, 'wildSymbol')
+      for (const entry of def.paytable) {
+        if (entry.pay <= 0) errors.push(`paytable ${entry.id}: pay must be > 0`)
+        if (entry.kind === 'allSame' && entry.progressiveAtMaxCoins === true) {
+          errors.push(`paytable ${entry.id}: wheel family has no progressive — progressiveAtMaxCoins is invalid`)
+        }
+        if (entry.kind === 'allSame' || entry.kind === 'count') checkSymbol(entry.symbol, `paytable ${entry.id}`)
+        if (entry.kind === 'anyOf') entry.symbols.forEach(s => checkSymbol(s, `paytable ${entry.id}`))
+      }
+      break
+    }
     case 'cascade': {
       // Temple of Gold (tumbling scatter-pays) validation.
       const cells = def.cols * def.rows

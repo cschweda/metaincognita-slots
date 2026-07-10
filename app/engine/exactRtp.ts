@@ -3,6 +3,7 @@ import { ballyAwardForLine, bestStepperAward } from './awards'
 import { videoExactRtp } from './videoRtp'
 import { pachisloExactRtp } from './pachisloRtp'
 import { cascadeExactRtp } from './cascadeRtp'
+import { wheelExactRtp } from './wheelRtp'
 
 /**
  * Solvers for PARKED families register here instead of being imported
@@ -171,6 +172,7 @@ export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpR
   if (def.family === 'video') return videoExactRtp(def, opts)
   if (def.family === 'pachislo') return pachisloExactRtp(def, opts)
   if (def.family === 'cascade') return cascadeExactRtp(def, opts)
+  if (def.family === 'wheel') return wheelExactRtp(def, opts)
   if (def.family === 'blackjack-reel' || def.family === 'lock-reel') {
     const solver = EXTRA_SOLVERS.get(def.family)
     if (solver !== undefined) return solver(def, opts)

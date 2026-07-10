@@ -29,7 +29,7 @@ export function runLdwExperiment(): LdwExperimentResult {
   // canal-royale has no progressive and no interactive state — a fresh video
   // session is all-null (what initMachineState(def) would build).
   const state: MachineSessionState = {
-    progressive: null, videoFeature: null, pachislo: null, blackjackReel: null, lockReel: null
+    progressive: null, videoFeature: null, pachislo: null, blackjackReel: null, lockReel: null, wheel: null
   }
   const rand = mulberry32(20260703)
   const bet = def.maxCoins

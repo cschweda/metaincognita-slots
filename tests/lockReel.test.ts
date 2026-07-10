@@ -24,7 +24,7 @@ function constRand(v: number): () => number {
 }
 
 function emptyState(): MachineSessionState {
-  return { progressive: null, videoFeature: null, pachislo: null, blackjackReel: null, lockReel: null }
+  return { progressive: null, videoFeature: null, pachislo: null, blackjackReel: null, lockReel: null, wheel: null }
 }
 
 /**
