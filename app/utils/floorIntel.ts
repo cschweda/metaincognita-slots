@@ -21,8 +21,26 @@ export interface FloorIntelOptions {
   coins?: number
 }
 
+/** Derive the floor-card figures from an already-computed report. */
+export function intelFromReport(def: MachineDef, report: ExactRtpReport): FloorIntel {
+  const topId = def.topAwardEntryId ?? null
+  const top = topId === null ? undefined : report.breakdown.find(b => b.entryId === topId)
+  return {
+    rtp: report.rtpPerCoin,
+    hitFrequency: report.hitFrequency,
+    sdPerCoin: Math.sqrt(report.variancePerCoin),
+    topAwardId: topId,
+    topAwardProbability: top?.probability ?? null
+  }
+}
+
 const cache = new Map<string, FloorIntel>()
 
+/**
+ * Sync intel (tests, SSG, cheap one-offs). The interactive hot paths use
+ * useExactRtp + intelFromReport instead so video-family enumeration runs in
+ * the rtp.worker, off the main thread.
+ */
 export function floorIntel(def: MachineDef, opts: FloorIntelOptions = {}): FloorIntel {
   const key = `${def.id}:${opts.oddsLevel ?? ''}:${opts.coins ?? ''}`
   const hit = cache.get(key)
@@ -31,15 +49,7 @@ export function floorIntel(def: MachineDef, opts: FloorIntelOptions = {}): Floor
     ...(opts.oddsLevel === undefined ? {} : { oddsLevel: opts.oddsLevel }),
     ...(opts.coins === undefined ? {} : { coins: opts.coins })
   })
-  const topId = def.topAwardEntryId ?? null
-  const top = topId === null ? undefined : report.breakdown.find(b => b.entryId === topId)
-  const intel: FloorIntel = {
-    rtp: report.rtpPerCoin,
-    hitFrequency: report.hitFrequency,
-    sdPerCoin: Math.sqrt(report.variancePerCoin),
-    topAwardId: topId,
-    topAwardProbability: top?.probability ?? null
-  }
+  const intel = intelFromReport(def, report)
   cache.set(key, intel)
   return intel
 }
