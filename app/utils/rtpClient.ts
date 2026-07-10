@@ -10,6 +10,8 @@ import type { ExactRtpReport, MachineDef } from '~/engine'
 import type { ExactRtpOptions } from '~/engine/exactRtp'
 import { runLdwExperiment } from '~/utils/ldwExperiment'
 import type { LdwExperimentResult } from '~/utils/ldwExperiment'
+import { runMythsExperiment } from '~/utils/mythsExperiment'
+import type { MythsExperimentResult } from '~/utils/mythsExperiment'
 import type { FloorIntelOptions } from '~/utils/floorIntel'
 import type { RtpWorkerIncoming, RtpWorkerOutgoing } from '~/workers/rtp-worker-protocol'
 
@@ -36,6 +38,7 @@ function workerSupported(): boolean {
 interface Waiter {
   resolveReport?: (r: ExactRtpReport) => void
   resolveLdw?: (r: LdwExperimentResult) => void
+  resolveMyths?: (r: MythsExperimentResult) => void
   reject: (e: Error) => void
 }
 
@@ -58,6 +61,7 @@ function getWorker(): Worker | null {
     waiters.delete(msg.reqId)
     if (msg.type === 'result') w.resolveReport?.(msg.report)
     else if (msg.type === 'ldwResult') w.resolveLdw?.(msg.result)
+    else if (msg.type === 'mythsResult') w.resolveMyths?.(msg.result)
     else w.reject(new Error(msg.message))
   }
   worker.onerror = () => {
@@ -136,4 +140,32 @@ export function ldwExperimentAsync(): Promise<LdwExperimentResult> {
       return result
     })
   return ldwPending
+}
+
+let mythsCache: MythsExperimentResult | null = null
+let mythsPending: Promise<MythsExperimentResult> | null = null
+
+export function mythsExperimentAsync(): Promise<MythsExperimentResult> {
+  if (mythsCache !== null) return Promise.resolve(mythsCache)
+  if (mythsPending !== null) return mythsPending
+
+  const w = getWorker()
+  if (w === null) {
+    mythsCache = runMythsExperiment()
+    return Promise.resolve(mythsCache)
+  }
+
+  const reqId = nextReqId++
+  mythsPending = new Promise<MythsExperimentResult>((resolve, reject) => {
+    waiters.set(reqId, { resolveMyths: resolve, reject })
+    const msg: RtpWorkerIncoming = { type: 'myths', reqId }
+    w.postMessage(msg)
+  })
+    .catch(() => runMythsExperiment())
+    .then((result) => {
+      mythsCache = result
+      mythsPending = null
+      return result
+    })
+  return mythsPending
 }

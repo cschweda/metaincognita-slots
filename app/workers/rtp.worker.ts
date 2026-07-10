@@ -6,6 +6,7 @@
 import { ALL_MACHINES } from '~/machines'
 import { exactRtp } from '~/engine'
 import { runLdwExperiment } from '~/utils/ldwExperiment'
+import { runMythsExperiment } from '~/utils/mythsExperiment'
 import type { RtpWorkerIncoming, RtpWorkerOutgoing } from './rtp-worker-protocol'
 
 declare const self: DedicatedWorkerGlobalScope
@@ -15,6 +16,11 @@ self.onmessage = (e: MessageEvent<RtpWorkerIncoming>): void => {
   try {
     if (msg.type === 'ldw') {
       const out: RtpWorkerOutgoing = { type: 'ldwResult', reqId: msg.reqId, result: runLdwExperiment() }
+      self.postMessage(out)
+      return
+    }
+    if (msg.type === 'myths') {
+      const out: RtpWorkerOutgoing = { type: 'mythsResult', reqId: msg.reqId, result: runMythsExperiment() }
       self.postMessage(out)
       return
     }

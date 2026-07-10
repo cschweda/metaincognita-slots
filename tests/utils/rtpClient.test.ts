@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { exactRtp } from '../../app/engine'
 import { DIAMOND_DOUBLER } from '../../app/machines/diamond-doubler'
 import { STOCK_RUSH } from '../../app/machines/stock-rush'
-import { exactRtpAsync, ldwExperimentAsync, peekExactRtp } from '../../app/utils/rtpClient'
+import { exactRtpAsync, ldwExperimentAsync, mythsExperimentAsync, peekExactRtp } from '../../app/utils/rtpClient'
 import { runLdwExperiment } from '../../app/utils/ldwExperiment'
+import { runMythsExperiment } from '../../app/utils/mythsExperiment'
 
 // node env has no Worker global → these tests exercise the sync fallback,
 // which is exactly the path SSG and every component test relies on.
@@ -31,5 +32,9 @@ describe('rtpClient (no-Worker fallback)', () => {
 
   it('runs the LDW experiment through the same fallback', async () => {
     expect(await ldwExperimentAsync()).toEqual(runLdwExperiment())
+  })
+
+  it('runs the myths experiment through the same fallback', async () => {
+    expect(await mythsExperimentAsync()).toEqual(runMythsExperiment())
   })
 })
