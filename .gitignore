@@ -26,3 +26,4 @@ logs
 
 # Manuals (45 MB of scanned PDFs stay untracked)
 docs/*.pdf
+coverage
