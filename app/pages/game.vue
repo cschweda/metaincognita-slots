@@ -3,6 +3,7 @@ import { onMounted, onUnmounted } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useBlackjackReel } from '~/composables/useBlackjackReel'
 import { useLockReel } from '~/composables/useLockReel'
+import { unlockAudio } from '~/utils/audio'
 
 const store = useSlotsStore()
 const route = useRoute()
@@ -33,6 +34,7 @@ function onKeydown(e: KeyboardEvent) {
   }
   if (!isSpace) return
   e.preventDefault()
+  unlockAudio() // keyboard spin is a gesture too
   store.spinOnce()
 }
 

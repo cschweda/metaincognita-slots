@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { nextSpinCost } from '~/engine'
+import { unlockAudio } from '~/utils/audio'
 
 const store = useSlotsStore()
 
@@ -38,6 +39,7 @@ const inFeature = computed(() => {
 })
 
 function spin() {
+  unlockAudio() // the click is the gesture that wakes the AudioContext
   store.spinOnce()
 }
 </script>
