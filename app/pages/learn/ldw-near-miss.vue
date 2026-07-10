@@ -1,77 +1,19 @@
 <!-- app/pages/learn/ldw-near-miss.vue -->
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { CANAL_ROYALE } from '~/machines/canal-royale'
-// Leaf-module imports on purpose: this page only needs the video evaluator,
-// the RNG, and the near-miss detector — not the whole ~/engine barrel.
-import { spinVideo } from '~/engine/video'
-import { mulberry32 } from '~/engine/rng'
-import { nearMisses } from '~/engine/nearMiss'
-import type { MachineSessionState } from '~/engine/types'
+// A live, seeded experiment: the REAL Canal Royale engine — same code the game
+// page uses — classifying every paid spin honestly. Same seed, same numbers,
+// every visit (that's the point: it's math, not luck). The experiment itself
+// lives in ~/utils/ldwExperiment so the worker, the fallback, and the tests
+// all run the same code.
+import { LDW_PAID_SPINS as N, runLdwExperiment, type LdwExperimentResult } from '~/utils/ldwExperiment'
 import { formatPercent } from '~/utils/format'
 import LearnSection from '~/components/learn/LearnSection.vue'
 import LearnDisclosure from '~/components/learn/LearnDisclosure.vue'
 
-const N = 10_000
-
-interface ExperimentResult {
-  wins: number
-  trueWins: number
-  ldw: number
-  nearMissLosses: number
-  hitPct: number
-  trueWinPct: number
-  ldwPct: number
-  ldwShareOfWins: number
-}
-
-// A live, seeded experiment: this runs the REAL Canal Royale engine in your
-// browser — same code the game page uses — and classifies every paid spin
-// honestly. Same seed, same numbers, every visit (that's the point: it's
-// math, not luck). Runs AFTER first paint so the page never blocks on it.
-function runExperiment(): ExperimentResult {
-  const def = CANAL_ROYALE
-  // canal-royale has no progressive and no interactive state — a fresh video
-  // session is all-null (what initMachineState(def) would build).
-  const state: MachineSessionState = {
-    progressive: null, videoFeature: null, pachislo: null, blackjackReel: null, lockReel: null
-  }
-  const rand = mulberry32(20260703)
-  const bet = def.maxCoins
-  let paid = 0
-  let wins = 0
-  let trueWins = 0
-  let ldw = 0
-  let nearMissLosses = 0
-  let guard = 0
-  while (paid < N && guard < N * 4) {
-    guard++
-    const out = spinVideo(def, state, bet, rand)
-    if (out.coinsIn === 0) continue // free-feature games: no stake at risk
-    paid++
-    if (out.totalPayout === 0) {
-      if (nearMisses(def, out).length > 0) nearMissLosses++
-    } else {
-      wins++
-      if (out.totalPayout >= out.coinsIn) trueWins++
-      else ldw++
-    }
-  }
-  return {
-    wins,
-    trueWins,
-    ldw,
-    nearMissLosses,
-    hitPct: wins / N,
-    trueWinPct: trueWins / N,
-    ldwPct: ldw / N,
-    ldwShareOfWins: wins > 0 ? ldw / wins : 0
-  }
-}
-
-const exp = ref<ExperimentResult | null>(null)
+const exp = ref<LdwExperimentResult | null>(null)
 onMounted(() => {
-  exp.value = runExperiment()
+  exp.value = runLdwExperiment()
 })
 </script>
 
