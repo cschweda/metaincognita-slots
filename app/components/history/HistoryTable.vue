@@ -2,9 +2,16 @@
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { formatCents, formatSignedCents } from '~/utils/format'
+import { entryLabel, gameKindLabel, machineName } from '~/utils/entryLabel'
+import { ALL_MACHINES } from '~/machines'
 
 const store = useSlotsStore()
 const rows = computed(() => [...store.history].reverse())
+// Display names only — the export log keeps the raw machine-readable ids.
+const awards = (machineId: string, entryIds: string[]): string => {
+  const def = ALL_MACHINES.find(m => m.id === machineId) ?? null
+  return entryIds.map(e => entryLabel(def, e)).join(' · ')
+}
 </script>
 
 <template>
@@ -65,10 +72,10 @@ const rows = computed(() => [...store.history].reverse())
           {{ r.id }}
         </td>
         <td class="px-4 py-2 text-neutral-300">
-          {{ r.machineId }}
+          {{ machineName(r.machineId) }}
         </td>
         <td class="px-4 py-2 text-neutral-500 text-xs">
-          {{ r.gameKind }}
+          {{ gameKindLabel(r.gameKind) }}
         </td>
         <td class="px-4 py-2 text-right font-mono text-neutral-400">
           {{ formatCents(r.coinsInCents) }}
@@ -85,8 +92,8 @@ const rows = computed(() => [...store.history].reverse())
         >
           {{ formatSignedCents(r.payoutCents - r.coinsInCents) }}
         </td>
-        <td class="px-4 py-2 text-neutral-500 font-mono text-xs">
-          {{ r.entryIds.join(', ') || '—' }}
+        <td class="px-4 py-2 text-neutral-500 text-xs">
+          {{ awards(r.machineId, r.entryIds) || '—' }}
         </td>
       </tr>
     </tbody>
