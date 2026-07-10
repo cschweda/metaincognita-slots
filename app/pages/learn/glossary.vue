@@ -2,28 +2,41 @@
 <script setup lang="ts">
 // Plain-English floor vocabulary (guidelines §2.2). Static on purpose: this
 // page defines the words; the other /learn pages prove them with live numbers.
-interface Entry { term: string, def: string, link?: { to: string, label: string } }
+// Every entry carries an anchor id so app copy can deep-link a term
+// (/learn/glossary#rtp) instead of leaving jargon undefined.
+interface Entry { id: string, term: string, def: string, link?: { to: string, label: string } }
 
 const entries: Entry[] = [
-  { term: 'Coin-in', def: 'The total amount wagered, counted coin by coin. "1% of coin-in feeds the jackpot" means one cent of every dollar bet tops up the progressive meter. Casinos measure everything in coin-in — it is the only number that always goes up.' },
-  { term: 'Credits', def: 'The machine\'s internal currency: your money divided by the denomination. Machines display credits instead of dollars because 500 feels bigger than $5.00.' },
-  { term: 'Denomination', def: 'The dollar value of one credit — a penny machine is 1¢/credit, a quarter machine 25¢. Same math, different sticker.' },
-  { term: 'Free spins', def: 'A bonus feature: spins that charge nothing but still pay (often with a multiplier). Not generosity — their cost is priced into the base game\'s odds, which is why triggering them is rare.' },
-  { term: 'Hit frequency', def: 'How often a spin pays anything at all. A 40% hit frequency means 4 spins in 10 light up — including all the "wins" that pay back less than the bet.', link: { to: '/learn/ldw-near-miss', label: 'why that distinction matters' } },
-  { term: 'Hold and spin', def: 'A bonus where triggering symbols lock in place and the rest of the board respins a few times, each new lock resetting the counter. Filling the whole board usually pays the Grand. Under the hood it is a Markov chain with an absorbing "board full" state.', link: { to: '/learn/hold-and-spin', label: 'the fill math' } },
-  { term: 'House edge', def: 'The casino\'s cut: 1 − RTP. A 90% RTP machine has a 10% edge — on average $10 of every $100 wagered stays with the house. Quiet per spin, inevitable per million.', link: { to: '/learn/house-edge', label: 'the live floor table' } },
-  { term: 'Loss disguised as a win (LDW)', def: 'A "win" smaller than the bet — bet 25, win 14, celebrate anyway. The machine throws the same party for a net loss as for a real win; multi-line games exist substantially to manufacture these.', link: { to: '/learn/ldw-near-miss', label: 'measured live' } },
-  { term: 'Near miss', def: 'Jackpot-jackpot-almost. On weighted reels the almost is engineered: blanks next to the jackpot stop can be made to land far more often than chance, so you feel close to a prize your odds never approached.', link: { to: '/learn/ldw-near-miss', label: 'how it\'s built' } },
-  { term: 'PAR sheet', def: 'The machine\'s internal math card ("Paytable And Reels"): every symbol, weight, pay, and the exact RTP derivation. Real PAR sheets are trade secrets; every machine here hands you its own from the cabinet.' },
-  { term: 'Payline', def: 'A fixed path across the reels that a win must land along. Classic machines had one; video slots sell you 25+ at once — which is where losses disguised as wins come from.' },
-  { term: 'Progressive', def: 'A jackpot meter that grows as money is wagered (fed by a share of coin-in) and resets after it hits. The climbing number is funded entirely by the players feeding it.' },
-  { term: 'RTP (return to player)', def: 'The share of all wagers a machine pays back over the long run — 90% RTP returns $90 of every $100, eventually. Every RTP on this floor is computed exactly from the machine definition, never asserted.', link: { to: '/learn/house-edge', label: 'every machine\'s number' } },
-  { term: 'Scatter / pay-anywhere', def: 'A win that counts symbols anywhere on the grid instead of along a payline — the basis of tumble machines like Temple of Gold.', link: { to: '/learn/cascade-tumble', label: 'the tumble math' } },
-  { term: 'Skill stop', def: 'Buttons that let you stop the reels yourself. On pachislo machines an internal flag lottery has already decided whether you may win; your press only picks the moment — the slip does the rest.', link: { to: '/learn/pachislo', label: 'the lottery and the slip' } },
-  { term: 'Tumble (cascade)', def: 'Winning symbols shatter, survivors fall, fresh symbols drop in, and the new grid is judged again — a chain of pays inside one bet, usually with a climbing multiplier ladder.', link: { to: '/learn/cascade-tumble', label: 'why the exact math is hard' } },
-  { term: 'Virtual reel (Telnaes)', def: 'The 1984 patent behind modern steppers: each physical stop is mapped to many "virtual" stops, so a 22-stop reel can behave like a 128-stop one. It is how big jackpots — and engineered near misses — fit on three reels.', link: { to: '/learn/telnaes-reels', label: 'physical vs virtual, live' } },
-  { term: 'Volatility (variance)', def: 'How wild the ride is at the same RTP. Low volatility pays small and often; high volatility starves you between rare big hits. Two machines can share an RTP and feel nothing alike.' },
-  { term: 'Ways (e.g. 243-ways)', def: 'Instead of paylines, any left-to-right run of adjacent reels pays: 3 rows across 5 reels = 3⁵ = 243 ways. More "ways" mostly means more chances at sub-bet wins.' }
+  { id: 'bankroll', term: 'Bankroll', def: 'The money you walked in with — the pot every bet drains and every win refills. All slot math is written against it: the house edge grinds a fixed share of everything wagered out of it, quietly, over time.', link: { to: '/learn/house-edge', label: 'the grind, quantified' } },
+  { id: 'coin-in', term: 'Coin-in', def: 'The total amount wagered, counted coin by coin. "1% of coin-in feeds the jackpot" means one cent of every dollar bet tops up the progressive meter. Casinos measure everything in coin-in — it is the only number that always goes up.' },
+  { id: 'credits', term: 'Credits', def: 'The machine\'s internal currency: your money divided by the denomination. Machines display credits instead of dollars because 500 feels bigger than $5.00.' },
+  { id: 'denomination', term: 'Denomination', def: 'The dollar value of one credit — a penny machine is 1¢/credit, a quarter machine 25¢. Same math, different sticker.' },
+  { id: 'drawdown', term: 'Drawdown (max drawdown)', def: 'How far below your session\'s best point you have sunk — peak minus now. "Max drawdown" is the deepest that dip ever got: the stomach-drop number that decides whether a session felt survivable.' },
+  { id: 'ev', term: 'Expected value (EV)', def: 'The long-run average of a bet: every outcome weighted by its probability. A $1 spin at 90% RTP has an EV of −10¢ — the fee you pay for the ride, invisible per spin, inevitable per thousand.' },
+  { id: 'flag', term: 'Flag (pachislo)', def: 'The internal lottery result drawn the instant you bet on a pachislo machine — it decides whether this game may pay before you touch a button. Your stops just carry out the verdict.', link: { to: '/learn/pachislo', label: 'the lottery and the slip' } },
+  { id: 'free-spins', term: 'Free spins', def: 'A bonus feature: spins that charge nothing but still pay (often with a multiplier). Not generosity — their cost is priced into the base game\'s odds, which is why triggering them is rare.' },
+  { id: 'hit-frequency', term: 'Hit frequency', def: 'How often a spin pays anything at all. A 40% hit frequency means 4 spins in 10 light up — including all the "wins" that pay back less than the bet.', link: { to: '/learn/ldw-near-miss', label: 'why that distinction matters' } },
+  { id: 'hold-and-spin', term: 'Hold and spin', def: 'A bonus where triggering symbols lock in place and the rest of the board respins a few times, each new lock resetting the counter. Filling the whole board usually pays the Grand. Under the hood it is a Markov chain with an absorbing "board full" state.', link: { to: '/learn/hold-and-spin', label: 'the fill math' } },
+  { id: 'house-edge', term: 'House edge', def: 'The casino\'s cut: 1 − RTP. A 90% RTP machine has a 10% edge — on average $10 of every $100 wagered stays with the house. Quiet per spin, inevitable per million.', link: { to: '/learn/house-edge', label: 'the live floor table' } },
+  { id: 'jackpot-tiers', term: 'Jackpot tiers (Mini / Minor / Major / Grand)', def: 'The ladder of prizes many machines dangle, small to huge. The small tiers hit often enough to keep hope alive; the Grand exists mostly to be photographed.' },
+  { id: 'ldw', term: 'Loss disguised as a win (LDW)', def: 'A "win" smaller than the bet — bet 25, win 14, celebrate anyway. The machine throws the same party for a net loss as for a real win; multi-line games exist substantially to manufacture these.', link: { to: '/learn/ldw-near-miss', label: 'measured live' } },
+  { id: 'multiplier', term: 'Multiplier', def: 'A factor applied to a win (×2, ×5…). Machines differ on whether several multipliers add (2+3 = ×5) or multiply (2×3 = ×6) — the difference is enormous, and the marquee rarely says which.', link: { to: '/learn/gargoyles-eye', label: 'additive vs multiplicative, worked' } },
+  { id: 'near-miss', term: 'Near miss', def: 'Jackpot-jackpot-almost. On weighted reels the almost is engineered: blanks next to the jackpot stop can be made to land far more often than chance, so you feel close to a prize your odds never approached.', link: { to: '/learn/ldw-near-miss', label: 'how it\'s built' } },
+  { id: 'par-sheet', term: 'PAR sheet', def: 'The machine\'s internal math card ("Paytable And Reels"): every symbol, weight, pay, and the exact RTP derivation. Real PAR sheets are trade secrets; every machine here hands you its own from the cabinet.' },
+  { id: 'payline', term: 'Payline', def: 'A fixed path across the reels that a win must land along. Classic machines had one; video slots sell you 25+ at once — which is where losses disguised as wins come from.' },
+  { id: 'progressive', term: 'Progressive', def: 'A jackpot meter that grows as money is wagered (fed by a share of coin-in) and resets after it hits. The climbing number is funded entirely by the players feeding it.' },
+  { id: 'risk-of-ruin', term: 'Risk of ruin', def: 'The probability you lose the whole bankroll before you stop. Not a feeling — a measurable number: run thousands of simulated sessions and count the busts.', link: { to: '/sim-lab', label: 'measure it live' } },
+  { id: 'rtp', term: 'RTP (return to player)', def: 'The share of all wagers a machine pays back over the long run — 90% RTP returns $90 of every $100, eventually. Every RTP on this floor is computed exactly from the machine definition, never asserted.', link: { to: '/learn/house-edge', label: 'every machine\'s number' } },
+  { id: 'scatter', term: 'Scatter / pay-anywhere', def: 'A win that counts symbols anywhere on the grid instead of along a payline — the basis of tumble machines like Temple of Gold.', link: { to: '/learn/cascade-tumble', label: 'the tumble math' } },
+  { id: 'skill-stop', term: 'Skill stop', def: 'Buttons that let you stop the reels yourself. On pachislo machines an internal flag lottery has already decided whether you may win; your press only picks the moment — the slip does the rest.', link: { to: '/learn/pachislo', label: 'the lottery and the slip' } },
+  { id: 'slip', term: 'Slip (pachislo)', def: 'The machine\'s quiet correction after a skill stop: it may slide the reel up to four symbols past where you pressed, so the outcome obeys the flag lottery — not your timing.', link: { to: '/learn/pachislo', label: 'watch the slip work' } },
+  { id: 'sd-per-coin', term: 'Standard deviation (sd/coin)', def: 'The volatility number on the machine cards: how far one spin\'s result typically swings from the average, per coin bet. Higher sd = wilder ride at the same RTP.' },
+  { id: 'stock', term: 'Stock (pachislo)', def: 'A bonus the lottery has already awarded but the machine is still holding back, to be released a few games later. Stock-era machines used it to smooth payouts — and to make streaks feel real.', link: { to: '/learn/pachislo', label: 'the stock meter, live' } },
+  { id: 'tumble', term: 'Tumble (cascade)', def: 'Winning symbols shatter, survivors fall, fresh symbols drop in, and the new grid is judged again — a chain of pays inside one bet, usually with a climbing multiplier ladder.', link: { to: '/learn/cascade-tumble', label: 'why the exact math is hard' } },
+  { id: 'virtual-reel', term: 'Virtual reel (Telnaes)', def: 'The 1984 patent behind modern steppers: each physical stop is mapped to many "virtual" stops, so a 22-stop reel can behave like a 128-stop one. It is how big jackpots — and engineered near misses — fit on three reels.', link: { to: '/learn/telnaes-reels', label: 'physical vs virtual, live' } },
+  { id: 'volatility', term: 'Volatility (variance)', def: 'How wild the ride is at the same RTP. Low volatility pays small and often; high volatility starves you between rare big hits. Two machines can share an RTP and feel nothing alike.' },
+  { id: 'ways', term: 'Ways (e.g. 243-ways)', def: 'Instead of paylines, any left-to-right run of adjacent reels pays: 3 rows across 5 reels = 3⁵ = 243 ways. More "ways" mostly means more chances at sub-bet wins.' },
+  { id: 'wild', term: 'Wild', def: 'A symbol that stands in for others to complete a win — and often multiplies the pay when it does. Wilds are why paytables have footnotes.' }
 ]
 </script>
 
@@ -48,8 +61,9 @@ const entries: Entry[] = [
     <dl class="space-y-5">
       <div
         v-for="e in entries"
+        :id="e.id"
         :key="e.term"
-        class="rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3"
+        class="rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3 scroll-mt-4"
       >
         <dt class="font-semibold text-amber-400">
           {{ e.term }}

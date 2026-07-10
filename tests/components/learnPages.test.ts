@@ -136,4 +136,27 @@ describe('glossary', () => {
     expect(w.find('dl').exists()).toBe(true)
     expect(w.findAll('dt').length).toBeGreaterThanOrEqual(15)
   })
+
+  it('defines the terms the app itself displays', () => {
+    const w = mount(Glossary, { global: { stubs } })
+    const t = w.text().toLowerCase()
+    for (const term of [
+      'bankroll', 'drawdown', 'expected value', 'wild', 'multiplier',
+      'risk of ruin', 'standard deviation', 'flag', 'stock', 'slip',
+      'jackpot tiers'
+    ]) {
+      expect(t, `glossary must define "${term}"`).toContain(term)
+    }
+  })
+
+  it('gives every entry a unique anchor id for deep links', () => {
+    const w = mount(Glossary, { global: { stubs } })
+    const ids = w.findAll('dl > div').map(d => d.attributes('id'))
+    expect(ids.length).toBeGreaterThanOrEqual(29)
+    expect(ids.every(id => typeof id === 'string' && id.length > 0)).toBe(true)
+    expect(new Set(ids).size).toBe(ids.length)
+    for (const anchor of ['rtp', 'hit-frequency', 'volatility', 'house-edge', 'drawdown']) {
+      expect(ids, `anchor "${anchor}" must exist`).toContain(anchor)
+    }
+  })
 })
