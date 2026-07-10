@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useReelSpin, REEL_CELL_PX, REEL_GAP_PX } from '~/composables/useReelSpin'
+import { useFitScale } from '~/composables/useFitScale'
 import { useReelSymbols } from '~/composables/useReelSymbols'
 import { summariseWins } from '~/utils/winLines'
 import type { StepperMachineDef } from '~/engine'
@@ -23,6 +24,12 @@ const { strips, offsetY, blur, durationMs, revealed } = useReelSpin({
   grid: () => grid.value,
   filler: () => fillerIds.value
 })
+// Phones: shrink the fixed-pixel window instead of clipping (surfaces remount
+// per machine — :key in game.vue — so the setup-time width is per-def-correct).
+const WINDOW_W = reelCount.value * REEL_CELL_PX + (reelCount.value - 1) * REEL_GAP_PX
+const WINDOW_H = REEL_CELL_PX * 3 + REEL_GAP_PX * 2
+const { host: fitHost, scale: fitScale } = useFitScale(WINDOW_W)
+
 const wins = computed(() => def.value && revealed.value >= reelCount.value ? summariseWins(def.value, store.lastOutcome) : [])
 const glow = computed(() => {
   const m = new Map<string, string>()
@@ -48,33 +55,44 @@ const { iconFor, labelFor } = useReelSymbols(def)
       />
     </div>
     <div
-      class="relative mx-auto"
-      :style="{ width: reelCount * REEL_CELL_PX + (reelCount - 1) * REEL_GAP_PX + 'px' }"
+      ref="fitHost"
+      class="overflow-hidden"
+      :style="{ height: fitScale < 1 ? WINDOW_H * fitScale + 'px' : undefined }"
+      data-test="reel-window-fit"
     >
-      <!-- payline glass over the center row -->
       <div
-        class="pointer-events-none absolute inset-x-0 z-10 rounded border transition-colors"
-        :style="{ top: (REEL_CELL_PX + REEL_GAP_PX) + 'px', height: REEL_CELL_PX + 'px' }"
-        :class="paylineWin ? 'border-amber-400/80 bg-amber-400/5' : 'border-amber-500/25'"
-      />
-      <div
-        class="flex"
-        :style="{ gap: REEL_GAP_PX + 'px' }"
+        class="relative mx-auto"
+        :style="{
+          width: WINDOW_W + 'px',
+          transform: fitScale < 1 ? `scale(${fitScale})` : undefined,
+          transformOrigin: 'top left'
+        }"
       >
-        <GameReelColumn
-          v-for="(strip, r) in strips"
-          :key="r"
-          :reel="r"
-          :strip="strip"
-          :offset-y="offsetY[r] ?? 0"
-          :blur="blur[r] ?? 0"
-          :duration-ms="durationMs[r] ?? 0"
-          :revealed="revealed"
-          :reel-count="reelCount"
-          :glow="glow"
-          :icon-for="iconFor"
-          :label-for="labelFor"
+        <!-- payline glass over the center row -->
+        <div
+          class="pointer-events-none absolute inset-x-0 z-10 rounded border transition-colors"
+          :style="{ top: (REEL_CELL_PX + REEL_GAP_PX) + 'px', height: REEL_CELL_PX + 'px' }"
+          :class="paylineWin ? 'border-amber-400/80 bg-amber-400/5' : 'border-amber-500/25'"
         />
+        <div
+          class="flex"
+          :style="{ gap: REEL_GAP_PX + 'px' }"
+        >
+          <GameReelColumn
+            v-for="(strip, r) in strips"
+            :key="r"
+            :reel="r"
+            :strip="strip"
+            :offset-y="offsetY[r] ?? 0"
+            :blur="blur[r] ?? 0"
+            :duration-ms="durationMs[r] ?? 0"
+            :revealed="revealed"
+            :reel-count="reelCount"
+            :glow="glow"
+            :icon-for="iconFor"
+            :label-for="labelFor"
+          />
+        </div>
       </div>
     </div>
   </div>
