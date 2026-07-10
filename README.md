@@ -10,21 +10,18 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.14.0.** The floor is open: eleven machines, full game surfaces,
+**Status: v0.15.0.** The floor is open: eleven machines, full game surfaces,
 per-machine cabinet chrome, X-ray mode, PAR sheets (each machine's internal
 math card — pays, odds, reel maps), session history, a Monte-Carlo Sim Lab,
-and eleven /learn explainers on the math the floor never shows. 0.14.0
-closed the engineering backlog: CI now **boots the generated site under the
-production CSP** on every push (the new guard immediately caught and fixed a
-real header-generation bug), the **volatility** page completed the learn
-wing, the parked machines' engines left the boot bundle, and the steppers
-and Ballys fit-scale on phones. Behind it, 0.13.0 gave the floor its voice
-(four period-authentic synthesized cabinet voices, mute in the nav), moved
-all exact math off the main thread (a long-lived `rtp.worker`), added the
-**myths** (250,000-spin live experiment) and **psychology** learn pages, grew
-the glossary to 39 terms, gave the Sim Lab live closed-form expected math
-with a model-vs-measured overlay, and made History speak plain English with
-an expected-vs-actual takeaway at the machines' exact edges.
+and eleven /learn explainers on the math the floor never shows. 0.15.0 seats
+**Wonder Wheel** — the Wheel-of-Fortune 1996 archetype, with the wedge-weight
+truth table on the glass — as the floor's new **revolving Featured headliner**
+(a curated `FEATURED_ID`; Temple of Gold returns to the grid and keeps the
+first-run free-play post). Behind it, 0.14.0 closed the engineering backlog
+(CI boots the generated site under the production CSP, the volatility page,
+parked engines off the boot bundle, phone fit-scale), and 0.13.0 gave the
+floor its voice, moved all exact math off the main thread, and taught the Sim
+Lab and History to show their expected-vs-actual math in plain English.
 
 > **★ Featured (revolving): Wonder Wheel** — the Wheel-of-Fortune 1996
 > archetype: a 3-reel Telnaes stepper whose reel-3 WHEEL symbol, at MAX COINS

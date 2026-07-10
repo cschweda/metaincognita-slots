@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.15.0] - 2026-07-10
 
 ### Added
 - **Wonder Wheel — the 11th machine, a new `wheel` engine family, and the new
