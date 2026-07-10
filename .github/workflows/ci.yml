@@ -41,5 +41,10 @@ jobs:
       - name: Verify floor (1M-spin smoke)
         run: pnpm run verify -- --spins 1000000
 
-      - name: Build
-        run: pnpm run build
+      - name: Build (generate — prerendered dist + per-build CSP hashes)
+        run: pnpm run generate
+
+      - name: CSP smoke — boot dist under the real production headers
+        run: pnpm run smoke:csp
+        env:
+          CSP_SMOKE_REQUIRE: 1
