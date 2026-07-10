@@ -38,4 +38,15 @@ describe('LabForm', () => {
     expect(payload.bet).toBeLessThanOrEqual(maxCoins)
     expect(payload.bet).toBeGreaterThanOrEqual(1)
   })
+
+  it('emits live change payloads: immediately on mount and on every edit', async () => {
+    const w = mount(LabForm, { props: { running: false }, global: { stubs } })
+    const initial = w.emitted('change')
+    expect(initial).toBeTruthy() // immediate watch: the math panel is never blank
+    await w.find('[data-test="machine"]').setValue('canal-royale')
+    await w.find('[data-test="bankroll"]').setValue('20')
+    const evs = w.emitted('change')!
+    const last = evs[evs.length - 1]![0] as Record<string, number | string>
+    expect(last.startCredits).toBe(2000) // $20 at canal-royale's 1¢ denom
+  })
 })

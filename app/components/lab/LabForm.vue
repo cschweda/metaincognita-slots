@@ -5,7 +5,7 @@ import { FLOOR } from '~/machines'
 import type { SimRunParams } from '~/composables/useSimWorker'
 
 defineProps<{ running: boolean }>()
-const emit = defineEmits<{ run: [SimRunParams] }>()
+const emit = defineEmits<{ run: [SimRunParams], change: [SimRunParams] }>()
 
 const machineId = ref(FLOOR[0]!.id)
 const def = computed(() => FLOOR.find(m => m.id === machineId.value)!)
@@ -21,9 +21,9 @@ watch(machineId, () => {
 
 const warn = computed(() => sessions.value > 50_000)
 
-function emitRun(): void {
+function currentParams(): SimRunParams {
   const startCredits = Math.max(1, Math.round((bankrollDollars.value * 100) / def.value.denominationCents))
-  emit('run', {
+  return {
     machineId: machineId.value,
     startCredits,
     bet: Math.min(Math.max(1, Math.floor(bet.value)), def.value.maxCoins),
@@ -31,8 +31,17 @@ function emitRun(): void {
     progressiveMode: 'static',
     sessions: Math.max(1, Math.floor(sessions.value)),
     seed: 1
-  })
+  }
 }
+
+function emitRun(): void {
+  emit('run', currentParams())
+}
+
+// The live math panel updates as the form is edited, before any run.
+watch([machineId, bankrollDollars, bet, spinCap, sessions], () => {
+  emit('change', currentParams())
+}, { immediate: true })
 </script>
 
 <template>
