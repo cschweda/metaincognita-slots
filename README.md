@@ -80,7 +80,7 @@ pnpm dev        # open http://localhost:3000
    like "5× Winged Lion" instead of paytable ids, and a takeaway line
    comparing what your wagering *should* have cost at the machines' exact
    edges against what it actually did (the export log keeps raw ids).
-7. **Learn** — ten explainer pages: house edge (live floor-wide table),
+7. **Learn** — eleven explainer pages: house edge (live floor-wide table),
    Telnaes virtual-reel mechanics, hold-and-spin as an absorbing Markov chain,
    the Gargoyle's Eye additive multiplier, cascade/tumble math (the Featured
    machine's branching process), the pachislo flag lottery + operator key
@@ -90,7 +90,9 @@ pnpm dev        # open http://localhost:3000
    seeded experiment with streak-conditioned hit rates, the **psychology of
    the floor** (LDW parties, variable-ratio reinforcement, credits-not-dollars,
    the illusion of control — each demonstrated on this app's own machinery),
-   and a 39-term plain-English glossary with deep-link anchors. Each page
+   **volatility** (same edge, different ride: live sd/coin and N₀ for the whole
+   floor, ranked by wildness), and a 39-term plain-English glossary with
+   deep-link anchors. Each page
    layers intuition first, then a collapsible rigorous derivation with live
    numbers, and every cabinet links to its own explainer.
 8. Everything persists in **localStorage** — reload mid-feature and your
@@ -226,7 +228,15 @@ machines hide it — the X-ray shows it), and a global mute lives in the nav.
 pnpm install
 pnpm test          # unit + frozen-calibration + convergence suites
 pnpm verify        # headless floor verification report (5M cycles/machine)
+pnpm generate && pnpm smoke:csp   # boot dist/ under the REAL production CSP
 ```
+
+`smoke:csp` is the deploy guard for the silent failure class: it serves the
+generated site with the real `dist/_headers`, boots it in a headless Chrome,
+and fails on any CSP violation, page error, or a page that never renders —
+including proof that the `rtp.worker` loads and answers under `worker-src`.
+CI runs it on every push (`CSP_SMOKE_REQUIRE=1`); locally it skips loudly if
+no Chrome is found.
 
 `pnpm verify` now covers 10 machines and prints a jackpot-column footnote
 distinguishing progressive meter hits (Bally, Thunder Vault Grand) from

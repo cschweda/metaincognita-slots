@@ -3,6 +3,52 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **The deploy gate now boots the site.** `pnpm smoke:csp` serves the generated
+  `dist/` under the REAL production `_headers`, boots it in headless Chrome
+  (system browser via puppeteer-core — nothing bundled), and fails on any CSP
+  violation, page error, or never-rendering page — including proof the
+  `rtp.worker` loads and answers under `worker-src`. GitHub CI runs it on every
+  push with `CSP_SMOKE_REQUIRE=1`. This guards the silent white-screen class
+  that has bitten twice — and its negative-control test immediately caught a
+  real latent bug (below).
+- **`/learn/volatility` — same edge, different ride.** The eleventh learn page:
+  live sd/coin (√variance) and N₀ (variance ÷ edge²) for the whole floor,
+  ranked by wildness, computed from the same exact reports the PAR sheets
+  print. Sevens Ablaze vs Diamond Doubler is the built-in punchline (a quarter
+  point of RTP apart, ~7× apart on the ride). Glossary volatility/sd entries
+  now deep-link it.
+
+### Fixed
+- **`csp-hashes.mjs` is idempotent.** It blindly appended its generated block,
+  so a re-run on an already-stamped `dist/` left a stale first-match CSP being
+  served (Netlify and the smoke server both honor the FIRST `/*` rule) — the
+  exact silent-white-screen failure the new smoke guards. Previous runs' blocks
+  are now stripped by marker before the fresh one is written.
+- **Steppers and the Bally cabinets no longer clip on phones.** Their
+  fixed-pixel reel windows now fit-scale (the same `useFitScale` transform the
+  video slots got) instead of overflowing on narrow viewports.
+
+### Changed
+- **The house-edge page's exact math moved off the main thread.** It was the
+  last page computing the four 24⁵ video enumerations synchronously in render
+  (it predates the worker tranche); it now shares `useFloorReports` (rtp.worker,
+  cached, sync fallback in SSG/tests) with the volatility page.
+
+### Performance
+- **Parked engines are off the boot path.** Flameout 21's crash DP and Stop &
+  Lock 777's collect DP (with `simulateMachine` and their solvers, a ~130KB
+  chunk) no longer load on the floor — verified live against the built site.
+  They fetch only behind a restored legacy parked session or a no-Worker PAR
+  view, via the new `~/engine/parked` doorway + exactRtp solver registry. The
+  machine defs stay resident (History still names retired machines instantly).
+- Evaluated and deliberately skipped (recorded in the backlog-close spec):
+  chrome gold-title/bulb primitives (the 11 frames are bespoke on purpose),
+  machine-registry merge (would couple pure-data defs to component imports),
+  `useStopReelCabinet` (only one stop-reel machine remains on the floor).
+
 ## [0.13.0] - 2026-07-10
 
 ### Fixed
