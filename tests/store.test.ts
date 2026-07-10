@@ -1341,3 +1341,39 @@ describe('lock-reel sanitizeMachineState — Stop & Lock 777', () => {
     expect(store.machineStates['stop-and-lock-777']!.lockReel!.phase).toBe('idle')
   })
 })
+
+describe('storage version notice', () => {
+  it('flags an incompatible save on peek AND on load, and can be dismissed', () => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 99, bankrollCents: 5000 }))
+    const store = useSlotsStore()
+    expect(store.storageNotice).toBe(false)
+
+    expect(store.peekSavedSession()).toBe(false) // the boot-time gate
+    expect(store.storageNotice).toBe(true)
+
+    store.dismissStorageNotice()
+    expect(store.storageNotice).toBe(false)
+
+    expect(store.loadFromLocalStorage()).toBe(false) // the load path
+    expect(store.storageNotice).toBe(true)
+  })
+
+  it('does not flag a valid save, an empty slot, or unparseable garbage', () => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    const store = useSlotsStore()
+
+    expect(store.peekSavedSession()).toBe(false) // empty slot
+    expect(store.storageNotice).toBe(false)
+
+    store.startSession(10_000) // writes a valid v1 save
+    expect(store.peekSavedSession()).toBe(true)
+    expect(store.storageNotice).toBe(false)
+
+    localStorage.setItem(STORAGE_KEY, 'not json {{{')
+    expect(store.peekSavedSession()).toBe(false)
+    expect(store.storageNotice).toBe(false) // corrupt ≠ incompatible: stay silent
+  })
+})

@@ -80,7 +80,11 @@ export const useSlotsStore = defineStore('slots', {
     settings: defaultSettings(),
     spinning: false,
     lastOutcome: null as SpinOutcome | null,
-    liveAnnouncement: ''
+    liveAnnouncement: '',
+    // A saved session existed but its storage version didn't match — it was
+    // left alone (not loaded); the floor shows a one-time explanation.
+    // Transient: never persisted, cleared by dismiss or any $reset.
+    storageNotice: false
   }),
 
   getters: {
@@ -178,7 +182,15 @@ export const useSlotsStore = defineStore('slots', {
         const raw = localStorage.getItem(STORAGE_KEY)
         if (raw === null) return false
         const data = JSON.parse(raw) as Record<string, unknown>
-        if (data === null || typeof data !== 'object' || data.v !== STORAGE_VERSION) return false
+        if (data === null || typeof data !== 'object') return false
+        if (data.v !== STORAGE_VERSION) {
+          // A save exists but from a different storage version. v1 is the only
+          // shape ever shipped, so there is nothing to migrate yet — flag it so
+          // the floor can tell the player instead of silently starting fresh.
+          // (When v2 lands, migrate here instead of flagging.)
+          this.storageNotice = true
+          return false
+        }
 
         this.bankrollCents = Math.max(0, Math.floor(asFiniteNumber(data.bankrollCents, 0)))
         this.phase = data.phase === 'playing' ? 'playing' : 'floor'
@@ -605,11 +617,19 @@ export const useSlotsStore = defineStore('slots', {
       try {
         const raw = localStorage.getItem(STORAGE_KEY)
         if (raw === null) return false
-        const data = JSON.parse(raw) as { v?: unknown }
-        return data !== null && typeof data === 'object' && data.v === STORAGE_VERSION
+        const data = JSON.parse(raw) as { v?: unknown } | null
+        const ok = data !== null && typeof data === 'object' && data.v === STORAGE_VERSION
+        // This peek is the boot-time gate (index/game onMounted): when a save
+        // exists but the version is wrong, load will never run — flag it here.
+        if (!ok && data !== null && typeof data === 'object') this.storageNotice = true
+        return ok
       } catch {
         return false
       }
+    },
+
+    dismissStorageNotice() {
+      this.storageNotice = false
     },
 
     exportHistory(): string {

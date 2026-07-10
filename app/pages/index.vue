@@ -45,6 +45,26 @@ const featured = computed(() => FLOOR.find(def => def.family === 'cascade') ?? n
       <!-- First run: the free-play Featured machine needs no bankroll — never
            hide it behind the session gate. The nine betting machines stay gated. -->
       <template v-if="store.phase === 'floor'">
+        <div
+          v-if="store.storageNotice"
+          data-test="storage-notice"
+          role="status"
+          class="flex items-start justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200 text-left"
+        >
+          <p class="leading-relaxed">
+            Your saved session came from an older version of this app and couldn't
+            be restored — the floor starts fresh. (The bankroll was never real
+            money, so nothing of value was lost.)
+          </p>
+          <UButton
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            icon="i-lucide-x"
+            aria-label="Dismiss notice"
+            @click="store.dismissStorageNotice()"
+          />
+        </div>
         <FloorFeaturedMachine
           v-if="featured"
           :def="featured"
