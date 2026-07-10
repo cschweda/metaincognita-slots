@@ -89,6 +89,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **MIT LICENSE** (a public educational repo was all-rights-reserved by default).
 
 ### Changed
+- **The heavy exact math moved off the main thread.** A long-lived `rtp.worker`
+  now computes `exactRtp` for the floor's X-ray cards, the sidebar/X-ray intel,
+  and the PAR sheet's Math tab (each video machine is a 24⁵-state enumeration
+  ≈1s — the floor used to freeze ~4s with X-ray on), and runs the LDW lab's
+  10,000 seeded spins (the learn page no longer blocks first paint). Identical
+  numbers everywhere — same engine code, same seeds; environments without
+  workers (SSG, tests) fall back to the same math computed synchronously.
 - **Netlify's deploy gate now runs the full battery** — lint + typecheck +
   tests + a 250k-spin `verify` before `generate` (was lint+test only; Netlify
   deploys independently of GitHub CI, so the expensive gates must run there
