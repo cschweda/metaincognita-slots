@@ -6,7 +6,7 @@
 
 **Architecture:** No engine math changes. One new seeded experiment util (mythsExperiment, the ldwExperiment pattern) rides the existing `rtp.worker` via one new protocol message; the Sim Lab panel and History takeaway are pure presentation over `ExactRtpReport` numbers fetched through the existing `rtpClient`/`useExactRtp` cache (sync fallback keeps SSG + vitest working untouched).
 
-**Tech Stack:** Nuxt 3 / Vue 3 `<script setup lang="ts">`, Pinia, vitest (+ happy-dom for components), Tailwind classes, pnpm.
+**Tech Stack:** Nuxt 4 / Vue 3 `<script setup lang="ts">` (versions per package.json: nuxt ^4.4.2, vue ^3.5.38), Pinia 3, vitest 4 (+ happy-dom for components), Tailwind 4 classes, pnpm.
 
 ## Global Constraints
 

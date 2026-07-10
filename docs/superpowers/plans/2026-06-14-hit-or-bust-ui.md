@@ -6,7 +6,7 @@
 
 **Architecture:** Mirror the pachislo family pattern exactly: a thin `useBlackjackReel` composable (family-guard + computed gates + store action wrappers), a `ReelBlackjackReel.vue` surface that renders cards via `<GameSymbolIcon>`, a `BlackjackControls.vue` with Deal/Hit/Stand buttons, wired into `game.vue` beside the existing family chain. `BetControls.vue` slots pachislo-controls; we add a parallel slot for blackjack-reel controls (or a sibling conditional — whichever keeps BetControls.vue minimal). `index.vue` gains `blackjack-reel` in `FAMILY_ORDER`.
 
-**Tech Stack:** Vue 3 Composition API, Pinia, TypeScript, Nuxt 3 auto-import, Tailwind CSS, Vitest + happy-dom
+**Tech Stack:** Vue 3 Composition API, Pinia, TypeScript, Nuxt 4 auto-import, Tailwind CSS, Vitest + happy-dom
 
 ---
 

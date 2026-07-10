@@ -167,7 +167,8 @@ describe('glossary', () => {
     for (const term of [
       'bankroll', 'drawdown', 'expected value', 'wild', 'multiplier',
       'risk of ruin', 'standard deviation', 'flag', 'stock', 'slip',
-      'jackpot tiers', 'gambler', 'independence'
+      'jackpot tiers', 'gambler', 'independence',
+      'rng', 'pachislo', 'variable-ratio', 'illusion of control', 'time on device'
     ]) {
       expect(t, `glossary must define "${term}"`).toContain(term)
     }
@@ -179,7 +180,7 @@ describe('glossary', () => {
     expect(ids.length).toBeGreaterThanOrEqual(29)
     expect(ids.every(id => typeof id === 'string' && id.length > 0)).toBe(true)
     expect(new Set(ids).size).toBe(ids.length)
-    for (const anchor of ['rtp', 'hit-frequency', 'volatility', 'house-edge', 'drawdown', 'gamblers-fallacy']) {
+    for (const anchor of ['rtp', 'hit-frequency', 'volatility', 'house-edge', 'drawdown', 'gamblers-fallacy', 'rng', 'n0', 'variable-ratio']) {
       expect(ids, `anchor "${anchor}" must exist`).toContain(anchor)
     }
   })
