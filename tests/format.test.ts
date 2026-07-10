@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatCents, formatCredits, formatOdds, formatPercent, formatSignedCents, formatSignedCredits } from '../app/utils/format'
+import { formatCents, formatCentsCompact, formatCentsExact, formatCredits, formatOdds, formatPercent, formatSignedCents, formatSignedCredits } from '../app/utils/format'
 
 describe('format helpers', () => {
   it('formatCents: whole dollars short, cents when needed, thousands grouped', () => {
@@ -32,5 +32,26 @@ describe('format helpers', () => {
     expect(formatSignedCredits(1005)).toBe('+1,005')
     expect(formatSignedCredits(-11)).toBe('-11')
     expect(formatSignedCredits(0)).toBe('+0')
+  })
+})
+
+describe('formatCentsExact', () => {
+  it('always renders two decimals with the sign outside the $', () => {
+    expect(formatCentsExact(0)).toBe('$0.00')
+    expect(formatCentsExact(25)).toBe('$0.25')
+    expect(formatCentsExact(100)).toBe('$1.00')
+    expect(formatCentsExact(123456)).toBe('$1234.56')
+    expect(formatCentsExact(-1250)).toBe('-$12.50')
+  })
+})
+
+describe('formatCentsCompact', () => {
+  it('renders sub-dollar as cents, whole dollars bare, fractional with 2 places', () => {
+    expect(formatCentsCompact(25)).toBe('25¢')
+    expect(formatCentsCompact(99)).toBe('99¢')
+    expect(formatCentsCompact(100)).toBe('$1')
+    expect(formatCentsCompact(500)).toBe('$5')
+    expect(formatCentsCompact(125)).toBe('$1.25')
+    expect(formatCentsCompact(0)).toBe('0¢')
   })
 })

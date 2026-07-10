@@ -7,6 +7,7 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useCascade } from '~/composables/useCascade'
 import { useSlotsStore } from '~/stores/slots'
+import { formatCentsExact } from '~/utils/format'
 
 const c = useCascade()
 const store = useSlotsStore()
@@ -29,8 +30,8 @@ onMounted(() => {
 })
 onUnmounted(() => window.removeEventListener('keydown', onKey))
 
-const usd = (credits: number): string => '$' + (credits / 100).toFixed(2)
-const usdCents = (cents: number): string => (cents < 0 ? '-$' : '$') + (Math.abs(cents) / 100).toFixed(2)
+const usd = (credits: number): string => formatCentsExact(credits * (c.def.value?.denominationCents ?? 1))
+const usdCents = (cents: number): string => formatCentsExact(cents)
 
 const ladder = computed(() => c.def.value?.multiplierLadder ?? [])
 const busy = computed(() => c.phase.value !== 'idle')

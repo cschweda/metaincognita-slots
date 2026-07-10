@@ -7,6 +7,7 @@ import { useSlotsStore } from '~/stores/slots'
 import { spinCascade, cascadeAlphabet, countSymbols } from '~/engine/cascade'
 import { initMachineState, feedProgressive } from '~/engine'
 import { liveRand } from '~/utils/liveRand'
+import { formatCentsExact } from '~/utils/format'
 import type { CascadeMachineDef, MachineSessionState, SymbolId, SpinOutcome } from '~/engine'
 import {
   unlockAudio, sfxWhirr, sfxWin, sfxShatter, sfxDrop, sfxJackpot, sfxCascade, isMuted, setMuted
@@ -96,7 +97,7 @@ export function useCascade() {
   function classify(out: SpinOutcome, d: CascadeMachineDef): void {
     const winC = out.totalPayout * d.denominationCents
     const betC = d.maxCoins * d.denominationCents
-    const dollars = (c: number): string => '$' + (c / 100).toFixed(2)
+    const dollars = (c: number): string => formatCentsExact(c)
     if (out.progressiveEvents.length > 0) {
       trick.value = { tone: 'good', text: `💥 THE GRAND — ${dollars(winC)}! The rare carrot the whole game dangles, funded by everyone else's losses. This is the jackpot that keeps people feeding the machine for hours.` }
       return

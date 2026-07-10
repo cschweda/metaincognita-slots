@@ -25,6 +25,26 @@ export function formatOdds(probability: number): string {
   return `1 in ${Math.round(1 / probability).toLocaleString('en-US')}`
 }
 
+/**
+ * Exact money: always two decimals, sign outside the $ ("$4.00", "-$12.50").
+ * The result-card / narration / EV-readout style — never rounds cents away.
+ */
+export function formatCentsExact(cents: number): string {
+  const sign = cents < 0 ? '-' : ''
+  return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`
+}
+
+/**
+ * Compact cabinet money: sub-dollar shows cents ("25¢"), whole dollars drop
+ * the decimals ("$1"), the rest keeps two places ("$1.25") — so a cash deck
+ * never shows "$0.25" or "$1.00". (Moved verbatim from useLockReel's money().)
+ */
+export function formatCentsCompact(cents: number): string {
+  if (cents < 100) return `${Math.round(cents)}¢`
+  const d = cents / 100
+  return Number.isInteger(d) ? `$${d}` : `$${d.toFixed(2)}`
+}
+
 export function formatCredits(credits: number): string {
   return credits.toLocaleString('en-US')
 }

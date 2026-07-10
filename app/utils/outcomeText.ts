@@ -1,4 +1,5 @@
 import type { MachineDef, SpinOutcome } from '~/engine'
+import { formatCentsExact, formatCredits } from '~/utils/format'
 
 /**
  * The spoken/live-region narration for one outcome — honest by design (a win
@@ -11,7 +12,7 @@ export function describeOutcome(def: MachineDef, out: SpinOutcome, bankrollCents
     // the banked dollars + balance. A bonus TRIGGER would carry no collect
     // (it pays at the bonus's own resolve), so a 0-payout outcome just reports
     // the lock activity.
-    const dollars = (credits: number): string => `$${(credits * def.denominationCents / 100).toFixed(2)}`
+    const dollars = (credits: number): string => formatCentsExact(credits * def.denominationCents)
     const grand = out.featureEvents.some(e => e.type === 'grand')
     const collect = out.featureEvents.find(e => e.type === 'collect')
     const bonus = out.featureEvents.some(e => e.type === 'bonus-triggered')
@@ -20,32 +21,32 @@ export function describeOutcome(def: MachineDef, out: SpinOutcome, bankrollCents
     if (bonus && collect === undefined) parts.push('Three 7s — 777 BONUS!')
     if (collect !== undefined) {
       parts.push(collect.credits > 0
-        ? `Collected ${collect.credits.toLocaleString('en-US')} credits${out.totalPayout > 0 ? ` — banked ${dollars(out.totalPayout)}.` : '.'}`
+        ? `Collected ${formatCredits(collect.credits)} credits${out.totalPayout > 0 ? ` — banked ${dollars(out.totalPayout)}.` : '.'}`
         : 'No cash locked — collected nothing.')
     }
     if (parts.length === 0) parts.push('Locked.')
-    parts.push(`Balance ${Math.floor(bankrollCents / def.denominationCents).toLocaleString('en-US')} credits.`)
+    parts.push(`Balance ${formatCredits(Math.floor(bankrollCents / def.denominationCents))} credits.`)
     return parts.join(' ')
   }
   if (def.family === 'blackjack-reel') {
-    const dollars = (credits: number): string => `$${(credits * def.denominationCents / 100).toFixed(2)}`
+    const dollars = (credits: number): string => formatCentsExact(credits * def.denominationCents)
     for (const e of out.featureEvents) {
-      if (e.type === 'crash') return `Flamed out on reel ${e.reel + 1} at ×${e.multiplier.toFixed(2)} — lost the bet. Balance ${dollars(bankrollCents / def.denominationCents)}.`
-      if (e.type === 'cash-out') return `Cashed out at ×${e.multiplier.toFixed(2)} — banked ${dollars(out.totalPayout)}. Balance ${dollars(bankrollCents / def.denominationCents)}.`
-      if (e.type === 'topped-out') return `Topped out at ×${e.multiplier.toFixed(2)} — banked ${dollars(out.totalPayout)}! Balance ${dollars(bankrollCents / def.denominationCents)}.`
+      if (e.type === 'crash') return `Flamed out on reel ${e.reel + 1} at ×${e.multiplier.toFixed(2)} — lost the bet. Balance ${formatCentsExact(bankrollCents)}.`
+      if (e.type === 'cash-out') return `Cashed out at ×${e.multiplier.toFixed(2)} — banked ${dollars(out.totalPayout)}. Balance ${formatCentsExact(bankrollCents)}.`
+      if (e.type === 'topped-out') return `Topped out at ×${e.multiplier.toFixed(2)} — banked ${dollars(out.totalPayout)}! Balance ${formatCentsExact(bankrollCents)}.`
     }
     return 'Dealt.'
   }
   const parts: string[] = []
   if (out.totalPayout > 0) {
-    parts.push(`Won ${out.totalPayout.toLocaleString('en-US')} credits.`)
+    parts.push(`Won ${formatCredits(out.totalPayout)} credits.`)
   } else {
     parts.push('No win.')
   }
   // Speak the honest result too: a win under the bet is a net loss (LDW).
   const net = out.totalPayout - out.coinsIn
-  if (net > 0) parts.push(`Net up ${net.toLocaleString('en-US')}.`)
-  else if (net < 0) parts.push(`Net down ${(-net).toLocaleString('en-US')}.`)
+  if (net > 0) parts.push(`Net up ${formatCredits(net)}.`)
+  else if (net < 0) parts.push(`Net down ${formatCredits(-net)}.`)
   else parts.push('Net even.')
   for (const e of out.featureEvents) {
     if (e.type === 'free-spins-triggered') parts.push(`${e.count} free spins at ${e.multiplier}x.`)
@@ -53,7 +54,7 @@ export function describeOutcome(def: MachineDef, out: SpinOutcome, bankrollCents
     if (e.type === 'free-spins-retriggered') parts.push(`Retrigger! ${e.remaining} free spins.`)
     if (e.type === 'orbs-locked') parts.push(`${e.cells.length} orbs locked.`)
     if (e.type === 'mult-orbs-locked') parts.push(`${e.mults.map(m => `times ${m}`).join(' ')} multiplier locked.`)
-    if (e.type === 'hold-and-spin-ended') parts.push(`Hold and spin pays ${e.totalCredits.toLocaleString('en-US')} credits${e.filled ? ' — GRAND!' : '.'}`)
+    if (e.type === 'hold-and-spin-ended') parts.push(`Hold and spin pays ${formatCredits(e.totalCredits)} credits${e.filled ? ' — GRAND!' : '.'}`)
     if (e.type === 'flag-stocked') parts.push(`${e.flag} stocked.`)
     if (e.type === 'bonus-started') parts.push(`${e.bonus.toUpperCase()} bonus!`)
     if (e.type === 'interlude-started') parts.push('Bonus interlude.')
@@ -61,8 +62,8 @@ export function describeOutcome(def: MachineDef, out: SpinOutcome, bankrollCents
     if (e.type === 'replay-granted') parts.push('Replay — next game free.')
   }
   for (const p of out.progressiveEvents) {
-    parts.push(`PROGRESSIVE: ${p.amountCredits.toLocaleString('en-US')} credits!`)
+    parts.push(`PROGRESSIVE: ${formatCredits(p.amountCredits)} credits!`)
   }
-  parts.push(`Balance ${Math.floor(bankrollCents / def.denominationCents).toLocaleString('en-US')} credits.`)
+  parts.push(`Balance ${formatCredits(Math.floor(bankrollCents / def.denominationCents))} credits.`)
   return parts.join(' ')
 }

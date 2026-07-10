@@ -3,6 +3,7 @@
 // (multiplier, velocity, cash-out $, altitude marks) and exposes deal/stop/cashOut.
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
+import { formatCentsExact } from '~/utils/format'
 import { handTotal } from '~/engine/blackjackReel'
 import type { BlackjackReelMachineDef } from '~/engine'
 import type { SymbolId } from '~/engine/types'
@@ -57,10 +58,10 @@ export function useBlackjackReel() {
     const d = def.value
     return d === null ? 0 : Math.round(betCoins.value * multiplier.value * d.denominationCents)
   })
-  const cashValueDollars = computed(() => `$${(cashValueCents.value / 100).toFixed(2)}`)
+  const cashValueDollars = computed(() => formatCentsExact(cashValueCents.value))
   const anteDollars = computed((): string => {
     const d = def.value
-    return d === null ? '$0.00' : `$${(betCoins.value * d.denominationCents / 100).toFixed(2)}`
+    return d === null ? '$0.00' : formatCentsExact(betCoins.value * d.denominationCents)
   })
 
   // Projected-altitude ladder for the climb reels (3,4,5) — the rocket marks.
@@ -77,7 +78,7 @@ export function useBlackjackReel() {
       out.push({
         reel: 3 + k,
         multiplier: m,
-        dollars: `$${(betCoins.value * m * d.denominationCents / 100).toFixed(2)}`,
+        dollars: formatCentsExact(betCoins.value * m * d.denominationCents),
         reached: climbsDone >= k + 1
       })
     }

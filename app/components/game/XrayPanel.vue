@@ -5,7 +5,7 @@ import { nearMisses } from '~/engine'
 import { decisionEvs, blackjackReelExactRtp, crashOdds } from '~/engine/blackjackReelRtp'
 import { lockReelExactRtp, reelCashEvs, bonusOdds, bonusEv } from '~/engine/lockReelRtp'
 import { floorIntel } from '~/utils/floorIntel'
-import { formatOdds, formatPercent } from '~/utils/format'
+import { formatCentsExact, formatOdds, formatPercent } from '~/utils/format'
 import type { BlackjackReelMachineDef, LockReelMachineDef } from '~/engine/types'
 
 const store = useSlotsStore()
@@ -88,7 +88,7 @@ const bjEv = computed(() => {
   if (bj === null || bj === undefined || bj.phase !== 'spinning') return null
   const ev = decisionEvs(d as BlackjackReelMachineDef, bj)
   if (ev === null) return null
-  const toDollars = (perCoin: number): string => `$${(perCoin * bj.ante * d.denominationCents / 100).toFixed(2)}`
+  const toDollars = (perCoin: number): string => formatCentsExact(perCoin * bj.ante * d.denominationCents)
   return { cash: toDollars(ev.evCash), push: toDollars(ev.evContinue), action: ev.action }
 })
 
