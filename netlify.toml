@@ -1,12 +1,17 @@
 [build]
-  # Fast red-build gate: a push that fails lint or tests must not deploy.
-  # (CI runs the deeper gates — typecheck + million-spin verify — on every push.)
-  command = "pnpm lint && pnpm test && pnpm generate"
+  # Deploy gate: a push that fails lint, typecheck, tests, or the RTP
+  # reconciliation must not deploy. Netlify builds independently of GitHub CI
+  # (no branch protection), so it runs the same gates itself — verify at 250k
+  # spins/machine keeps the build fast; the 3.5σ gate still catches gross
+  # breaks (CI's deeper 1M-spin run happens in parallel on GitHub).
+  command = "pnpm lint && pnpm typecheck && pnpm test && pnpm verify -- --spins 250000 && pnpm generate"
   publish = "dist"
 
 [build.environment]
   # Match .github/workflows/ci.yml so Netlify never builds on a different Node.
   NODE_VERSION = "22"
+  # Install exactly the committed lockfile — never resolve fresh on deploy.
+  PNPM_FLAGS = "--frozen-lockfile"
 
 # No [[redirects]] block here: every route is prerendered (ssr: false +
 # netlify_static), and the preset writes dist/_redirects with `/* /404.html 404`
