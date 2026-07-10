@@ -27,6 +27,8 @@ export function payTag(def: MachineDef): string {
       return 'STOP & LOCK'
     case 'cascade':
       return 'PAY ANYWHERE'
+    case 'wheel':
+      return 'LINE + TOPPER'
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled family ${(exhaustive as MachineDef).family}`)

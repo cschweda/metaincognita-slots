@@ -1,4 +1,4 @@
-import type { MachineDef, SpinOutcome, StepperMachineDef, SymbolId } from './types'
+import type { MachineDef, SpinOutcome, StepperMachineDef, SymbolId, WheelMachineDef } from './types'
 
 /**
  * Presentational near-miss analysis, derived from the outcome AFTER the fact.
@@ -18,7 +18,7 @@ export interface NearMissCallout {
   reels?: number[]
 }
 
-function topStepperSymbol(def: StepperMachineDef): { symbol: SymbolId, label: string } | null {
+function topStepperSymbol(def: StepperMachineDef | WheelMachineDef): { symbol: SymbolId, label: string } | null {
   let best: { symbol: SymbolId, pay: number } | null = null
   for (const e of def.paytable) {
     if (e.kind === 'allWild' && def.wildSymbol !== null) {
@@ -30,7 +30,7 @@ function topStepperSymbol(def: StepperMachineDef): { symbol: SymbolId, label: st
   return best === null ? null : { symbol: best.symbol, label: def.symbols[best.symbol]?.label ?? best.symbol }
 }
 
-function stepperCallouts(def: StepperMachineDef, out: SpinOutcome): NearMissCallout[] {
+function stepperCallouts(def: StepperMachineDef | WheelMachineDef, out: SpinOutcome): NearMissCallout[] {
   const top = topStepperSymbol(def)
   if (top === null) return []
   const topInvolved = out.wins.some(w => w.symbols.includes(top.symbol))
@@ -172,6 +172,10 @@ export function nearMisses(def: MachineDef, out: SpinOutcome): NearMissCallout[]
     // cascade surfaces its own near-miss in the cabinet's trick-exposer
     case 'cascade':
       return []
+    // the wheel's base game IS a Telnaes stepper — same engineered near-miss
+    // anatomy on the line (the wedge geometry gets its own X-ray table)
+    case 'wheel':
+      return stepperCallouts(def, out)
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled machine family: ${(exhaustive as MachineDef).family}`)

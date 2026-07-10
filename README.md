@@ -275,16 +275,17 @@ the share of spins that pay anything):
 
 ```
 machine               coins   exact RTP    sim RTP      Δ           HF exact     HF sim      jackpots  σ-band
-temple-of-gold        100     90.8961%    90.9518%     0.0557%    35.5257%    35.5251%        97  PASS
-canal-royale           25     92.4559%    92.3251%     0.1309%    55.5343%    55.5200%         0  PASS
-dragons-hoard          25     93.9950%    94.2613%     0.2663%    53.5534%    53.5694%         0  PASS
-thunder-vault          25     90.2948%    90.3789%     0.0841%    41.2899%    41.2930%      1007  PASS
-ruby-of-gargoyle       25     90.0802%    89.5856%     0.4946%    41.2899%    41.2619%       961  PASS
-diamond-doubler         3     94.7442%    95.1375%     0.3933%    14.6675%    14.6742%         0  PASS
-sevens-ablaze           2     94.4881%    94.9118%     0.4237%    15.7193%    15.7222%       379  PASS
-series-e-3line          1     89.0351%    88.5838%     0.4513%    11.8144%    11.8052%         1  PASS
-series-e-multiplier     3     89.1264%    89.0240%     0.1024%    14.2559%    14.2648%       197  PASS
-stock-rush              3     91.5013%    91.5360%     0.0347%    21.2341%    21.2481%         0  PASS
+wonder-wheel            3     92.4880%    93.0539%     0.5659%    18.5989%    18.6439%         0  PASS
+temple-of-gold        100     90.8961%    91.1337%     0.2376%    35.5257%    35.5358%        94  PASS
+canal-royale           25     92.4559%    92.5456%     0.0897%    55.5343%    55.5314%         0  PASS
+dragons-hoard          25     93.9950%    93.9435%     0.0515%    53.5534%    53.5837%         0  PASS
+thunder-vault          25     90.2948%    90.1893%     0.1054%    41.2899%    41.2619%       961  PASS
+ruby-of-gargoyle       25     90.0802%    90.1894%     0.1092%    41.2899%    41.2978%       997  PASS
+diamond-doubler         3     94.7442%    94.4666%     0.2776%    14.6675%    14.6832%         0  PASS
+sevens-ablaze           2     94.4881%    94.6204%     0.1322%    15.7193%    15.7302%       358  PASS
+series-e-3line          1     89.0351%    88.8997%     0.1354%    11.8144%    11.8115%         1  PASS
+series-e-multiplier     3     89.1264%    89.1411%     0.0147%    14.2559%    14.2380%       216  PASS
+stock-rush              3     91.5013%    91.2110%     0.2903%    21.2341%    21.2048%         0  PASS
 ```
 
 ## Tech

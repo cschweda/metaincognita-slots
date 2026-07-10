@@ -136,6 +136,26 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
         text: `${d.symbols[e.symbol]?.label ?? e.symbol} × ${e.length}`,
         pay: `${e.pay}`
       }))
+    case 'wheel':
+      return [
+        ...d.paytable.map(e => ({
+          id: e.id,
+          text: e.kind === 'allWild'
+            ? 'All wilds'
+            : e.kind === 'allSame'
+              ? `3 × ${d.symbols[e.symbol]?.label ?? e.symbol}`
+              : e.kind === 'anyOf'
+                ? `Any of ${e.symbols.join('/')}`
+                : `${e.n} × ${d.symbols[e.symbol]?.label ?? e.symbol} anywhere`,
+          pay: `${e.pay}`
+        })),
+        { id: 'wheel-arm', text: 'WHEEL on reel 3 at MAX COINS — arms the topper (a free spin)', pay: 'topper' },
+        ...d.wedges.map(w => ({
+          id: `wedge-${w.credits}`,
+          text: `Wheel wedge ${w.credits}${w.credits >= 2500 ? ' — MEGA' : ''} · weight ${w.weight} (drawn 1/24 of the circle)`,
+          pay: `${w.credits} fixed`
+        }))
+      ]
     case 'stepper':
       return d.paytable.map(e => ({
         id: e.id,

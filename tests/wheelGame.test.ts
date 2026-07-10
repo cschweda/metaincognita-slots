@@ -71,7 +71,10 @@ describe('spinWheel — the topper resolve', () => {
     const rand = mulberry32(2026)
     const counts = new Array<number>(def.wedges.length).fill(0)
     const N = 200_000
-    for (let i = 0; i < N; i++) counts[drawWedgeIndex(def, rand).index]++
+    for (let i = 0; i < N; i++) {
+      const { index } = drawWedgeIndex(def, rand)
+      counts[index] = (counts[index] ?? 0) + 1
+    }
     const W = totalWedgeWeight(def)
     def.wedges.forEach((w, i) => {
       const expected = (w.weight / W) * N
