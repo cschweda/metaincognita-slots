@@ -120,11 +120,23 @@ function play() {
       v-if="intel"
       class="pt-2 border-t border-neutral-800/70 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] font-mono"
     >
-      <span class="text-neutral-400">RTP</span><span class="text-emerald-400 text-right">{{ formatPercent(intel.rtp, 4) }}</span>
-      <span class="text-neutral-400">Hit freq</span><span class="text-neutral-300 text-right">{{ formatPercent(intel.hitFrequency) }}</span>
-      <span class="text-neutral-400">Volatility</span><span class="text-neutral-300 text-right">{{ intel.sdPerCoin.toFixed(2) }} sd/coin</span>
+      <span
+        class="text-neutral-400"
+        title="Return to player — the share of all wagers this machine pays back over the long run"
+      >RTP</span><span class="text-emerald-400 text-right">{{ formatPercent(intel.rtp, 4) }}</span>
+      <span
+        class="text-neutral-400"
+        title="How often a spin pays anything at all — including 'wins' smaller than the bet"
+      >Hit freq</span><span class="text-neutral-300 text-right">{{ formatPercent(intel.hitFrequency) }}</span>
+      <span
+        class="text-neutral-400"
+        title="How wild the ride is at the same RTP — standard deviation per coin bet"
+      >Volatility</span><span class="text-neutral-300 text-right">{{ intel.sdPerCoin.toFixed(2) }} sd/coin</span>
       <template v-if="intel.topAwardProbability !== null">
-        <span class="text-neutral-400">Top award</span><span class="text-neutral-300 text-right">{{ formatOdds(intel.topAwardProbability) }}</span>
+        <span
+          class="text-neutral-400"
+          title="Odds of this machine's biggest prize at the current bet"
+        >Top award</span><span class="text-neutral-300 text-right">{{ formatOdds(intel.topAwardProbability) }}</span>
       </template>
     </div>
   </button>

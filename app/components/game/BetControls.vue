@@ -9,9 +9,9 @@ const def = computed(() => store.currentDef)
 const fixedReason = computed<string | null>(() => {
   const d = def.value
   if (d === null) return null
-  if (d.family === 'video' && d.betMode.kind === 'ways') return 'Fixed bet — buys all 243 ways'
-  if (d.family === 'video' && d.fixedBet) return 'Fixed bet — feature eligibility requires full coverage'
-  if (d.family === 'pachislo') return 'Full bet required — stock-era machines gate bonuses by full bet'
+  if (d.family === 'video' && d.betMode.kind === 'ways') return 'Fixed bet — one price buys all 243 ways (any left-to-right match can pay)'
+  if (d.family === 'video' && d.fixedBet) return 'Fixed bet — the bonus features only arm when every line is covered'
+  if (d.family === 'pachislo') return `Full bet required — real pachislo machines only enter the bonus lottery at the full ${d.maxCoins}-token bet`
   return null
 })
 const betLabel = computed(() => {
