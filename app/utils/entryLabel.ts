@@ -69,6 +69,9 @@ export function entryLabel(def: MachineDef | null, entryId: string): string {
   if (def === null) return entryId
   const universal = UNIVERSAL[entryId]
   if (universal !== undefined) return universal
+  // Wonder Wheel wedge pays (any consumer: history, PAR, floor card)
+  const wedge = /^wedge-(\d+)$/.exec(entryId)
+  if (wedge !== null) return `Wheel: ${Number(wedge[1]).toLocaleString('en-US')} credits`
   const sym = (s: string): string => def.symbols[s]?.label ?? s
 
   if (def.family === 'pachislo') return PACHISLO[entryId] ?? entryId

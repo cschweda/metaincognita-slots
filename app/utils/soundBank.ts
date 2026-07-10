@@ -308,6 +308,99 @@ const pachisloVoice: CabinetVoice = {
   }
 }
 
+// ── Wonder Wheel: a modern carnival cabinet — digital bed, big topper voice ─
+
+/** Fanfare tiers by WEDGE CREDITS (the wheel resolve has coinsIn 0, so the
+ *  payout-vs-bet winTier would read every wedge as 'huge'). */
+function wheelWedgeTier(credits: number): Exclude<WinTier, 'none'> {
+  if (credits < 60) return 'small'
+  if (credits < 150) return 'medium'
+  if (credits < 400) return 'big'
+  return 'huge'
+}
+
+const WHEEL_ARP = [523.25, 659.25, 783.99, 1046.5]
+
+const wheelFanfares: Fanfares = {
+  win(tier) {
+    const n = tier === 'small' ? 3 : tier === 'medium' ? 5 : tier === 'big' ? 7 : 9
+    for (let i = 0; i < n; i++) {
+      const f = WHEEL_ARP[i % WHEEL_ARP.length]! * (1 + Math.floor(i / WHEEL_ARP.length))
+      tone(f, 0.11, 0.1, 'triangle', i * 0.08)
+      if (tier !== 'small') bell(f, 0.25, 0.05, i * 0.08)
+    }
+  },
+  jackpot() {
+    // the MEGA wedge — the full 1996 attendant-pays moment
+    const runs = reducedMotion() ? 1 : 3
+    for (let r = 0; r < runs; r++) {
+      WHEEL_ARP.forEach((f, i) => {
+        tone(f * 2, 0.18, 0.1, 'square', r * 0.45 + i * 0.07)
+        bell(f, 0.5, 0.09, r * 0.45 + i * 0.07)
+      })
+    }
+    noiseBurst(0.4, 0.1, 'highpass', 5200, 1, 0.5)
+  },
+  bonusStart() {
+    wheelFanfares.stinger('feature')
+  },
+  stinger(kind) {
+    if (kind === 'feature') {
+      // WHEEL! — the rising arm sting the whole floor turns toward
+      [392, 523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        tone(f, 0.12, 0.11, 'sawtooth', i * 0.07)
+      })
+      bell(1568, 0.5, 0.1, 0.38)
+    } else {
+      bell(1046, 0.25, 0.08)
+    }
+  }
+}
+
+const wheelVoice: CabinetVoice = {
+  spinStart() {
+    tone(340, 0.3, 0.05, 'triangle', 0, 760) // bright modern whoosh
+  },
+  reelStop(reel) {
+    noiseBurst(0.04, 0.13, 'bandpass', 2200 + reel * 260, 6)
+    tone(660 + reel * 120, 0.05, 0.07, 'square')
+  },
+  reveal(_def, out) {
+    if (out.featureEvents.some(e => e.type === 'wheel-armed')) {
+      wheelFanfares.stinger('feature')
+      return
+    }
+    const landed = out.featureEvents.find(e => e.type === 'wheel-landed')
+    if (landed !== undefined && landed.type === 'wheel-landed') {
+      if (landed.credits >= 2500) wheelFanfares.jackpot()
+      else wheelFanfares.win(wheelWedgeTier(landed.credits))
+      return
+    }
+    // 'wheel-wasted' stays SOUNDLESS on purpose: a real cabinet says nothing
+    // when an under-max bet wastes the trigger — the result line does the
+    // talking here. Ordinary line pays get the ordinary celebration.
+    playReveal(wheelFanfares, out)
+  }
+}
+
+/**
+ * The topper's decelerating ticker: ~N clicks whose gaps stretch as the wheel
+ * slows, matching the overlay's 4.2s ease-out. Called once per wheel spin by
+ * the overlay (a gesture always precedes it, so the context is unlocked).
+ */
+export function wheelTicker(totalMs = 4200): void {
+  const clicks = reducedMotion() ? 0 : 26
+  let t = 0
+  for (let i = 0; i < clicks; i++) {
+    const progress = i / clicks
+    const gap = 0.03 + 0.145 * progress * progress // fast then stretching
+    t += gap
+    if (t * 1000 > totalMs) break
+    noiseBurst(0.018, 0.11, 'bandpass', 3000, 7, t)
+  }
+  bell(784, 0.3, 0.09, Math.min(t + 0.05, totalMs / 1000)) // the flapper settles
+}
+
 // ── Registry ────────────────────────────────────────────────────────────────
 
 const SILENT: CabinetVoice = {
@@ -323,7 +416,8 @@ const VOICES: Record<MachineDef['family'], CabinetVoice> = {
   'pachislo': pachisloVoice,
   'cascade': SILENT,
   'blackjack-reel': SILENT,
-  'lock-reel': SILENT
+  'lock-reel': SILENT,
+  'wheel': wheelVoice
 }
 
 export function voiceFor(family: MachineDef['family']): CabinetVoice {

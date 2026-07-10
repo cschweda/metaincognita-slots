@@ -60,6 +60,9 @@ export function describeOutcome(def: MachineDef, out: SpinOutcome, bankrollCents
     if (e.type === 'interlude-started') parts.push('Bonus interlude.')
     if (e.type === 'bonus-ended') parts.push('Bonus complete.')
     if (e.type === 'replay-granted') parts.push('Replay — next game free.')
+    if (e.type === 'wheel-armed') parts.push('WHEEL! The topper is armed — the next spin is free.')
+    if (e.type === 'wheel-landed') parts.push(`The wheel pays ${formatCredits(e.credits)} credits${e.credits >= 2500 ? ' — MEGA!' : '.'}`)
+    if (e.type === 'wheel-wasted') parts.push('The WHEEL landed, but only max coins arms it — a real cabinet would have kept that quiet.')
   }
   for (const p of out.progressiveEvents) {
     parts.push(`PROGRESSIVE: ${formatCredits(p.amountCredits)} credits!`)

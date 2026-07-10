@@ -59,3 +59,13 @@ describe('gameKindLabel', () => {
     expect(gameKindLabel('weird')).toBe('weird')
   })
 })
+
+describe('wonder-wheel labels', () => {
+  it('humanizes wedge entries and the wheel paytable', async () => {
+    const { WONDER_WHEEL } = await import('../../app/machines/wonder-wheel')
+    expect(entryLabel(WONDER_WHEEL, 'wedge-2500')).toBe('Wheel: 2,500 credits')
+    expect(entryLabel(WONDER_WHEEL, 'wedge-25')).toBe('Wheel: 25 credits')
+    expect(entryLabel(WONDER_WHEEL, '3w7')).toBe('3× Neon Seven')
+    expect(entryLabel(WONDER_WHEEL, 'anybar')).toContain('Any')
+  })
+})

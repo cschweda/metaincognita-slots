@@ -13,6 +13,7 @@ import { useSlotsStore } from '~/stores/slots'
 import type { WheelMachineDef } from '~/engine'
 import { formatCredits } from '~/utils/format'
 import { unlockAudio } from '~/utils/audio'
+import { wheelTicker } from '~/utils/soundBank'
 
 const store = useSlotsStore()
 const def = computed(() => store.currentDef as WheelMachineDef | null)
@@ -90,6 +91,7 @@ watch(() => store.lastOutcome, (out) => {
   } else {
     phase.value = 'spinning'
     emit('ticker')
+    wheelTicker(4200) // decelerating clicks matched to the ease-out
     requestAnimationFrame(() => {
       rotation.value = target
     })

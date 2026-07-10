@@ -47,14 +47,14 @@ const stripRows = computed<StripRow[]>(() => {
   const d = def.value
   if (d === null) return []
   if (d.family === 'cascade') return [] // cascade has no reel strips (it has its own panel)
-  const strips = d.family === 'stepper'
+  const strips = d.family === 'stepper' || d.family === 'wheel'
     ? d.physicalStrips
     : d.family === 'blackjack-reel' || d.family === 'lock-reel' ? d.reels : d.strips
   const symbols = Object.keys(d.symbols)
   return symbols.map((symbol) => {
     const counts = strips.map(strip => strip.filter(c => c === symbol).length)
     const row: StripRow = { symbol, label: d.symbols[symbol]?.label ?? symbol, counts }
-    if (d.family === 'stepper') {
+    if (d.family === 'stepper' || d.family === 'wheel') {
       row.weights = d.virtualMaps.map((vmap, r) =>
         vmap.filter(idx => d.physicalStrips[r]![idx] === symbol).length)
     }
@@ -63,7 +63,7 @@ const stripRows = computed<StripRow[]>(() => {
 })
 
 const virtualSizes = computed(() =>
-  def.value?.family === 'stepper' ? def.value.virtualMaps.map(v => v.length) : [])
+  def.value?.family === 'stepper' || def.value?.family === 'wheel' ? def.value.virtualMaps.map(v => v.length) : [])
 
 /**
  * Lock-reel (Stop & Lock 777) only: the DEDICATED bonus strips' per-symbol
@@ -114,6 +114,12 @@ function breakdownLabel(entryId: string): string {
 }
 
 /** Human-readable label for a lock-reel (cash-collect) breakdown entry ID. */
+function wheelBreakdownLabel(entryId: string): string {
+  const m = /^wedge-(\d+)$/.exec(entryId)
+  if (m !== null) return Number(m[1]) >= 2500 ? `Wheel wedge — MEGA ${m[1]}` : `Wheel wedge: ${m[1]} credits`
+  return entryId
+}
+
 function lockBreakdownLabel(entryId: string): string {
   if (entryId === 'base-cash') return 'Base collect (5 stops)'
   if (entryId === 'bonus-cash') return '777 bonus — cash locked'
@@ -480,7 +486,7 @@ function payRows(d: MachineDef): { id: string, text: string, pay: string }[] {
                   :key="b.entryId"
                 >
                   <td class="py-1 pr-2 text-neutral-300">
-                    {{ def.family === 'blackjack-reel' ? breakdownLabel(b.entryId) : def.family === 'lock-reel' ? lockBreakdownLabel(b.entryId) : b.entryId }}
+                    {{ def.family === 'blackjack-reel' ? breakdownLabel(b.entryId) : def.family === 'lock-reel' ? lockBreakdownLabel(b.entryId) : def.family === 'wheel' ? wheelBreakdownLabel(b.entryId) : b.entryId }}
                   </td>
                   <td class="py-1 pr-2 text-right text-neutral-400">
                     {{ formatOdds(b.probability) }}
