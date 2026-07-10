@@ -34,6 +34,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   page after navigation.
 
 ### Added
+- **`/learn/myths` — due, hot & cold, refuted live.** Gambler's fallacy, "due"
+  jackpots, and hot/cold machines, each stated in its own voice and answered by
+  a seeded 250,000-spin experiment through the real Sevens Ablaze engine (in the
+  rtp.worker): hit rates conditioned on the preceding streak are identical, and
+  the 1-in-13,824 jackpot's gaps (549 to 42,247 spins around an expected
+  ~13,824) show no schedule. Ninth learn card; the glossary gains
+  gambler's-fallacy and independence entries.
+- **The Sim Lab shows the math before you spin.** A live model panel (per-spin
+  EV, no-bust expected end, ±1σ of luck, spins-for-the-edge-to-outgrow-luck)
+  updates as the form moves, every figure labeled model vs measured — and after
+  a run the ending-bankroll histogram overlays the model expected end against
+  the measured mean (guidelines §2.5).
+- **History speaks English and draws the lesson.** Machine names instead of ids,
+  awards as "5× Winged Lion" instead of `li5`, game kinds humanized (the export
+  log keeps raw ids) — and a takeaway line comparing the expected net at the
+  machines' exact edges against the actual net, with luck quantified
+  (guidelines §2.3).
 - **The floor has a voice — all ten machines now make sound.** Four
   period-authentic synthesized voices (no audio files, CSP-clean): steppers
   thunk mechanically and rattle coins into the tray, the 1979 Bally EMs hum
