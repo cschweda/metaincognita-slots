@@ -2,16 +2,23 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { FLOOR } from '~/machines'
-import { exactRtp } from '~/engine'
 import { formatPercent } from '~/utils/format'
+import { useFloorReports } from '~/composables/useFloorReports'
 import LearnSection from '~/components/learn/LearnSection.vue'
 import LearnDisclosure from '~/components/learn/LearnDisclosure.vue'
 
-const rows = computed(() => FLOOR.map((def) => {
-  const rtp = exactRtp(def, { coins: def.maxCoins }).rtpPerCoin
-  return { name: def.name, rtp, houseEdge: 1 - rtp, lossPer100: (1 - rtp) * 100 }
+// Exact math via the rtp.worker (cached; sync fallback in SSG/tests) — this
+// page used to run the four 24⁵ video enumerations on the main thread.
+const { reports } = useFloorReports()
+const rows = computed(() => FLOOR.flatMap((def) => {
+  const report = reports.value.get(def.id)
+  if (report === undefined) return []
+  const rtp = report.rtpPerCoin
+  return [{ name: def.name, rtp, houseEdge: 1 - rtp, lossPer100: (1 - rtp) * 100 }]
 }))
-const avgEdge = computed(() => rows.value.reduce((a, r) => a + r.houseEdge, 0) / rows.value.length)
+const avgEdge = computed(() => rows.value.length === 0
+  ? null
+  : rows.value.reduce((a, r) => a + r.houseEdge, 0) / rows.value.length)
 </script>
 
 <template>
@@ -27,8 +34,8 @@ const avgEdge = computed(() => rows.value.reduce((a, r) => a + r.houseEdge, 0) /
     </h1>
     <LearnSection
       title="The casino's cut"
-      :headline="formatPercent(avgEdge)"
-      headline-label="Average house edge across this floor"
+      :headline="avgEdge === null ? 'measuring…' : formatPercent(avgEdge)"
+      headline-label="Average house edge across this floor — computed live from every machine's exact math"
     >
       <template #intuition>
         <p>

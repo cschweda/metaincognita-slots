@@ -12,6 +12,7 @@ import Pachislo from '../../app/pages/learn/pachislo.vue'
 import LdwNearMiss from '../../app/pages/learn/ldw-near-miss.vue'
 import Myths from '../../app/pages/learn/myths.vue'
 import Psychology from '../../app/pages/learn/psychology.vue'
+import Volatility from '../../app/pages/learn/volatility.vue'
 import Glossary from '../../app/pages/learn/glossary.vue'
 
 const stubs = { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' }, UIcon: true }
@@ -162,6 +163,28 @@ describe('psychology', () => {
     expect(hrefs).toContain('/learn/pachislo')
     expect(hrefs).toContain('/learn/myths')
     expect(w.text().toLowerCase()).toContain('x-ray')
+  })
+})
+
+describe('volatility', () => {
+  it('renders the live floor volatility table — sd/coin and N₀ for every machine', () => {
+    // the rtpClient fallback settles synchronously, so no ticks are needed
+    const w = mount(Volatility, { global: { stubs } })
+    const t = w.text()
+    expect(t).toContain('Sevens Ablaze')
+    expect(t).toContain('Diamond Doubler')
+    expect(t.toLowerCase()).toContain('ride')
+    expect(t).toContain('N₀')
+    expect(t).toMatch(/\d+\.\d\d/) // live sd figures rendered
+    expect(t).toMatch(/×\s*wilder|wilder/i) // the wildness headline
+  })
+
+  it('points at the Sim Lab and defines its terms via the glossary', () => {
+    const w = mount(Volatility, { global: { stubs } })
+    const hrefs = w.findAll('a').map(a => a.attributes('href'))
+    expect(hrefs).toContain('/sim-lab')
+    expect(hrefs).toContain('/learn/glossary#sd-per-coin')
+    expect(hrefs).toContain('/learn/glossary#n0')
   })
 })
 
