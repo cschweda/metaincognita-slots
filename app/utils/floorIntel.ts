@@ -34,6 +34,16 @@ export function intelFromReport(def: MachineDef, report: ExactRtpReport): FloorI
   }
 }
 
+/**
+ * Exact-report options for "what does THIS bet do": stepper and Bally exact
+ * math consume `coins` and recompute instantly; video's 24⁵ enumeration must
+ * never be forked per bet (its per-coin RTP doesn't depend on it anyway).
+ */
+export function edgeOpts(def: MachineDef, coins: number | undefined): FloorIntelOptions {
+  if (coins === undefined) return {}
+  return def.family === 'stepper' || def.family === 'bally-em' ? { coins } : {}
+}
+
 const cache = new Map<string, FloorIntel>()
 
 /**
