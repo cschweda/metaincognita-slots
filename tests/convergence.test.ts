@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { exactRtp, simulateMachine } from '../app/engine'
+import { exactRtp } from '../app/engine'
+import { simulateMachine } from '../app/engine/simulate'
 import { DIAMOND_DOUBLER } from '../app/machines/diamond-doubler'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
 import { SERIES_E_3LINE } from '../app/machines/series-e-3line'

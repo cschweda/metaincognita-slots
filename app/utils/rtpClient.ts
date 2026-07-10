@@ -90,12 +90,30 @@ export function exactRtpAsync(def: MachineDef, opts: FloorIntelOptions = {}): Pr
   const inFlight = pending.get(key)
   if (inFlight !== undefined) return inFlight
 
+  // Parked families' solvers live behind ~/engine/parked — load them before
+  // any main-thread exactRtp on such a def (worker crash or no-Worker paths).
+  const needsParked = def.family === 'blackjack-reel' || def.family === 'lock-reel'
+  const syncCompute = async (): Promise<ExactRtpReport> => {
+    if (needsParked) await import('~/engine/parked')
+    return exactRtp(def, toEngineOpts(opts))
+  }
+
   const w = getWorker()
   if (w === null) {
-    // Sync fallback: compute now, cache BEFORE resolving.
-    const report = exactRtp(def, toEngineOpts(opts))
-    reports.set(key, report)
-    return Promise.resolve(report)
+    // Sync-path fallback: compute now, cache BEFORE resolving (floor families
+    // stay fully synchronous — parked ones await their solver module first).
+    if (!needsParked) {
+      const report = exactRtp(def, toEngineOpts(opts))
+      reports.set(key, report)
+      return Promise.resolve(report)
+    }
+    const p = syncCompute().then((report) => {
+      reports.set(key, report)
+      pending.delete(key)
+      return report
+    })
+    pending.set(key, p)
+    return p
   }
 
   const reqId = nextReqId++
@@ -104,7 +122,7 @@ export function exactRtpAsync(def: MachineDef, opts: FloorIntelOptions = {}): Pr
     const msg: RtpWorkerIncoming = { type: 'exactRtp', reqId, machineId: def.id, opts: toEngineOpts(opts) }
     w.postMessage(msg)
   })
-    .catch(() => exactRtp(def, toEngineOpts(opts))) // degraded to jank, never to missing numbers
+    .catch(() => syncCompute()) // degraded to jank, never to missing numbers
     .then((report) => {
       reports.set(key, report)
       pending.delete(key)

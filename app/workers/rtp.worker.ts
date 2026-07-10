@@ -5,6 +5,7 @@
 // rtpClient keeps one instance for the whole session and dispatches by reqId.
 import { ALL_MACHINES } from '~/machines'
 import { exactRtp } from '~/engine'
+import '~/engine/parked' // registers the parked families' exactRtp solvers
 import { runLdwExperiment } from '~/utils/ldwExperiment'
 import { runMythsExperiment } from '~/utils/mythsExperiment'
 import type { RtpWorkerIncoming, RtpWorkerOutgoing } from './rtp-worker-protocol'

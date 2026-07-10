@@ -3,6 +3,8 @@ import { lockReelExactRtp, reelCashEvs, reelSevenOdds, bonusOdds, bonusEv, lockR
 import { exactRtp } from '../app/engine/exactRtp'
 import { STOP_AND_LOCK_777 } from '../app/machines/stop-and-lock-777'
 import type { LockReelMachineDef } from '../app/engine/types'
+// exactRtp routes parked families through registered solvers — load them.
+import '../app/engine/parked'
 
 /**
  * A compact, fully valid lock-reel fixture for property checks (NOT the shipped

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { addCoinToProgressive, initMachineState, simulateMachine, spin } from '../app/engine'
+import { addCoinToProgressive, initMachineState, spin } from '../app/engine'
+import { simulateMachine } from '../app/engine/simulate'
 import { FLOOR } from '../app/machines'
 import { DIAMOND_DOUBLER } from '../app/machines/diamond-doubler'
 import { SERIES_E_3LINE } from '../app/machines/series-e-3line'

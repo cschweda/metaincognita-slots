@@ -8,7 +8,8 @@
  *
  * Exit code 0 when every machine lands inside its 3.5-sigma band, 1 otherwise.
  */
-import { exactRtp, simulateMachine } from '../app/engine'
+import { exactRtp } from '../app/engine'
+import { simulateMachine } from '../app/engine/simulate'
 import { validateMachineDef } from '../app/engine/validate'
 import type { MachineDef } from '../app/engine/types'
 import { FLOOR } from '../app/machines'

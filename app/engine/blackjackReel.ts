@@ -17,6 +17,7 @@ import type {
 } from './types'
 import type { RandomFn } from './rng'
 import { buildDeck, shuffle, cardValue, isAce } from './deck'
+import { freshBlackjackState } from './sessionState'
 
 // ---------- launch / velocity helpers ----------
 
@@ -57,21 +58,10 @@ export function handTotal(cards: readonly SymbolId[]): number {
 }
 
 // ---------- fresh session state ----------
-
-export function freshBlackjackState(): BlackjackReelSessionState {
-  return {
-    phase: 'idle',
-    reelStrips: [],
-    landed: [null, null, null, null, null],
-    idx: 0,
-    hand: [],
-    velocity: 0,
-    multiplier: 1,
-    crashed: false,
-    natural: false,
-    ante: 0
-  }
-}
+// Lives in ./sessionState (data-only) so the store's restore path and the
+// barrel's initMachineState stay off this engine's bundle; re-exported here so
+// existing imports keep working.
+export { freshBlackjackState } from './sessionState'
 
 // ---------- outcome builder ----------
 

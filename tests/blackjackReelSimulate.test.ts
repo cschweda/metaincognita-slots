@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { simulateMachine } from '../app/engine'
+import { simulateMachine } from '../app/engine/simulate'
 import { blackjackReelExactRtp } from '../app/engine/blackjackReelRtp'
 import { FLAMEOUT_21 } from '../app/machines/flameout-21'
 

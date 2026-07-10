@@ -5,7 +5,8 @@ import { describeOutcome } from '../app/utils/outcomeText'
 import { useSlotsStore, STORAGE_KEY } from '../app/stores/slots'
 import { CANAL_ROYALE } from '../app/machines/canal-royale'
 import { STOCK_RUSH } from '../app/machines/stock-rush'
-import { mulberry32, simulateMachine } from '../app/engine'
+import { mulberry32 } from '../app/engine'
+import { simulateMachine } from '../app/engine/simulate'
 import { setLiveRand } from '../app/utils/liveRand'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
 import { FLAMEOUT_21 } from '../app/machines/flameout-21'
@@ -21,7 +22,7 @@ beforeEach(() => {
 })
 
 describe('session lifecycle', () => {
-  it('starts a session with a bankroll and persists it', () => {
+  it('starts a session with a bankroll and persists it', async () => {
     const store = freshStore()
     store.startSession(100_000)
     expect(store.phase).toBe('playing')
@@ -31,7 +32,7 @@ describe('session lifecycle', () => {
     expect(raw.bankrollCents).toBe(100_000)
   })
 
-  it('selectMachine initializes engine state once and keeps it across visits', () => {
+  it('selectMachine initializes engine state once and keeps it across visits', async () => {
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('sevens-ablaze')
@@ -43,7 +44,7 @@ describe('session lifecycle', () => {
     expect(store.currentMachineId).toBe('sevens-ablaze')
   })
 
-  it('rejects unknown machines', () => {
+  it('rejects unknown machines', async () => {
     const store = freshStore()
     store.startSession(100_000)
     expect(() => store.selectMachine('not-a-machine')).toThrow(/unknown machine/i)
@@ -51,7 +52,7 @@ describe('session lifecycle', () => {
 })
 
 describe('bet clamping', () => {
-  it('defaults to max coins and clamps within 1..maxCoins', () => {
+  it('defaults to max coins and clamps within 1..maxCoins', async () => {
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('canal-royale')
@@ -64,7 +65,7 @@ describe('bet clamping', () => {
     expect(store.currentBet).toBe(25)
   })
 
-  it('fixed-bet machines refuse other bets', () => {
+  it('fixed-bet machines refuse other bets', async () => {
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('dragons-hoard')
@@ -77,7 +78,7 @@ describe('bet clamping', () => {
 })
 
 describe('persistence round-trip and sanitize-on-load', () => {
-  it('round-trips a mid-feature video state EXACTLY', () => {
+  it('round-trips a mid-feature video state EXACTLY', async () => {
     const a = freshStore()
     a.startSession(50_000)
     a.selectMachine('canal-royale')
@@ -93,7 +94,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(b.phase).toBe('playing')
   })
 
-  it('round-trips a hold-and-spin multiplier gem without dropping it', () => {
+  it('round-trips a hold-and-spin multiplier gem without dropping it', async () => {
     const a = freshStore()
     a.startSession(50_000)
     a.selectMachine('ruby-of-gargoyle')
@@ -113,7 +114,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(f.locked.slice(2).every(c => c === null)).toBe(true)
   })
 
-  it('round-trips pachislo queues and bonus state exactly', () => {
+  it('round-trips pachislo queues and bonus state exactly', async () => {
     const a = freshStore()
     a.startSession(50_000)
     a.selectMachine('stock-rush')
@@ -132,7 +133,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(loaded.oddsLevel).toBe(6)
   })
 
-  it('survives garbage: corrupt JSON, wrong version, hostile shapes', () => {
+  it('survives garbage: corrupt JSON, wrong version, hostile shapes', async () => {
     localStorage.setItem(STORAGE_KEY, '{not json')
     expect(freshStore().resume()).toBe(false)
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 99, bankrollCents: 1 }))
@@ -156,7 +157,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(store.settings.betsByMachine['canal-royale']).toBe(CANAL_ROYALE.maxCoins)
   })
 
-  it('rejects engine-unreachable bonus states (the wedge shapes)', () => {
+  it('rejects engine-unreachable bonus states (the wedge shapes)', async () => {
     const wedges = [
       { type: 'big', round: 3, jacLeft: 0, interlude: null },
       { type: 'big', round: 3, jacLeft: 0, interlude: { index: 2, bells: 0 } },
@@ -177,7 +178,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
     }
   })
 
-  it('keeps fixed-bet machines at full bet even when the save lies', () => {
+  it('keeps fixed-bet machines at full bet even when the save lies', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1, bankrollCents: 1000, currentMachineId: null, machineStates: {},
       history: [], stats: null,
@@ -190,7 +191,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(store.settings.betsByMachine['canal-royale']).toBe(10) // selectable lines stay honored
   })
 
-  it('sanitizes pachislo state whose shape lies', () => {
+  it('sanitizes pachislo state whose shape lies', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 1000,
@@ -217,7 +218,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(ps.bonus).toBeNull() // invalid bonus shape → reset
   })
 
-  it('whitelists gameKind — a bogus kind loads as "base"', () => {
+  it('whitelists gameKind — a bogus kind loads as "base"', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1, bankrollCents: 1000, currentMachineId: null, machineStates: {},
       history: [
@@ -231,7 +232,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(store.history.map(r => r.gameKind)).toEqual(['free-spin', 'base'])
   })
 
-  it('nextRecordId outruns every restored history id', () => {
+  it('nextRecordId outruns every restored history id', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1, bankrollCents: 1000, currentMachineId: null, machineStates: {},
       nextRecordId: 1, // corrupt: would collide with restored ids 5 and 6
@@ -246,7 +247,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
     expect(store.nextRecordId).toBe(7)
   })
 
-  it('clamps a negative netPeakCents to 0 on load', () => {
+  it('clamps a negative netPeakCents to 0 on load', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1, bankrollCents: 1000, currentMachineId: null, machineStates: {},
       history: [], settings: null,
@@ -259,7 +260,7 @@ describe('persistence round-trip and sanitize-on-load', () => {
 })
 
 describe('spin orchestration', () => {
-  it('atomic spin: bankroll, state, history, persistence all move together', () => {
+  it('atomic spin: bankroll, state, history, persistence all move together', async () => {
     setLiveRand(mulberry32(42))
     const store = freshStore()
     store.startSession(100_000) // $1,000 — sevens-ablaze denom is 100¢
@@ -277,7 +278,7 @@ describe('spin orchestration', () => {
     expect(store.spinning).toBe(false)
   })
 
-  it('refuses to spin while spinning or broke', () => {
+  it('refuses to spin while spinning or broke', async () => {
     setLiveRand(mulberry32(43))
     const store = freshStore()
     store.startSession(100) // $1 — one canal spin at 25 lines x 1¢ = 25¢
@@ -293,7 +294,7 @@ describe('spin orchestration', () => {
     expect(store.liveAnnouncement).toMatch(/out of credits/i)
   })
 
-  it('feeds progressives with simulateMachine v2 parity (live mode, same seed)', () => {
+  it('feeds progressives with simulateMachine v2 parity (live mode, same seed)', async () => {
     const SEED = 777
     const SPINS = 3_000
     setLiveRand(mulberry32(SEED))
@@ -320,7 +321,7 @@ describe('spin orchestration', () => {
     }
   })
 
-  it('pachislo: presses flow through; bonus games cost their token; announcements narrate', () => {
+  it('pachislo: presses flow through; bonus games cost their token; announcements narrate', async () => {
     setLiveRand(mulberry32(99))
     const store = freshStore()
     store.startSession(10_000) // $100 in 25¢ tokens
@@ -332,7 +333,7 @@ describe('spin orchestration', () => {
     expect(store.liveAnnouncement.length).toBeGreaterThan(0)
   })
 
-  it('setOddsLevel only when idle', () => {
+  it('setOddsLevel only when idle', async () => {
     setLiveRand(mulberry32(123))
     const store = freshStore()
     store.startSession(10_000)
@@ -343,7 +344,7 @@ describe('spin orchestration', () => {
     expect(() => store.setOddsLevel(1)).toThrow(/idle/i)
   })
 
-  it('export produces a readable text log', () => {
+  it('export produces a readable text log', async () => {
     setLiveRand(mulberry32(7))
     const store = freshStore()
     store.startSession(100_000)
@@ -355,7 +356,7 @@ describe('spin orchestration', () => {
     expect(text).toContain('Session totals')
   })
 
-  it('rejects malformed presses BEFORE any state moves', () => {
+  it('rejects malformed presses BEFORE any state moves', async () => {
     setLiveRand(mulberry32(55))
     const store = freshStore()
     store.startSession(10_000)
@@ -368,7 +369,7 @@ describe('spin orchestration', () => {
     expect(store.liveAnnouncement).toMatch(/timing glitch/i)
   })
 
-  it('spinOnce survives a resume that lost perMachine totals', () => {
+  it('spinOnce survives a resume that lost perMachine totals', async () => {
     setLiveRand(mulberry32(56))
     const a = freshStore()
     a.startSession(100_000)
@@ -387,7 +388,7 @@ describe('spin orchestration', () => {
 })
 
 describe('peekSavedSession', () => {
-  it('detects valid saves without mutating the store', () => {
+  it('detects valid saves without mutating the store', async () => {
     const a = freshStore()
     expect(a.peekSavedSession()).toBe(false)
     a.startSession(5000)
@@ -400,7 +401,7 @@ describe('peekSavedSession', () => {
 })
 
 describe('mid-feature reload (spec: must restore exactly)', () => {
-  it('canal-royale free spins survive a reload and play out', () => {
+  it('canal-royale free spins survive a reload and play out', async () => {
     setLiveRand(mulberry32(31337))
     const a = freshStore()
     a.startSession(10_000_000)
@@ -432,7 +433,7 @@ describe('mid-feature reload (spec: must restore exactly)', () => {
 })
 
 describe('describeOutcome — spoken net parity', () => {
-  it('a sub-bet win (LDW) is announced as a net loss', () => {
+  it('a sub-bet win (LDW) is announced as a net loss', async () => {
     const store = freshStore()
     store.startSession(100_000)
     const out = { totalPayout: 14, coinsIn: 25, featureEvents: [], progressiveEvents: [] }
@@ -441,14 +442,14 @@ describe('describeOutcome — spoken net parity', () => {
     expect(text).toContain('Net down 11.')
   })
 
-  it('a win that beats the bet is announced as a net gain', () => {
+  it('a win that beats the bet is announced as a net gain', async () => {
     const store = freshStore()
     store.startSession(100_000)
     const out = { totalPayout: 1030, coinsIn: 25, featureEvents: [], progressiveEvents: [] }
     expect(describeOutcome(CANAL_ROYALE, out as never, store.bankrollCents)).toContain('Net up 1,005.')
   })
 
-  it('a no-win announces the forfeited bet as a net loss', () => {
+  it('a no-win announces the forfeited bet as a net loss', async () => {
     const store = freshStore()
     store.startSession(100_000)
     const out = { totalPayout: 0, coinsIn: 25, featureEvents: [], progressiveEvents: [] }
@@ -457,7 +458,7 @@ describe('describeOutcome — spoken net parity', () => {
     expect(text).toContain('Net down 25.')
   })
 
-  it('a free spin that pays (coins-in 0) is announced as a net gain, not an LDW', () => {
+  it('a free spin that pays (coins-in 0) is announced as a net gain, not an LDW', async () => {
     const store = freshStore()
     store.startSession(100_000)
     const out = { totalPayout: 14, coinsIn: 0, featureEvents: [], progressiveEvents: [] }
@@ -475,27 +476,27 @@ describe('blackjack-reel interactive actions — Flameout 21', () => {
 
   /** Deal, then force reels 0–1 to specific cards and stop them so a 2-card
    *  hand sets launch + velocity. Returns the live bj state at idx=2 (climb). */
-  function dealHand(store: ReturnType<typeof useSlotsStore>, cards: [string, string]) {
-    store.deal()
+  async function dealHand(store: ReturnType<typeof useSlotsStore>, cards: [string, string]) {
+    await store.deal()
     const bj = store.machineStates['flameout-21']!.blackjackReel!
     bj.reelStrips[0] = [cards[0]]
     bj.reelStrips[1] = [cards[1]]
     store.revealDone()
-    store.stop() // lock card 0 → reel 0
+    await store.stop() // lock card 0 → reel 0
     store.revealDone()
-    store.stop() // lock card 1 → reel 1 (sets launch + velocity)
+    await store.stop() // lock card 1 → reel 1 (sets launch + velocity)
     store.revealDone()
     return bj
   }
 
-  it('deal charges the ante, sets phase to spinning, books deal record', () => {
+  it('deal charges the ante, sets phase to spinning, books deal record', async () => {
     setLiveRand(mulberry32(42))
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('flameout-21')
     store.setBet(2) // 2-coin ante
     const before = store.bankrollCents
-    store.deal()
+    await store.deal()
 
     expect(store.spinning).toBe(true) // gate raised
 
@@ -517,14 +518,14 @@ describe('blackjack-reel interactive actions — Flameout 21', () => {
     expect(saved.bankrollCents).toBe(store.bankrollCents)
   })
 
-  it('deal → stop → cashOut banks round(ante × multiplier × denom)', () => {
+  it('deal → stop → cashOut banks round(ante × multiplier × denom)', async () => {
     setLiveRand(mulberry32(7))
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('flameout-21')
     store.setBet(3) // ante = 3 coins = 300¢
     const start = store.bankrollCents
-    const bj = dealHand(store, ['9S', '9D']) // total 18 → launch + velocity set
+    const bj = await dealHand(store, ['9S', '9D']) // total 18 → launch + velocity set
 
     expect(bj.phase).toBe('spinning')
     expect(bj.idx).toBe(2)
@@ -535,7 +536,7 @@ describe('blackjack-reel interactive actions — Flameout 21', () => {
 
     // Force reel 2 to CLIMB, stop it: multiplier ×= velocity, still spinning.
     bj.reelStrips[2] = ['CLIMB']
-    store.stop()
+    await store.stop()
     expect(bj.phase).toBe('spinning')
     expect(bj.idx).toBe(3)
     expect(bj.multiplier).toBeCloseTo(launchMult * velocity, 10)
@@ -545,7 +546,7 @@ describe('blackjack-reel interactive actions — Flameout 21', () => {
     const expectedCents = Math.round(3 * bj.multiplier * DENOM)
     const bankBefore = store.bankrollCents
     const histBefore = store.history.length
-    store.cashOut()
+    await store.cashOut()
     expect(bj.phase).toBe('resolved')
     expect(store.history.length).toBe(histBefore + 1)
     const rec = store.history.at(-1)!
@@ -556,19 +557,19 @@ describe('blackjack-reel interactive actions — Flameout 21', () => {
     expect(store.bankrollCents).toBe(start - 300 + expectedCents)
   })
 
-  it('a CRASH pays 0 and resolves the hand', () => {
+  it('a CRASH pays 0 and resolves the hand', async () => {
     setLiveRand(mulberry32(99))
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('flameout-21')
     store.setBet(2)
     const start = store.bankrollCents
-    const bj = dealHand(store, ['KS', 'KD']) // total 20
+    const bj = await dealHand(store, ['KS', 'KD']) // total 20
 
     // Force reel 2 to CRASH and stop it.
     bj.reelStrips[2] = ['CRASH']
     const histBefore = store.history.length
-    store.stop()
+    await store.stop()
     expect(bj.crashed).toBe(true)
     expect(bj.phase).toBe('resolved')
     expect(store.history.length).toBe(histBefore + 1)
@@ -578,50 +579,50 @@ describe('blackjack-reel interactive actions — Flameout 21', () => {
     expect(store.bankrollCents).toBe(start - 200)
   })
 
-  it('cashOut is a no-op before the first card lands (idx < 1)', () => {
+  it('cashOut is a no-op before the first card lands (idx < 1)', async () => {
     setLiveRand(mulberry32(123))
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('flameout-21')
     store.setBet(1)
-    store.deal()
+    await store.deal()
     store.revealDone()
     const bj = store.machineStates['flameout-21']!.blackjackReel!
     expect(bj.idx).toBe(0) // no card stopped yet
     const histBefore = store.history.length
-    store.cashOut() // idx < 1 → guarded no-op
+    await store.cashOut() // idx < 1 → guarded no-op
     expect(bj.phase).toBe('spinning')
     expect(store.history.length).toBe(histBefore)
   })
 
-  it('deal is a no-op while spinning or broke', () => {
+  it('deal is a no-op while spinning or broke', async () => {
     setLiveRand(mulberry32(1))
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('flameout-21')
-    store.deal()
+    await store.deal()
     expect(store.spinning).toBe(true) // gate is up
 
     // calling again while spinning does nothing
-    store.deal()
+    await store.deal()
     expect(store.history).toHaveLength(1)
 
     // lower gate, stop a card so cashOut is legal, cash out, lower gate again
     store.revealDone()
-    store.stop()
+    await store.stop()
     store.revealDone()
-    store.cashOut()
+    await store.cashOut()
     store.revealDone()
     expect(store.history).toHaveLength(2) // deal + cashOut records
 
     // drain bankroll below 1 coin (100¢) and try to deal
     store.bankrollCents = 10 // 10¢ < 100¢
-    store.deal()
+    await store.deal()
     expect(store.history).toHaveLength(2) // no new deal record
     expect(store.liveAnnouncement).toMatch(/out of credits/i)
   })
 
-  it('spinOnce is a no-op for blackjack-reel (uses its own actions)', () => {
+  it('spinOnce is a no-op for blackjack-reel (uses its own actions)', async () => {
     setLiveRand(mulberry32(2))
     const store = freshStore()
     store.startSession(100_000)
@@ -631,14 +632,14 @@ describe('blackjack-reel interactive actions — Flameout 21', () => {
     expect(store.spinning).toBe(false)
   })
 
-  it('a full deal → stop → cashOut hand round-trips through persistence', () => {
+  it('a full deal → stop → cashOut hand round-trips through persistence', async () => {
     setLiveRand(mulberry32(42))
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('flameout-21')
     store.setBet(1)
-    dealHand(store, ['9S', '9D'])
-    store.cashOut()
+    await dealHand(store, ['9S', '9D'])
+    await store.cashOut()
     store.revealDone()
 
     const b = freshStore()
@@ -648,7 +649,7 @@ describe('blackjack-reel interactive actions — Flameout 21', () => {
     expect(b.history.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('bet is selectable for blackjack-reel (1..maxCoins), not forced to max', () => {
+  it('bet is selectable for blackjack-reel (1..maxCoins), not forced to max', async () => {
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('flameout-21')
@@ -663,19 +664,19 @@ describe('blackjack-reel interactive actions — Flameout 21', () => {
     expect(store.currentBet).toBe(FLAMEOUT_21.maxCoins)
   })
 
-  it('one deal → stop → cashOut hand increments spins by exactly 1', () => {
+  it('one deal → stop → cashOut hand increments spins by exactly 1', async () => {
     const store = freshStore()
     setLiveRand(mulberry32(999))
     store.startSession(1_000_000)
     store.selectMachine('flameout-21')
     const before = store.stats.spins
-    dealHand(store, ['9S', '9D'])
-    store.cashOut()
+    await dealHand(store, ['9S', '9D'])
+    await store.cashOut()
     store.revealDone()
     expect(store.stats.spins).toBe(before + 1)
   })
 
-  it('defaults the crash machine bet to 1 coin', () => {
+  it('defaults the crash machine bet to 1 coin', async () => {
     const store = freshStore()
     store.startSession(100_000)
     store.selectMachine('flameout-21')
@@ -684,7 +685,7 @@ describe('blackjack-reel interactive actions — Flameout 21', () => {
 })
 
 describe('blackjack-reel sanitizeMachineState — Flameout 21', () => {
-  it('round-trips a mid-climb spinning state exactly', () => {
+  it('round-trips a mid-climb spinning state exactly', async () => {
     const a = freshStore()
     a.startSession(50_000)
     a.selectMachine('flameout-21')
@@ -710,7 +711,7 @@ describe('blackjack-reel sanitizeMachineState — Flameout 21', () => {
     expect(b.machineStates['flameout-21']!.blackjackReel).toEqual(midClimbState)
   })
 
-  it('restores idle phase if blackjackReel blob is corrupt', () => {
+  it('restores idle phase if blackjackReel blob is corrupt', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
@@ -747,7 +748,7 @@ describe('blackjack-reel sanitizeMachineState — Flameout 21', () => {
     expect(bj.reelStrips).toEqual([])
   })
 
-  it('rejects a state with invalid SymbolIds in landed', () => {
+  it('rejects a state with invalid SymbolIds in landed', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
@@ -780,7 +781,7 @@ describe('blackjack-reel sanitizeMachineState — Flameout 21', () => {
     expect(store.machineStates['flameout-21']!.blackjackReel!.phase).toBe('idle')
   })
 
-  it('rejects a state with ante > maxCoins', () => {
+  it('rejects a state with ante > maxCoins', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
@@ -814,7 +815,7 @@ describe('blackjack-reel sanitizeMachineState — Flameout 21', () => {
     expect(store.machineStates['flameout-21']!.blackjackReel!.ante).toBe(0)
   })
 
-  it('round-trips a resolved (crash) state exactly', () => {
+  it('round-trips a resolved (crash) state exactly', async () => {
     const crashState = {
       phase: 'resolved' as const,
       reelStrips: [['AS'], ['KS'], ['CRASH', 'CLIMB'], ['CLIMB'], ['CLIMB']],
@@ -857,14 +858,14 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
   // Stop & Lock 777: denomination 25¢, maxCoins 20.
   const DENOM = STOP_AND_LOCK_777.denominationCents
 
-  it('lockDeal charges the ante once, sets phase spinning, books a deal record', () => {
+  it('lockDeal charges the ante once, sets phase spinning, books a deal record', async () => {
     setLiveRand(mulberry32(42))
     const store = freshStore()
     store.startSession(1_000_000)
     store.selectMachine('stop-and-lock-777')
     store.setBet(2) // 2-coin ante
     const before = store.bankrollCents
-    store.lockDeal()
+    await store.lockDeal()
 
     expect(store.spinning).toBe(true) // gate raised
 
@@ -886,7 +887,7 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     expect(saved.bankrollCents).toBe(store.bankrollCents)
   })
 
-  it('a full round (deal → 5 stops → collect) charges the ante once, books one collect, +1 spin, round-trips', () => {
+  it('a full round (deal → 5 stops → collect) charges the ante once, books one collect, +1 spin, round-trips', async () => {
     setLiveRand(mulberry32(7))
     const store = freshStore()
     store.startSession(1_000_000)
@@ -895,7 +896,7 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     const start = store.bankrollCents
     const spinsBefore = store.stats.spins
 
-    store.lockDeal()
+    await store.lockDeal()
     const lr = store.machineStates['stop-and-lock-777']!.lockReel!
     expect(lr.phase).toBe('spinning')
     // Five stops, then drain any bonus the round happens to trigger — the round
@@ -903,12 +904,12 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     // bonus fires, so this stays robust to RNG drift.
     for (let i = 0; i < 5; i++) {
       store.revealDone()
-      store.lockStop()
+      await store.lockStop()
     }
     let guard = 0
     while (lr.phase === 'bonus') {
       store.revealDone()
-      store.lockStop()
+      await store.lockStop()
       if (++guard > 1000) throw new Error('bonus did not resolve')
     }
     expect(lr.phase).toBe('resolved')
@@ -937,7 +938,7 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     expect(b.bankrollCents).toBe(store.bankrollCents)
   })
 
-  it('a forced 3-seven round enters the bonus and the bonus action books the full collect', () => {
+  it('a forced 3-seven round enters the bonus and the bonus action books the full collect', async () => {
     setLiveRand(mulberry32(123))
     const store = freshStore()
     store.startSession(1_000_000)
@@ -945,7 +946,7 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     store.setBet(1)
     const start = store.bankrollCents
 
-    store.lockDeal()
+    await store.lockDeal()
     const lr = store.machineStates['stop-and-lock-777']!.lockReel!
     // Force the first four reels stopped with three sticky 7s already locked, so
     // the fifth honest stop keeps sevenCount ≥ 3 → the 777 BONUS opens. (We force
@@ -962,7 +963,7 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
 
     // Fifth stop: resolves into the bonus (no collect booked yet).
     store.revealDone()
-    store.lockStop()
+    await store.lockStop()
     expect(lr.phase).toBe('bonus')
     expect(lr.sevenCount).toBeGreaterThanOrEqual(3)
     expect(store.history.length).toBe(histBefore) // bonus trigger pays nothing yet
@@ -971,7 +972,7 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     let guard = 0
     while (lr.phase === 'bonus') {
       store.revealDone()
-      store.lockStop()
+      await store.lockStop()
       if (++guard > 1000) throw new Error('bonus did not resolve')
     }
     expect(lr.phase).toBe('resolved')
@@ -989,7 +990,7 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     expect(store.bankrollCents).toBe(start - DENOM + lr.collectCredits * DENOM)
   })
 
-  it('lockStop is a no-op outside spinning/bonus; lockDeal is a no-op while spinning or broke', () => {
+  it('lockStop is a no-op outside spinning/bonus; lockDeal is a no-op while spinning or broke', async () => {
     setLiveRand(mulberry32(1))
     const store = freshStore()
     store.startSession(1_000_000)
@@ -997,26 +998,26 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     store.setBet(1)
 
     // lockStop before any deal (phase idle) → no-op
-    store.lockStop()
+    await store.lockStop()
     expect(store.history).toHaveLength(0)
 
-    store.lockDeal()
+    await store.lockDeal()
     expect(store.spinning).toBe(true) // gate up
     // lockDeal again while spinning → no-op (no double-charge)
-    store.lockDeal()
+    await store.lockDeal()
     expect(store.history).toHaveLength(1)
     store.revealDone()
 
     // drain bankroll below one coin and try to deal again (after resolving a round)
     for (let i = 0; i < 5; i++) {
-      store.lockStop()
+      await store.lockStop()
       store.revealDone()
     }
     const lr = store.machineStates['stop-and-lock-777']!.lockReel!
     if (lr.phase === 'bonus') {
       let guard = 0
       while (lr.phase === 'bonus') {
-        store.lockStop()
+        await store.lockStop()
         store.revealDone()
         if (++guard > 1000) throw new Error('bonus did not resolve')
       }
@@ -1024,27 +1025,27 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     expect(lr.phase).toBe('resolved')
     const histAfterRound = store.history.length
     store.bankrollCents = 10 // 10¢ < 25¢ (one coin)
-    store.lockDeal()
+    await store.lockDeal()
     expect(store.history).toHaveLength(histAfterRound) // no new deal record
     expect(store.liveAnnouncement).toMatch(/out of credits/i)
   })
 
-  it('lockReset returns a resolved round to idle without charging', () => {
+  it('lockReset returns a resolved round to idle without charging', async () => {
     setLiveRand(mulberry32(55))
     const store = freshStore()
     store.startSession(1_000_000)
     store.selectMachine('stop-and-lock-777')
     store.setBet(1)
-    store.lockDeal()
+    await store.lockDeal()
     for (let i = 0; i < 5; i++) {
       store.revealDone()
-      store.lockStop()
+      await store.lockStop()
     }
     const lr = store.machineStates['stop-and-lock-777']!.lockReel!
     let guard = 0
     while (lr.phase === 'bonus') {
       store.revealDone()
-      store.lockStop()
+      await store.lockStop()
       if (++guard > 1000) throw new Error('bonus did not resolve')
     }
     expect(lr.phase).toBe('resolved')
@@ -1060,7 +1061,7 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     expect(store.history).toHaveLength(histBefore) // reset is free
   })
 
-  it('spinOnce is a no-op for lock-reel (uses its own actions)', () => {
+  it('spinOnce is a no-op for lock-reel (uses its own actions)', async () => {
     setLiveRand(mulberry32(2))
     const store = freshStore()
     store.startSession(1_000_000)
@@ -1070,14 +1071,14 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
     expect(store.spinning).toBe(false)
   })
 
-  it('defaults the lock-reel bet to 1 coin (small-bet pull)', () => {
+  it('defaults the lock-reel bet to 1 coin (small-bet pull)', async () => {
     const store = freshStore()
     store.startSession(1_000_000)
     store.selectMachine('stop-and-lock-777')
     expect(store.currentBet).toBe(1)
   })
 
-  it('bet is selectable for lock-reel (1..maxCoins), not forced to max', () => {
+  it('bet is selectable for lock-reel (1..maxCoins), not forced to max', async () => {
     const store = freshStore()
     store.startSession(1_000_000)
     store.selectMachine('stop-and-lock-777')
@@ -1091,7 +1092,7 @@ describe('lock-reel interactive actions — Stop & Lock 777', () => {
 })
 
 describe('lock-reel sanitizeMachineState — Stop & Lock 777', () => {
-  it('round-trips a mid-stop spinning grid exactly', () => {
+  it('round-trips a mid-stop spinning grid exactly', async () => {
     const a = freshStore()
     a.startSession(50_000)
     a.selectMachine('stop-and-lock-777')
@@ -1119,7 +1120,7 @@ describe('lock-reel sanitizeMachineState — Stop & Lock 777', () => {
     expect(b.machineStates['stop-and-lock-777']!.lockReel).toEqual(midState)
   })
 
-  it('round-trips a resolved (bonus-fill GRAND) state exactly', () => {
+  it('round-trips a resolved (bonus-fill GRAND) state exactly', async () => {
     const grandState = {
       phase: 'resolved' as const,
       grid: [
@@ -1157,7 +1158,7 @@ describe('lock-reel sanitizeMachineState — Stop & Lock 777', () => {
     expect(store.machineStates['stop-and-lock-777']!.lockReel).toEqual(grandState)
   })
 
-  it('restores a fresh idle state when the lockReel blob is corrupt', () => {
+  it('restores a fresh idle state when the lockReel blob is corrupt', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
@@ -1194,7 +1195,7 @@ describe('lock-reel sanitizeMachineState — Stop & Lock 777', () => {
     expect(lr.grid.every(col => col.length === STOP_AND_LOCK_777.rows && col.every(c => c === null))).toBe(true)
   })
 
-  it('rejects wrong grid dimensions (4 columns instead of 5)', () => {
+  it('rejects wrong grid dimensions (4 columns instead of 5)', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
@@ -1230,7 +1231,7 @@ describe('lock-reel sanitizeMachineState — Stop & Lock 777', () => {
     expect(store.machineStates['stop-and-lock-777']!.lockReel!.phase).toBe('idle')
   })
 
-  it('rejects a bogus symbol id in the grid', () => {
+  it('rejects a bogus symbol id in the grid', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
@@ -1267,7 +1268,7 @@ describe('lock-reel sanitizeMachineState — Stop & Lock 777', () => {
     expect(store.machineStates['stop-and-lock-777']!.lockReel!.phase).toBe('idle')
   })
 
-  it('rejects an incoherent phase/idx (spinning with a stopped reel left null)', () => {
+  it('rejects an incoherent phase/idx (spinning with a stopped reel left null)', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
@@ -1304,7 +1305,7 @@ describe('lock-reel sanitizeMachineState — Stop & Lock 777', () => {
     expect(store.machineStates['stop-and-lock-777']!.lockReel!.phase).toBe('idle')
   })
 
-  it('rejects a bonus phase with fewer than three sevens (incoherent trigger)', () => {
+  it('rejects a bonus phase with fewer than three sevens (incoherent trigger)', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       v: 1,
       bankrollCents: 5000,
@@ -1343,7 +1344,7 @@ describe('lock-reel sanitizeMachineState — Stop & Lock 777', () => {
 })
 
 describe('storage version notice', () => {
-  it('flags an incompatible save on peek AND on load, and can be dismissed', () => {
+  it('flags an incompatible save on peek AND on load, and can be dismissed', async () => {
     setActivePinia(createPinia())
     localStorage.clear()
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 99, bankrollCents: 5000 }))
@@ -1360,7 +1361,7 @@ describe('storage version notice', () => {
     expect(store.storageNotice).toBe(true)
   })
 
-  it('does not flag a valid save, an empty slot, or unparseable garbage', () => {
+  it('does not flag a valid save, an empty slot, or unparseable garbage', async () => {
     setActivePinia(createPinia())
     localStorage.clear()
     const store = useSlotsStore()

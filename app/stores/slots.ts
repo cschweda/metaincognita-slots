@@ -2,8 +2,9 @@ import { defineStore } from 'pinia'
 import { feedProgressive, freshBlackjackState, freshLockState, initMachineState, nextSpinCost, spin, validateMachineDef } from '~/engine'
 import type { BlackjackReelMachineDef, LockReelMachineDef, MachineDef, MachineSessionState, SpinOutcome } from '~/engine'
 import { spinPachislo } from '~/engine/pachislo'
-import { dealReels, stopReel, cashOut as bjCashOut } from '~/engine/blackjackReel'
-import { dealStart as lockDealStart, stopReel as lockStopReel, bonusStop as lockBonusStop } from '~/engine/lockReel'
+// The parked interactive engines (blackjack-reel, lock-reel) are dynamic-
+// imported inside their actions — reachable only in a restored legacy session,
+// they must not ride the boot bundle. See ~/engine/parked.
 import { ALL_MACHINES } from '~/machines'
 import { liveRand } from '~/utils/liveRand'
 import { asFiniteNumber, asNonNegativeInt, sanitizeMachineState } from '~/engine/restore'
@@ -392,7 +393,7 @@ export const useSlotsStore = defineStore('slots', {
      * Charges the ante up-front via bookOutcome (coinsIn = currentBet, payout = 0),
      * updates wagered stats, saves, and sets the spinning gate.
      */
-    deal(): void {
+    async deal(): Promise<void> {
       const def = this.currentDef
       const state = this.currentState
       if (
@@ -413,6 +414,7 @@ export const useSlotsStore = defineStore('slots', {
       }
 
       this.spinning = true
+      const { dealReels } = await import('~/engine/parked')
       const out = dealReels(def as BlackjackReelMachineDef, state, coins, liveRand)
 
       // Charge the ante now (payout = 0); the hand result is booked later at resolve.
@@ -428,7 +430,7 @@ export const useSlotsStore = defineStore('slots', {
      * (a CRASH, or topping out after the fifth reel) the payout is booked
      * immediately; a surviving climb stays spinning with no record.
      */
-    stop(): void {
+    async stop(): Promise<void> {
       const def = this.currentDef
       const state = this.currentState
       if (
@@ -440,6 +442,7 @@ export const useSlotsStore = defineStore('slots', {
       ) return
 
       this.spinning = true
+      const { stopReel } = await import('~/engine/parked')
       const out = stopReel(def as BlackjackReelMachineDef, state, liveRand)
       this.lastOutcome = out
 
@@ -458,7 +461,7 @@ export const useSlotsStore = defineStore('slots', {
      * phase === 'spinning' and the first card has landed (idx >= 1). Free
      * (coinsIn = 0). Books the payout.
      */
-    cashOut(): void {
+    async cashOut(): Promise<void> {
       const def = this.currentDef
       const state = this.currentState
       if (
@@ -471,6 +474,7 @@ export const useSlotsStore = defineStore('slots', {
       ) return
 
       this.spinning = true
+      const { cashOut: bjCashOut } = await import('~/engine/parked')
       const out = bjCashOut(def as BlackjackReelMachineDef, state)
       this.bookOutcome(def, out)
       this.lastOutcome = out
@@ -516,7 +520,7 @@ export const useSlotsStore = defineStore('slots', {
      * fires when the current machine is lock-reel, phase is 'idle'/'resolved',
      * the gate is down, and the bankroll covers the ante.
      */
-    lockDeal(): void {
+    async lockDeal(): Promise<void> {
       const def = this.currentDef
       const state = this.currentState
       if (
@@ -537,6 +541,7 @@ export const useSlotsStore = defineStore('slots', {
       }
 
       this.spinning = true
+      const { dealStart: lockDealStart } = await import('~/engine/parked')
       const out = lockDealStart(def as LockReelMachineDef, state, coins, liveRand)
       // Charge the ante now (payout = 0); the collect is booked later at resolve.
       this.bookOutcome(def, out)
@@ -550,7 +555,7 @@ export const useSlotsStore = defineStore('slots', {
      * feature when it resolves). Free (coinsIn = 0). The collect is booked only
      * on the call that lands the round in 'resolved'. No-op outside those phases.
      */
-    lockStop(): void {
+    async lockStop(): Promise<void> {
       const def = this.currentDef
       const state = this.currentState
       if (
@@ -564,6 +569,7 @@ export const useSlotsStore = defineStore('slots', {
       if (phase !== 'spinning' && phase !== 'bonus') return
 
       this.spinning = true
+      const { lockStopReel, bonusStop: lockBonusStop } = await import('~/engine/parked')
       const out = phase === 'spinning'
         ? lockStopReel(def as LockReelMachineDef, state, liveRand)
         : lockBonusStop(def as LockReelMachineDef, state, liveRand)

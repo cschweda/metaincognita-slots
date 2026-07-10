@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { spinCascade, tierPay, ladderMult, countSymbols } from '../app/engine/cascade'
-import { initMachineState, simulateMachine } from '../app/engine'
+import { initMachineState } from '../app/engine'
+import { simulateMachine } from '../app/engine/simulate'
 import { cascadeExactRtp } from '../app/engine/cascadeRtp'
 import { validateMachineDef } from '../app/engine/validate'
 import type { CascadeMachineDef } from '../app/engine/types'

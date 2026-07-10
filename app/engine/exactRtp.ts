@@ -2,9 +2,20 @@ import type { BallyEmMachineDef, MachineDef, StepperMachineDef, SymbolId } from 
 import { ballyAwardForLine, bestStepperAward } from './awards'
 import { videoExactRtp } from './videoRtp'
 import { pachisloExactRtp } from './pachisloRtp'
-import { blackjackReelExactRtp } from './blackjackReelRtp'
-import { lockReelExactRtp } from './lockReelRtp'
 import { cascadeExactRtp } from './cascadeRtp'
+
+/**
+ * Solvers for PARKED families register here instead of being imported
+ * statically — their DP modules must not ride the app's boot bundle for
+ * machines that aren't on the floor. `~/engine/parked` registers both on
+ * import (workers and node-side callers import it statically; the app
+ * dynamic-imports it on the rare paths that can still reach a parked def).
+ */
+type ExactRtpSolver = (def: MachineDef, opts: ExactRtpOptions) => ExactRtpReport
+const EXTRA_SOLVERS = new Map<string, ExactRtpSolver>()
+export function registerExactRtpSolver(family: string, solver: ExactRtpSolver): void {
+  EXTRA_SOLVERS.set(family, solver)
+}
 
 export interface ExactRtpOptions {
   /** coin level for multiplier/progressive-at-max machines (default: maxCoins) */
@@ -159,9 +170,12 @@ function ballyLinesJoint(
 export function exactRtp(def: MachineDef, opts: ExactRtpOptions = {}): ExactRtpReport {
   if (def.family === 'video') return videoExactRtp(def, opts)
   if (def.family === 'pachislo') return pachisloExactRtp(def, opts)
-  if (def.family === 'blackjack-reel') return blackjackReelExactRtp(def, opts)
-  if (def.family === 'lock-reel') return lockReelExactRtp(def, opts)
   if (def.family === 'cascade') return cascadeExactRtp(def, opts)
+  if (def.family === 'blackjack-reel' || def.family === 'lock-reel') {
+    const solver = EXTRA_SOLVERS.get(def.family)
+    if (solver !== undefined) return solver(def, opts)
+    throw new Error(`exactRtp: family '${def.family}' is not loaded — import '~/engine/parked' first`)
+  }
   const coins = opts.coins ?? def.maxCoins
   if (coins < 1 || coins > def.maxCoins) {
     throw new Error(`${def.id}: coins ${coins} out of range 1..${def.maxCoins}`)

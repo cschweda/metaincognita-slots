@@ -24,20 +24,13 @@ import type {
   SymbolId
 } from './types'
 import type { RandomFn } from './rng'
+import { freshLockState } from './sessionState'
 
 // ---------- fresh session state ----------
-
-export function freshLockState(def: LockReelMachineDef): LockReelSessionState {
-  return {
-    phase: 'idle',
-    grid: Array.from({ length: 5 }, () => new Array<SymbolId | null>(def.rows).fill(null)),
-    idx: 0,
-    sevenCount: 0,
-    collectCredits: 0,
-    respinsLeft: 0,
-    ante: 0
-  }
-}
+// Lives in ./sessionState (data-only) so the store's restore path and the
+// barrel's initMachineState stay off this engine's bundle; re-exported here so
+// existing imports keep working.
+export { freshLockState } from './sessionState'
 
 // ---------- helpers ----------
 
