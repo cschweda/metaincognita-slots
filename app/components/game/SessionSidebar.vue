@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { floorIntel } from '~/utils/floorIntel'
 import { formatCents, formatPercent, formatSignedCents } from '~/utils/format'
+import { learnLink } from '~/utils/learnLink'
 
 const store = useSlotsStore()
 const tab = ref<'session' | 'machine'>('session')
@@ -16,6 +17,7 @@ const oddsLevel = computed(() =>
 // line count for 'lines' machines, so report them at the player's current bet.
 const intel = computed(() =>
   def.value === null ? null : floorIntel(def.value, { oddsLevel: oddsLevel.value, coins: store.currentBet }))
+const learn = computed(() => def.value === null ? null : learnLink(def.value))
 </script>
 
 <template>
@@ -131,7 +133,10 @@ const intel = computed(() =>
               scope="row"
               class="py-1 text-left font-normal text-neutral-400"
             >
-              Exact RTP
+              <NuxtLink
+                to="/learn/glossary#rtp"
+                class="underline decoration-dotted underline-offset-2 hover:text-amber-300"
+              >Exact RTP</NuxtLink>
             </th><td class="py-1 text-right text-emerald-400">
               {{ formatPercent(intel.rtp, 4) }}
             </td>
@@ -141,7 +146,10 @@ const intel = computed(() =>
               scope="row"
               class="py-1 text-left font-normal text-neutral-400"
             >
-              Hit frequency
+              <NuxtLink
+                to="/learn/glossary#hit-frequency"
+                class="underline decoration-dotted underline-offset-2 hover:text-amber-300"
+              >Hit frequency</NuxtLink>
             </th><td class="py-1 text-right text-neutral-200">
               {{ formatPercent(intel.hitFrequency) }}
             </td>
@@ -151,13 +159,28 @@ const intel = computed(() =>
               scope="row"
               class="py-1 text-left font-normal text-neutral-400"
             >
-              Volatility
+              <NuxtLink
+                to="/learn/glossary#volatility"
+                class="underline decoration-dotted underline-offset-2 hover:text-amber-300"
+              >Volatility</NuxtLink>
             </th><td class="py-1 text-right text-neutral-200">
               {{ intel.sdPerCoin.toFixed(2) }} sd/coin
             </td>
           </tr>
         </tbody>
       </table>
+      <NuxtLink
+        v-if="learn"
+        :to="learn.to"
+        data-test="learn-link"
+        class="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 underline underline-offset-2"
+      >
+        <UIcon
+          name="i-lucide-book-open"
+          class="w-3 h-3"
+        />
+        Learn: {{ learn.label }} →
+      </NuxtLink>
     </div>
   </div>
 </template>

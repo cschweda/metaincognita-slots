@@ -88,6 +88,13 @@ const symbolRows = computed(() => {
       <p>Flip <b>🔬 X-ray</b> (top right) to break down the <i>last spin</i> link by link — every cascade, every multiplier, every cent.</p>
       <p>Open the <b>PAR sheet</b> for the full paytable and the exact, computed return (a real absorbing-Markov enumeration, re-checked every build against a 5-million-spin simulation).</p>
     </section>
+
+    <p class="cx-foot">
+      <NuxtLink
+        to="/learn/cascade-tumble"
+        class="cx-learn"
+      >📖 Learn: the tumble math — why exact cascade RTP is hard →</NuxtLink>
+    </p>
   </div>
 </template>
 
@@ -121,4 +128,6 @@ const symbolRows = computed(() => {
 .cx-stats dd { margin: 0; font-family: 'DM Mono', monospace; color: #fff; }
 .cx-dim { color: #b89a58; font-size: 12px; }
 .cx-foot { margin: 8px 0 0; font-size: 11px; color: #8f7842; }
+.cx-learn { color: #ffd24a; text-decoration: underline; text-underline-offset: 2px; }
+.cx-learn:hover { color: #ffe58a; }
 </style>
