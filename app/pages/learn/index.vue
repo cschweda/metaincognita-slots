@@ -10,6 +10,7 @@ const topics = [
   { to: '/learn/cascade-tumble', icon: 'i-lucide-layers', title: 'Cascades (tumble math)', blurb: 'Winning symbols shatter and the survivors fall — how one bet chains five paid grids, and why the exact math is a branching monster.' },
   { to: '/learn/pachislo', icon: 'i-lucide-cherry', title: 'Pachislo: the flag lottery', blurb: 'You stop the reels; a hidden lottery already decided. Flags, stock, the ≤4-stop slip — and the operator key.' },
   { to: '/learn/ldw-near-miss', icon: 'i-lucide-party-popper', title: 'LDWs & near misses', blurb: 'The win that loses money and the almost-jackpot that never was — the floor\'s two best tricks, measured live.' },
+  { to: '/learn/myths', icon: 'i-lucide-flame', title: 'Myths: due, hot & cold', blurb: 'No machine is ever due and none of them run hot — a quarter-million live spins prove the reels have no memory.' },
   { to: '/learn/glossary', icon: 'i-lucide-book-open', title: 'Glossary', blurb: 'Every term on this floor in plain English — RTP to ways, no jargon left standing.' }
 ]
 </script>

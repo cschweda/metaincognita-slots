@@ -10,6 +10,7 @@ import GargoylesEye from '../../app/pages/learn/gargoyles-eye.vue'
 import CascadeTumble from '../../app/pages/learn/cascade-tumble.vue'
 import Pachislo from '../../app/pages/learn/pachislo.vue'
 import LdwNearMiss from '../../app/pages/learn/ldw-near-miss.vue'
+import Myths from '../../app/pages/learn/myths.vue'
 import Glossary from '../../app/pages/learn/glossary.vue'
 
 const stubs = { NuxtLink: { template: '<a><slot /></a>' }, UIcon: true }
@@ -118,6 +119,28 @@ describe('ldw-near-miss', () => {
   })
 })
 
+describe('myths', () => {
+  it('states the myths in their own voice and refutes them with the live experiment', async () => {
+    const w = mount(Myths, { global: { stubs } })
+    await nextTick() // experiment runs onMounted…
+    await nextTick() // …and resolves through the rtpClient fallback's microtask
+    const t = w.text().toLowerCase()
+    expect(t).toContain('gambler')
+    expect(t).toContain('due')
+    expect(t).toContain('no memory')
+    expect(w.text()).toMatch(/250,000/)
+    expect(w.text()).toMatch(/\d+\.\d+%/) // live hit rates rendered
+  })
+
+  it('shows the jackpot-gap evidence with engine-exact odds', async () => {
+    const w = mount(Myths, { global: { stubs } })
+    await nextTick()
+    await nextTick()
+    expect(w.text()).toMatch(/1 in 13,824/) // formatOdds of the exact 3×F7 probability
+    expect(w.text().toLowerCase()).toContain('drought')
+  })
+})
+
 describe('glossary', () => {
   it('defines the core floor vocabulary in plain English', () => {
     const w = mount(Glossary, { global: { stubs } })
@@ -144,7 +167,7 @@ describe('glossary', () => {
     for (const term of [
       'bankroll', 'drawdown', 'expected value', 'wild', 'multiplier',
       'risk of ruin', 'standard deviation', 'flag', 'stock', 'slip',
-      'jackpot tiers'
+      'jackpot tiers', 'gambler', 'independence'
     ]) {
       expect(t, `glossary must define "${term}"`).toContain(term)
     }
@@ -156,7 +179,7 @@ describe('glossary', () => {
     expect(ids.length).toBeGreaterThanOrEqual(29)
     expect(ids.every(id => typeof id === 'string' && id.length > 0)).toBe(true)
     expect(new Set(ids).size).toBe(ids.length)
-    for (const anchor of ['rtp', 'hit-frequency', 'volatility', 'house-edge', 'drawdown']) {
+    for (const anchor of ['rtp', 'hit-frequency', 'volatility', 'house-edge', 'drawdown', 'gamblers-fallacy']) {
       expect(ids, `anchor "${anchor}" must exist`).toContain(anchor)
     }
   })
