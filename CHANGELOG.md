@@ -34,6 +34,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   page after navigation.
 
 ### Added
+- **The game→learn loop is closed.** Every betting cabinet's sidebar now links
+  to the /learn explainer for its machine (Ruby → Gargoyle's Eye, the
+  hold-and-spin videos → the fill math, steppers → Telnaes, Stock Rush → the
+  flag lottery), and Temple of Gold's teaching panel points at the tumble-math
+  page. One `learnLink()` map, tested against every machine.
+- **Glossary grew from 19 to 30 headwords** — the 11 terms the UI already used
+  but never defined (bankroll, drawdown, EV, flag/stock/slip, jackpot tiers,
+  multiplier, risk of ruin, sd/coin, wild). Every entry now carries an anchor
+  id (`/learn/glossary#rtp`), the bottom nav gained a Glossary link, and the
+  sidebar's RTP / hit-frequency / volatility labels deep-link to their
+  definitions.
+- **Plain-English glosses at point of use.** Bet-control fixed-bet reasons say
+  *why* in lay terms, the floor cards' RTP / hit-freq / volatility / top-award
+  labels carry tooltip definitions, and every Sim Lab stat card explains
+  itself on hover (plus a glossary footer link).
+- **An incompatible saved session now explains itself.** A storage-version
+  mismatch used to silently discard bankroll/history; the floor now shows a
+  dismissible notice saying the old save couldn't be carried over.
 - **Four new /learn pages — the mission's biggest gaps closed.**
   *Cascades (tumble math)*: scatter pays, the shatter-fall-refill chain, the
   multiplier ladder, closed-form first-drop and Grand-trigger odds computed at
@@ -61,6 +79,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **MIT LICENSE** (a public educational repo was all-rights-reserved by default).
 
 ### Changed
+- **Netlify's deploy gate now runs the full battery** — lint + typecheck +
+  tests + a 250k-spin `verify` before `generate` (was lint+test only; Netlify
+  deploys independently of GitHub CI, so the expensive gates must run there
+  too). Both CI and Netlify install with `--frozen-lockfile`.
+- **CI enforces coverage thresholds** (statements 86 / branches 77 /
+  functions 88 / lines 89 — ~2 points under the 2026-07-09 baseline, a
+  ratchet against silent regression).
+- **One money-formatter family.** `formatCentsExact` ("$4.00") and
+  `formatCentsCompact` ("25¢"/"$1"/"$1.25") replace seven hand-rolled dollar
+  renderers across the cabinets, narration, and X-ray (rendered output
+  unchanged, byte-for-byte).
+- **Displayed-RTP test assertions are derived, not transcribed.** The PAR
+  sheet and X-ray tests compute their expected strings from `exactRtp` the
+  same way the components do; the engine-side exact values are frozen in the
+  machine suites (stock-rush's 0.9150131… freeze is new).
+- **game.vue deduplicated.** The X-ray/PAR toolbar (copy-pasted 4×) is one
+  `CabinetToolbar` component; the three bespoke page shells (byte-identical
+  CSS except backdrop + sidebar width) are one `.cab-page` family.
 - **First run shows the free machine first.** The floor page used to hide
   everything — including the walk-up, free-play Temple of Gold — behind the
   bankroll form. The Featured card and a /learn pointer now render above the
