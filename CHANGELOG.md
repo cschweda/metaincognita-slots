@@ -34,6 +34,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   page after navigation.
 
 ### Added
+- **The floor has a voice — all ten machines now make sound.** Four
+  period-authentic synthesized voices (no audio files, CSP-clean): steppers
+  thunk mechanically and rattle coins into the tray, the 1979 Bally EMs hum
+  and ring a true striking bell, the video slots chime in digital arpeggios,
+  and Stock Rush beeps like a Japanese parlor (with the fever jingle on a
+  bonus). Reveals scale with the payout — a loss disguised as a win throws
+  the same party a real machine would, while the ResultBar's net line keeps
+  telling the truth; clean losses stay silent; a stocked pachislo flag stays
+  deliberately silent (real machines hide it — the X-ray shows it). Global
+  mute lives in the top nav and shares Temple of Gold's persisted state.
 - **The game→learn loop is closed.** Every betting cabinet's sidebar now links
   to the /learn explainer for its machine (Ruby → Gargoyle's Eye, the
   hold-and-spin videos → the fill math, steppers → Telnaes, Stock Rush → the
