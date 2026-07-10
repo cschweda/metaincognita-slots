@@ -29,7 +29,8 @@ function loadMuted(): boolean {
   }
 }
 
-function reducedMotion(): boolean {
+/** True when the OS asks for reduced motion — fanfares shorten. */
+export function reducedMotion(): boolean {
   return typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -63,8 +64,8 @@ function live(): boolean {
   return !muted.value && ctx !== null && ctx.state === 'running'
 }
 
-/** A single oscillator note with an attack/decay envelope. */
-function tone(freq: number, dur: number, vol: number, type: OscillatorType = 'sine', delay = 0): void {
+/** A single oscillator note with an attack/decay envelope; optional pitch glide. */
+export function tone(freq: number, dur: number, vol: number, type: OscillatorType = 'sine', delay = 0, glideTo: number | null = null): void {
   if (!live()) return
   const c = ctx!
   const t = c.currentTime + delay
@@ -72,6 +73,7 @@ function tone(freq: number, dur: number, vol: number, type: OscillatorType = 'si
   const gain = c.createGain()
   osc.type = type
   osc.frequency.setValueAtTime(freq, t)
+  if (glideTo !== null) osc.frequency.exponentialRampToValueAtTime(glideTo, t + dur)
   gain.gain.setValueAtTime(0, t)
   gain.gain.linearRampToValueAtTime(vol, t + Math.min(0.01, dur * 0.2))
   gain.gain.exponentialRampToValueAtTime(0.0001, t + dur)
@@ -81,7 +83,7 @@ function tone(freq: number, dur: number, vol: number, type: OscillatorType = 'si
 }
 
 /** Filtered white-noise burst — clinks, shatters, thunks. */
-function noiseBurst(dur: number, vol: number, filter: BiquadFilterType, freq: number, q = 1, delay = 0): void {
+export function noiseBurst(dur: number, vol: number, filter: BiquadFilterType, freq: number, q = 1, delay = 0): void {
   if (!live()) return
   const c = ctx!
   const t = c.currentTime + delay
@@ -104,7 +106,7 @@ function noiseBurst(dur: number, vol: number, filter: BiquadFilterType, freq: nu
 }
 
 /** A struck bell — a few inharmonic partials over a single chime frequency. */
-function bell(freq: number, dur: number, vol: number, delay = 0): void {
+export function bell(freq: number, dur: number, vol: number, delay = 0): void {
   const partials = [1, 2.01, 3.0, 4.72]
   partials.forEach((p, i) => tone(freq * p, dur * (1 - i * 0.12), vol * (0.7 ** i), 'sine', delay))
 }

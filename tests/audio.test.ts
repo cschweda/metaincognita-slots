@@ -51,3 +51,18 @@ describe('audio synth', () => {
     }).not.toThrow()
   })
 })
+
+describe('synth primitives (exported for the sound bank)', () => {
+  it('tone/noiseBurst/bell/reducedMotion are exported and headless-safe (no ctx → no-op, never throw)', async () => {
+    const audio = await import('../app/utils/audio')
+    expect(typeof audio.tone).toBe('function')
+    expect(typeof audio.noiseBurst).toBe('function')
+    expect(typeof audio.bell).toBe('function')
+    expect(typeof audio.reducedMotion).toBe('function')
+    expect(() => audio.tone(440, 0.1, 0.1)).not.toThrow()
+    expect(() => audio.tone(300, 0.3, 0.05, 'sine', 0, 900)).not.toThrow() // glide variant
+    expect(() => audio.noiseBurst(0.1, 0.1, 'lowpass', 300)).not.toThrow()
+    expect(() => audio.bell(660, 0.4, 0.1)).not.toThrow()
+    expect(audio.reducedMotion()).toBe(false) // happy-dom matchMedia: matches=false
+  })
+})
