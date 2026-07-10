@@ -2,6 +2,8 @@ import { computed, ref } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useReducedMotion } from '~/composables/useReducedMotion'
 import { nextSpinCost } from '~/engine'
+import { unlockAudio } from '~/utils/audio'
+import { voiceFor } from '~/utils/soundBank'
 
 const REV_MS = 750 // one reel revolution — 21 stops at ~35.7 ms/stop, like the hardware
 
@@ -34,6 +36,7 @@ export function usePachisloPress() {
     if (def === null || state === null || def.family !== 'pachislo' || armed.value || store.spinning) return
     const cost = nextSpinCost(def, state, store.currentBet) * def.denominationCents
     if (cost > store.bankrollCents) return
+    unlockAudio() // arm IS the user gesture — wake the AudioContext here
     pressed.value = [null, null, null]
     armed.value = true
     store.liveAnnouncement = 'Reels spinning — stop them with buttons one, two, three.'
@@ -42,6 +45,7 @@ export function usePachisloPress() {
       resolveWith(randomPresses())
       return
     }
+    voiceFor('pachislo').spinStart()
     lastT = 0
     rafId = requestAnimationFrame(tick)
   }
@@ -50,6 +54,7 @@ export function usePachisloPress() {
     if (!armed.value || pressed.value[reel] !== null) return
     pressed.value[reel] = Math.floor(positions.value[reel]!) % 21
     pressed.value = [...pressed.value] as typeof pressed.value
+    voiceFor('pachislo').reelStop(reel, 3)
     if (pressed.value.every(p => p !== null)) {
       resolveWith(pressed.value as [number, number, number])
     }
@@ -65,7 +70,14 @@ export function usePachisloPress() {
     armed.value = false
     if (rafId !== null) cancelAnimationFrame(rafId)
     rafId = null
+    const prev = store.lastOutcome
     store.spinOnce(presses)
+    const def = store.currentDef
+    // Only voice a FRESH outcome — spinOnce bails (announcement only) when the
+    // bankroll can't cover the game, and a stale reveal would replay old news.
+    if (def !== null && store.lastOutcome !== null && store.lastOutcome !== prev) {
+      voiceFor('pachislo').reveal(def, store.lastOutcome)
+    }
     store.revealDone() // the pachislo "reveal" is the slip annotation; no async animation gate
   }
 
