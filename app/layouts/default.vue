@@ -50,12 +50,15 @@ const navItems = [
           <span class="text-amber-500/80">Slots</span> Simulator
         </span>
       </div>
-      <div
-        v-if="store.phase === 'playing'"
-        class="flex items-center gap-1"
-      >
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
-        <span class="text-[10px] text-neutral-400">Session active</span>
+      <div class="flex items-center gap-3">
+        <AppSoundToggle />
+        <div
+          v-if="store.phase === 'playing'"
+          class="flex items-center gap-1"
+        >
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
+          <span class="text-[10px] text-neutral-400">Session active</span>
+        </div>
       </div>
     </nav>
 
