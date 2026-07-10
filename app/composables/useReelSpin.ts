@@ -2,6 +2,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useReducedMotion } from '~/composables/useReducedMotion'
+import { voiceFor } from '~/utils/soundBank'
 
 export const REEL_CELL_PX = 96
 export const REEL_GAP_PX = 8
@@ -18,6 +19,14 @@ export interface ReelSpinOptions {
 export function useReelSpin(opts: ReelSpinOptions) {
   const store = useSlotsStore()
   const reduced = useReducedMotion()
+
+  // The cabinet's period voice (silent for cascade/parked): reel thunks and
+  // the payout-scaled reveal ride the SAME timers as the visuals.
+  const voice = computed(() => voiceFor(store.currentDef?.family ?? 'cascade'))
+  function revealSound() {
+    const def = store.currentDef
+    if (def !== null && store.lastOutcome !== null) voice.value.reveal(def, store.lastOutcome)
+  }
 
   // Filler shown above the landing window; empty when settled (strips === grid).
   const buffer = ref<string[][]>([])
@@ -60,6 +69,8 @@ export function useReelSpin(opts: ReelSpinOptions) {
     if (reduced.value) {
       settle()
       store.revealDone()
+      voice.value.reelStop(opts.reelCount() - 1, opts.reelCount()) // one settle click
+      revealSound()
       return
     }
 
@@ -68,6 +79,7 @@ export function useReelSpin(opts: ReelSpinOptions) {
     buffer.value = Array.from({ length: opts.reelCount() }, () => Array.from({ length: BUFFER }, pick))
     offsetY.value = Array(opts.reelCount()).fill(0)
     blur.value = Array(opts.reelCount()).fill(0)
+    voice.value.spinStart()
 
     const landing = BUFFER * STRIDE
     timers.push(setTimeout(() => {
@@ -81,9 +93,11 @@ export function useReelSpin(opts: ReelSpinOptions) {
       }, dur * 0.55))
       timers.push(setTimeout(() => {
         revealed.value = r + 1
+        voice.value.reelStop(r, opts.reelCount())
         if (r === opts.reelCount() - 1) {
           store.revealDone()
           settle() // collapse the buffer: strips === grid (exact outcome, clean a11y tree)
+          revealSound()
         }
       }, dur))
     }
