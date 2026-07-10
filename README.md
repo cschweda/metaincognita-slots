@@ -10,18 +10,21 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.13.0.** The floor is open: ten machines, full game surfaces,
+**Status: v0.14.0.** The floor is open: ten machines, full game surfaces,
 per-machine cabinet chrome, X-ray mode, PAR sheets (each machine's internal
 math card — pays, odds, reel maps), session history, a Monte-Carlo Sim Lab,
-and /learn explainers on the math the floor never shows. 0.13.0 gave the
-floor a voice (four period-authentic synthesized cabinet voices, mute in the
-nav), moved all exact math off the main thread (a long-lived `rtp.worker` —
-zero UI jank, identical numbers), added two learn pages (slot **myths**
-refuted by a live 250,000-spin experiment; the **psychology** of the floor,
-demonstrated on this floor's own machinery), grew the glossary to 39 terms,
-gave the Sim Lab live closed-form expected math with a model-vs-measured
-histogram overlay, and made History speak plain English with an
-expected-vs-actual takeaway at the machines' exact edges.
+and eleven /learn explainers on the math the floor never shows. 0.14.0
+closed the engineering backlog: CI now **boots the generated site under the
+production CSP** on every push (the new guard immediately caught and fixed a
+real header-generation bug), the **volatility** page completed the learn
+wing, the parked machines' engines left the boot bundle, and the steppers
+and Ballys fit-scale on phones. Behind it, 0.13.0 gave the floor its voice
+(four period-authentic synthesized cabinet voices, mute in the nav), moved
+all exact math off the main thread (a long-lived `rtp.worker`), added the
+**myths** (250,000-spin live experiment) and **psychology** learn pages, grew
+the glossary to 39 terms, gave the Sim Lab live closed-form expected math
+with a model-vs-measured overlay, and made History speak plain English with
+an expected-vs-actual takeaway at the machines' exact edges.
 
 > **Featured: Temple of Gold** — a gaudy Aztec **cascade** (tumble) machine and
 > the floor's first **free-play trainer**. It runs the same exact maths a real
