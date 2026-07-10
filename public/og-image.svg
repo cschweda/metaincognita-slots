@@ -169,7 +169,7 @@
   <!-- title block -->
   <g>
     <text x="64" y="118" font-family="'Fira Code', Menlo, monospace" font-size="58" font-weight="700" fill="#f59e0b" filter="url(#glow)">Slots Simulator</text>
-    <text x="66" y="162" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#64748b" letter-spacing="1">Ten machines &#183; Sim Lab (risk of ruin) &#183; /learn explainers</text>
+    <text x="66" y="162" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#64748b" letter-spacing="1">Eleven machines &#183; Sim Lab (risk of ruin) &#183; /learn explainers</text>
     <text x="66" y="200" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1aa" letter-spacing="5">SEE THE STRIPS. KNOW THE EDGE. SPIN WITH YOUR EYES OPEN.</text>
   </g>
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/og-image.png" alt="Slots Simulator — ten machines, Monte-Carlo Sim Lab, /learn explainers, and the math the floor never shows" width="800">
+  <img src="public/og-image.png" alt="Slots Simulator — eleven machines, Monte-Carlo Sim Lab, /learn explainers, and the math the floor never shows" width="800">
 </p>
 
 # Metaincognita Slots
@@ -10,7 +10,7 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.14.0.** The floor is open: ten machines, full game surfaces,
+**Status: v0.14.0.** The floor is open: eleven machines, full game surfaces,
 per-machine cabinet chrome, X-ray mode, PAR sheets (each machine's internal
 math card — pays, odds, reel maps), session history, a Monte-Carlo Sim Lab,
 and eleven /learn explainers on the math the floor never shows. 0.14.0
@@ -26,15 +26,21 @@ the glossary to 39 terms, gave the Sim Lab live closed-form expected math
 with a model-vs-measured overlay, and made History speak plain English with
 an expected-vs-actual takeaway at the machines' exact edges.
 
-> **Featured: Temple of Gold** — a gaudy Aztec **cascade** (tumble) machine and
-> the floor's first **free-play trainer**. It runs the same exact maths a real
-> machine would, but never debits a balance: an honest **House Ledger** shows, in
-> real dollars, what a \$1/spin player *would* have fed, won, and lost, and a
-> per-spin **trick-exposer** X-rays each result — loss-disguised-as-a-win,
-> engineered near-miss, clean loss, genuine win, and the Grand as the carrot
-> funded by everyone's losses. The spectacle and the lesson, loss-free. (Cascade
-> RTP — *return to player*, the share of all wagers a machine pays back over the
-> long run — is computed exactly by an absorbing-Markov tumble DP; see below.)
+> **★ Featured (revolving): Wonder Wheel** — the Wheel-of-Fortune 1996
+> archetype: a 3-reel Telnaes stepper whose reel-3 WHEEL symbol, at MAX COINS
+> only, arms a giant 24-wedge topper. The wedges are **drawn equal-sized and
+> weighted unequal** — the visual share is 1-in-24 each, the true odds are the
+> published integer weights (MEGA 2,500 credits at 1-in-55,872 spins) — and
+> unlike any real cabinet, the X-ray prints the whole weight table. RTP
+> 92.4880% at max coins; 70.5271% below it (the authentic gating, with the
+> per-coin cliff on the PAR sheet). The Featured slot is now CURATED data
+> (`FEATURED_ID` + per-machine copy): rotating the spotlight is a one-line
+> change, and past headliners keep their copy for a return.
+>
+> **The free-play trainer: Temple of Gold** — the gaudy Aztec cascade still
+> anchors the first-run screen: it runs the real exact math but never debits a
+> balance, with an honest House Ledger and a per-spin trick-exposer. The
+> spectacle and the lesson, loss-free.
 
 > **Parked (two from-scratch experiments):** *Flameout 21* (a blackjack-meets-crash
 > game) and *Stop & Lock 777* (a stop-the-reels hold-and-spin cash-collect) were each
@@ -56,9 +62,9 @@ pnpm dev        # open http://localhost:3000
 1. **Floor** — set a bankroll, then pick a machine from the family-grouped
    card grid. Each card shows the exact RTP and a one-line description.
 2. **Machine** — spin, adjust your bet, watch the reels inside each
-   machine's bespoke decorative cabinet chrome (nine themed `GameMachineChrome`
+   machine's bespoke decorative cabinet chrome (ten themed `GameMachineChrome`
    frames: gothic stone, pachinko neon, baroque gold, emerald scales, riveted
-   steel, ice facets, rising flames, warm brass, cool turquoise — while the
+   steel, ice facets, rising flames, warm brass, cool turquoise, carnival neon — while the
    Featured Temple of Gold runs its own full bespoke gold cabinet instead) —
    and hear it: every cabinet has a period-authentic synthesized voice
    (steppers thunk and rattle coins, the 1979 Ballys ring a struck bell, the
@@ -107,7 +113,8 @@ This is an educational simulator. No real money is involved.
 
 | Machine | Family | Format | Exact RTP |
 |---|---|---|---|
-| **Temple of Gold** ★ *Featured* | Cascade (tumble) | 5×4 pay-anywhere (8+), ×1/2/3/5/8 cascade ladder, percent Grand — **free play** | 90.8961% |
+| **Wonder Wheel** ★ *Featured* | Wheel (1996 topper lineage) | 3-reel Telnaes base + 24-wedge weighted topper at max coins, fixed-credit wedges, MEGA 2,500 | 92.4880% @ max coins / 70.5271% under |
+| Temple of Gold — *free-play trainer* | Cascade (tumble) | 5×4 pay-anywhere (8+), ×1/2/3/5/8 cascade ladder, percent Grand — **free play** | 90.8961% |
 | Diamond Doubler | Telnaes stepper | 3 reels, wild 2x/4x multiplier | 94.7442% |
 | Sevens Ablaze | Telnaes stepper | 3 reels, 2-coin, percent-fed progressive | 94.4881% @ reset + 1%/coin-in feed |
 | Series E 3-Line | Vintage Bally (E-1202 replica) | 5 reels x 22 uniform stops, 3 lines, dual toggling progressive | 89.0351% per line |
@@ -175,6 +182,19 @@ The lottery decides, the reels obey: flags stock and are never lost, control
 slips ≤ 4 stops, and an exhaustive 21³ check proves no win can land without a
 flag — so your timing changes *when*, never *how much*. Six operator odds
 levels straight from the manual's bands (65–67% up to 115–125%).
+
+## Wheel (the 1996 topper)
+
+Wonder Wheel is the Wheel-of-Fortune architecture: an ordinary weighted
+stepper carrying the floor's biggest lie-by-geometry. The topper's 24 wedges
+render as equal 15° slices while an integer weight table (2/1164 for the MEGA,
+112/1164 for the 25) decides the draw — the exact enumeration folds
+P(WHEEL on reel 3) × E[wedge] into the max-coins RTP and prints every wedge as
+its own PAR row. The wheel arms at max coins only (the original's quietest
+trick): bet under it and the WHEEL symbol fires a `wheel-wasted` event the
+result line announces out loud. The engine models the topper as a pending FREE
+spin consumed through the ordinary `spin()` path, so the simulator, session
+drivers, and verify all play it with no special cases.
 
 ## Cascade (tumble) — and the first free-play trainer
 

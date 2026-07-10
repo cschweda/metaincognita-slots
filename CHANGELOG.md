@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Wonder Wheel — the 11th machine, a new `wheel` engine family, and the new
+  Featured headliner.** The Wheel-of-Fortune 1996 archetype: a 3-reel Telnaes
+  stepper whose reel-3 WHEEL symbol at MAX COINS arms a giant 24-wedge topper
+  overlay (chasing bulbs, decelerating ticker, payout-scaled fanfares, honest
+  landing — the engine draws first and the animation obeys). Wedges are drawn
+  equal-sized and weighted unequal: the X-ray prints the full weight table
+  ("looks like 4.17% · really is …"), the PAR sheet carries every wedge as its
+  own row, and betting under max fires a `wheel-wasted` event the result line
+  announces (a real cabinet stays quiet). Frozen exact math: 92.4880%/coin at
+  max (wheel term 21.9609%), 70.5271% under max — the authentic per-coin
+  cliff; MEGA 2,500 credits at 1-in-55,872 spins; verify runs 11/11.
+- **The Featured slot revolves.** `FEATURED_ID` + a per-machine copy record
+  replace the hardcoded Temple card: Wonder Wheel headlines, Temple of Gold
+  rejoins the grid under a Cascade group (and keeps anchoring the first-run
+  screen as the free-play trainer). Rotating the spotlight is a one-line
+  curation change; past headliners keep their copy.
+
+### Fixed
+- **The parked engines' X-ray sections no longer ride the /game route.** The
+  backlog split missed one leak: `XrayPanel` statically imported both parked
+  DP modules for its Flameout/Stop-&-Lock sections. Those sections moved to a
+  lazily-loaded `XrayParkedPanel`, so the chunk only fetches inside a restored
+  legacy parked session.
+
 ## [0.14.0] - 2026-07-10
 
 ### Added
