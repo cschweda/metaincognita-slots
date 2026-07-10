@@ -6,7 +6,8 @@
 // In fallback mode the cache is populated BEFORE the promise resolves, so
 // useExactRtp can fill synchronously (test transparency).
 import { exactRtp } from '~/engine'
-import type { ExactRtpOptions, ExactRtpReport, MachineDef } from '~/engine'
+import type { ExactRtpReport, MachineDef } from '~/engine'
+import type { ExactRtpOptions } from '~/engine/exactRtp'
 import { runLdwExperiment } from '~/utils/ldwExperiment'
 import type { LdwExperimentResult } from '~/utils/ldwExperiment'
 import type { FloorIntelOptions } from '~/utils/floorIntel'

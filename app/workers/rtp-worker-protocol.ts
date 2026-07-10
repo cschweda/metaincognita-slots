@@ -1,5 +1,6 @@
 // app/workers/rtp-worker-protocol.ts
-import type { ExactRtpOptions, ExactRtpReport } from '~/engine'
+import type { ExactRtpReport } from '~/engine'
+import type { ExactRtpOptions } from '~/engine/exactRtp'
 import type { LdwExperimentResult } from '~/utils/ldwExperiment'
 
 export type RtpWorkerIncoming
