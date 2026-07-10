@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { floorIntel } from '~/utils/floorIntel'
+import { useExactRtp } from '~/composables/useExactRtp'
+import { intelFromReport } from '~/utils/floorIntel'
 import { payTag } from '~/utils/payTag'
 import { formatCents, formatOdds, formatPercent } from '~/utils/format'
 import type { MachineDef } from '~/engine'
@@ -53,11 +54,15 @@ const jackpotCents = computed<number | null>(() => {
 
 // Floor xray headline: report at the bet dialed in for this machine (defaults
 // to maxCoins) so the per-spin hit frequency/volatility match the in-game
-// sidebar for 'lines' machines.
+// sidebar for 'lines' machines. Computed OFF-thread: a null def while X-ray
+// is off gates the work entirely; a video machine fills in when the worker
+// answers instead of freezing the floor for ~1s apiece.
+const rtpReport = useExactRtp(
+  () => store.settings.xray ? props.def : null,
+  () => ({ coins: store.settings.betsByMachine[props.def.id] ?? props.def.maxCoins })
+)
 const intel = computed(() =>
-  store.settings.xray
-    ? floorIntel(props.def, { coins: store.settings.betsByMachine[props.def.id] ?? props.def.maxCoins })
-    : null)
+  rtpReport.value === null ? null : intelFromReport(props.def, rtpReport.value))
 
 function play() {
   store.selectMachine(props.def.id)
@@ -138,6 +143,12 @@ function play() {
           title="Odds of this machine's biggest prize at the current bet"
         >Top award</span><span class="text-neutral-300 text-right">{{ formatOdds(intel.topAwardProbability) }}</span>
       </template>
+    </div>
+    <div
+      v-else-if="store.settings.xray"
+      class="pt-2 border-t border-neutral-800/70 text-[11px] font-mono text-neutral-500"
+    >
+      computing exact odds…
     </div>
   </button>
 </template>

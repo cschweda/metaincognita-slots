@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
-import { floorIntel } from '~/utils/floorIntel'
+import { useExactRtp } from '~/composables/useExactRtp'
+import { intelFromReport } from '~/utils/floorIntel'
 import { formatCents, formatPercent, formatSignedCents } from '~/utils/format'
 import { learnLink } from '~/utils/learnLink'
 
@@ -15,8 +16,14 @@ const oddsLevel = computed(() =>
   def.value?.family === 'pachislo' ? store.currentState?.pachislo?.oddsLevel : undefined)
 // Hit frequency and volatility are per-spin figures that depend on the active
 // line count for 'lines' machines, so report them at the player's current bet.
+// Off-thread via the rtp.worker; the v-if="intel" guard absorbs the brief
+// pending state on a cold video machine.
+const rtpReport = useExactRtp(
+  () => def.value,
+  () => ({ oddsLevel: oddsLevel.value, coins: store.currentBet })
+)
 const intel = computed(() =>
-  def.value === null ? null : floorIntel(def.value, { oddsLevel: oddsLevel.value, coins: store.currentBet }))
+  def.value === null || rtpReport.value === null ? null : intelFromReport(def.value, rtpReport.value))
 const learn = computed(() => def.value === null ? null : learnLink(def.value))
 </script>
 

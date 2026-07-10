@@ -4,7 +4,7 @@ import { useSlotsStore } from '~/stores/slots'
 import { nearMisses } from '~/engine'
 import { decisionEvs, blackjackReelExactRtp, crashOdds } from '~/engine/blackjackReelRtp'
 import { lockReelExactRtp, reelCashEvs, bonusOdds, bonusEv } from '~/engine/lockReelRtp'
-import { floorIntel } from '~/utils/floorIntel'
+import { useExactRtp } from '~/composables/useExactRtp'
 import { formatCentsExact, formatOdds, formatPercent } from '~/utils/format'
 import type { BlackjackReelMachineDef, LockReelMachineDef } from '~/engine/types'
 
@@ -23,8 +23,10 @@ const virtualStops = computed(() => out.value?.trace.virtualStops ?? null)
 
 const oddsLevel = computed(() =>
   def.value?.family === 'pachislo' ? store.currentState?.pachislo?.oddsLevel : undefined)
-const exactRtpValue = computed(() =>
-  def.value === null ? null : floorIntel(def.value, { oddsLevel: oddsLevel.value }).rtp)
+// Off-thread via the rtp.worker; the sparkline v-if absorbs the brief pending
+// state on a cold video machine.
+const rtpReport = useExactRtp(() => def.value, () => ({ oddsLevel: oddsLevel.value }))
+const exactRtpValue = computed(() => rtpReport.value === null ? null : rtpReport.value.rtpPerCoin)
 const samples = computed(() => def.value === null ? [] : store.perMachine[def.value.id]?.samples ?? [])
 const sessionRtp = computed(() => {
   const d = def.value
