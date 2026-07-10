@@ -17,9 +17,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`/learn/volatility` — same edge, different ride.** The eleventh learn page:
   live sd/coin (√variance) and N₀ (variance ÷ edge²) for the whole floor,
   ranked by wildness, computed from the same exact reports the PAR sheets
-  print. Sevens Ablaze vs Diamond Doubler is the built-in punchline (a quarter
-  point of RTP apart, ~7× apart on the ride). Glossary volatility/sd entries
-  now deep-link it.
+  print. Sevens Ablaze vs Diamond Doubler is the nearly-equal-RTP pair (a
+  quarter point apart on edge, 1.2× on the ride); the floor-wide spread runs
+  5.4× (Series E Multiplier's sd 13.7 vs Temple of Gold's 2.6). Glossary
+  volatility/sd entries now deep-link it.
 
 ### Fixed
 - **`csp-hashes.mjs` is idempotent.** It blindly appended its generated block,

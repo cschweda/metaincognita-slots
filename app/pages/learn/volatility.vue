@@ -86,9 +86,11 @@ const spins = (n: number): string => Math.round(n).toLocaleString('en-US')
           ({{ formatPercent(pair.diamond.rtp) }} RTP, sd {{ pair.diamond.sd.toFixed(1) }})
           and <strong>{{ pair.sevens.name }}</strong>
           ({{ formatPercent(pair.sevens.rtp) }} RTP, sd {{ pair.sevens.sd.toFixed(1) }})
-          sit a quarter point apart on edge — and {{ (pair.sevens.sd / pair.diamond.sd).toFixed(1) }}×
-          apart on the ride, because one of them is hiding a progressive jackpot
-          in its variance. Same toll booth, very different road.
+          sit a quarter point apart on edge — yet the progressive jackpot hiding
+          in Sevens Ablaze's variance already makes its ride
+          {{ (pair.sevens.sd / pair.diamond.sd).toFixed(1) }}× rougher. And that is
+          the <em>mild</em> comparison: open the table and the floor-wide spread
+          runs {{ wildness ? wildness.ratio.toFixed(1) : '5+' }}×.
         </p>
       </template>
       <LearnDisclosure label="Show the whole floor, ranked by wildness — live exact math">
