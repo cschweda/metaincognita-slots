@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useBlackjackReel } from '~/composables/useBlackjackReel'
 import { useLockReel } from '~/composables/useLockReel'
 
 const store = useSlotsStore()
 const route = useRoute()
-const parOpen = ref(false)
 const { phase, canStop, canCash, stop, cashOut, playAgain } = useBlackjackReel()
 const lock = useLockReel()
 
@@ -66,35 +65,14 @@ onUnmounted(() => {
   <!-- ── Temple of Gold (cascade): the Featured free-play tumble cabinet ── -->
   <div
     v-if="store.currentDef && store.currentDef.family === 'cascade'"
-    class="tg-page"
+    class="cab-page cab-page--tg"
   >
-    <div class="tg-page-grid">
-      <div class="tg-page-main">
+    <div class="cab-page-grid">
+      <div class="cab-page-main">
         <GameReelCascade :key="store.currentMachineId ?? ''" />
       </div>
-      <aside class="tg-page-side">
-        <div class="tg-side-tools">
-          <UButton
-            :color="store.settings.xray ? 'primary' : 'neutral'"
-            :variant="store.settings.xray ? 'solid' : 'outline'"
-            :aria-pressed="store.settings.xray"
-            size="xs"
-            icon="i-lucide-scan-line"
-            @click="store.setXray(!store.settings.xray)"
-          >
-            X-ray
-          </UButton>
-          <UButton
-            color="neutral"
-            variant="outline"
-            size="xs"
-            icon="i-lucide-file-spreadsheet"
-            @click="parOpen = true"
-          >
-            PAR sheet
-          </UButton>
-          <GameParSheetModal v-model:open="parOpen" />
-        </div>
+      <aside class="cab-page-side">
+        <GameCabinetToolbar />
         <GameCascadeXray />
       </aside>
     </div>
@@ -103,35 +81,14 @@ onUnmounted(() => {
   <!-- ── Stop & Lock 777 (lock-reel): the "big daddy" cash-collect cabinet ── -->
   <div
     v-else-if="store.currentDef && store.currentDef.family === 'lock-reel'"
-    class="sl-page"
+    class="cab-page cab-page--sl"
   >
-    <div class="sl-page-grid">
-      <div class="sl-page-main">
+    <div class="cab-page-grid">
+      <div class="cab-page-main">
         <LazyGameReelLockReel :key="store.currentMachineId ?? ''" />
       </div>
-      <aside class="sl-page-side">
-        <div class="sl-side-tools">
-          <UButton
-            :color="store.settings.xray ? 'primary' : 'neutral'"
-            :variant="store.settings.xray ? 'solid' : 'outline'"
-            :aria-pressed="store.settings.xray"
-            size="xs"
-            icon="i-lucide-scan-line"
-            @click="store.setXray(!store.settings.xray)"
-          >
-            X-ray
-          </UButton>
-          <UButton
-            color="neutral"
-            variant="outline"
-            size="xs"
-            icon="i-lucide-file-spreadsheet"
-            @click="parOpen = true"
-          >
-            PAR sheet
-          </UButton>
-          <GameParSheetModal v-model:open="parOpen" />
-        </div>
+      <aside class="cab-page-side">
+        <GameCabinetToolbar />
         <GameSessionSidebar />
         <GameXrayPanel />
       </aside>
@@ -141,37 +98,16 @@ onUnmounted(() => {
   <!-- ── Flameout 21 (blackjack-reel): dedicated demo-faithful crash page ── -->
   <div
     v-else-if="store.currentDef && store.currentDef.family === 'blackjack-reel'"
-    class="l21-page"
+    class="cab-page cab-page--l21"
   >
     <LazyGameChromeFlameoutChrome side="left" />
     <LazyGameChromeFlameoutChrome side="right" />
-    <div class="l21-page-grid">
-      <div class="l21-page-main">
+    <div class="cab-page-grid">
+      <div class="cab-page-main">
         <LazyGameReelBlackjackReel :key="store.currentMachineId ?? ''" />
       </div>
-      <aside class="l21-page-side">
-        <div class="l21-side-tools">
-          <UButton
-            :color="store.settings.xray ? 'primary' : 'neutral'"
-            :variant="store.settings.xray ? 'solid' : 'outline'"
-            :aria-pressed="store.settings.xray"
-            size="xs"
-            icon="i-lucide-scan-line"
-            @click="store.setXray(!store.settings.xray)"
-          >
-            X-ray
-          </UButton>
-          <UButton
-            color="neutral"
-            variant="outline"
-            size="xs"
-            icon="i-lucide-file-spreadsheet"
-            @click="parOpen = true"
-          >
-            PAR sheet
-          </UButton>
-          <GameParSheetModal v-model:open="parOpen" />
-        </div>
+      <aside class="cab-page-side">
+        <GameCabinetToolbar />
         <GameSessionSidebar />
         <GameXrayPanel />
       </aside>
@@ -184,30 +120,7 @@ onUnmounted(() => {
     class="px-4 py-4 max-w-[1100px] mx-auto space-y-3"
   >
     <GameMachineMarquee />
-    <div class="flex items-center justify-end">
-      <div class="flex items-center gap-2">
-        <UButton
-          :color="store.settings.xray ? 'primary' : 'neutral'"
-          :variant="store.settings.xray ? 'solid' : 'outline'"
-          :aria-pressed="store.settings.xray"
-          size="xs"
-          icon="i-lucide-scan-line"
-          @click="store.setXray(!store.settings.xray)"
-        >
-          X-ray
-        </UButton>
-        <UButton
-          color="neutral"
-          variant="outline"
-          size="xs"
-          icon="i-lucide-file-spreadsheet"
-          @click="parOpen = true"
-        >
-          PAR sheet
-        </UButton>
-        <GameParSheetModal v-model:open="parOpen" />
-      </div>
-    </div>
+    <GameCabinetToolbar />
 
     <GameCreditPanel />
 
@@ -250,14 +163,15 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Temple of Gold — full-bleed Featured page (Aztec-gold temple backdrop) */
-.tg-page {
+/* One full-bleed cabinet shell for the three bespoke pages — each modifier
+   sets only its backdrop and sidebar width. */
+.cab-page {
   position: relative;
   min-height: 100%;
   padding: 24px 14px 40px;
-  background: radial-gradient(120% 90% at 50% 0%, #4a3410 0%, #2a1c06 40%, #0c0802 100%);
+  background: var(--cab-bg);
 }
-.tg-page-grid {
+.cab-page-grid {
   max-width: 1100px;
   margin: 0 auto;
   display: grid;
@@ -266,80 +180,19 @@ onUnmounted(() => {
   align-items: start;
 }
 @media (min-width: 1024px) {
-  .tg-page-grid { grid-template-columns: minmax(0, 1fr) 320px; }
+  .cab-page-grid { grid-template-columns: minmax(0, 1fr) var(--cab-side, 300px); }
 }
-.tg-page-main { min-width: 0; }
-.tg-page-side {
+.cab-page-main { min-width: 0; }
+.cab-page-side {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.tg-side-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
 }
 
-/* Stop & Lock 777 — full-bleed "big daddy" page (steel-room backdrop) */
-.sl-page {
-  position: relative;
-  min-height: 100%;
-  padding: 24px 14px 40px;
-  background: radial-gradient(120% 90% at 50% 0%, #3a4250 0%, #20252e 42%, #0c0f15 100%);
-}
-.sl-page-grid {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  align-items: start;
-}
-@media (min-width: 1024px) {
-  .sl-page-grid { grid-template-columns: minmax(0, 1fr) 300px; }
-}
-.sl-page-main { min-width: 0; }
-.sl-page-side {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.sl-side-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-/* Flameout 21 — full-bleed crash page (the demo's body background) */
-.l21-page {
-  position: relative;
-  min-height: 100%;
-  padding: 24px 14px 40px;
-  background: radial-gradient(120% 90% at 50% 0%, #15725a 0%, #0c4a37 38%, #04221a 100%);
-}
-.l21-page-grid {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  align-items: start;
-}
-@media (min-width: 1024px) {
-  .l21-page-grid { grid-template-columns: minmax(0, 1fr) 300px; }
-}
-.l21-page-main { min-width: 0; }
-.l21-page-side {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.l21-side-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
+/* Temple of Gold — Aztec-gold temple backdrop */
+.cab-page--tg { --cab-bg: radial-gradient(120% 90% at 50% 0%, #4a3410 0%, #2a1c06 40%, #0c0802 100%); --cab-side: 320px; }
+/* Stop & Lock 777 — steel-room backdrop */
+.cab-page--sl { --cab-bg: radial-gradient(120% 90% at 50% 0%, #3a4250 0%, #20252e 42%, #0c0f15 100%); }
+/* Flameout 21 — the demo's green-felt backdrop */
+.cab-page--l21 { --cab-bg: radial-gradient(120% 90% at 50% 0%, #15725a 0%, #0c4a37 38%, #04221a 100%); }
 </style>
