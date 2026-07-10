@@ -57,6 +57,24 @@ describe('EndHistogram', () => {
     expect(w.findAll('rect').length).toBe(result.endHistogram.counts.length)
     expect(w.find('svg').attributes('aria-label')).toMatch(/620/) // bustCount surfaced in summary
   })
+
+  it('overlays the model expected end and the measured mean when provided', () => {
+    const w = mount(EndHistogram, { props: { result, expectedEndCredits: 60 } })
+    const model = w.find('[data-test="model-end"]')
+    const mean = w.find('[data-test="mean-end"]')
+    expect(model.exists()).toBe(true)
+    expect(mean.exists()).toBe(true)
+    // linear map over [0, 300] credits between X0=34 and X1=312
+    expect(Number(model.attributes('x1'))).toBeCloseTo(34 + (60 / 300) * (312 - 34), 3)
+    expect(Number(mean.attributes('x1'))).toBeCloseTo(34 + (140 / 300) * (312 - 34), 3)
+    expect(w.find('svg').attributes('aria-label')).toMatch(/model|expected/i)
+  })
+
+  it('draws no markers when the model end is absent', () => {
+    const w = mount(EndHistogram, { props: { result } })
+    expect(w.find('[data-test="model-end"]').exists()).toBe(false)
+    expect(w.find('[data-test="mean-end"]').exists()).toBe(false)
+  })
 })
 
 describe('DrawdownHistogram', () => {
