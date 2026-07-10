@@ -25,12 +25,12 @@ describe('stock-rush — machine integrity', () => {
     expect(counts[1]).toEqual({ BE: 5, RP: 5, WM: 3, R7: 3, BB: 2, BL: 3 })
     expect(counts[2]).toEqual({ BE: 5, RP: 5, WM: 3, R7: 3, BB: 4, BL: 1 })
   })
-  it('the floor is complete: 10 machines, all valid, ids unique', () => {
-    expect(FLOOR).toHaveLength(10)
-    expect(new Set(FLOOR.map(m => m.id)).size).toBe(10)
+  it('the floor is complete: 11 machines, all valid, ids unique', () => {
+    expect(FLOOR).toHaveLength(11)
+    expect(new Set(FLOOR.map(m => m.id)).size).toBe(11)
     for (const def of FLOOR) expect(() => validateMachineDef(def)).not.toThrow()
     expect(FLOOR.map(m => m.family)).toEqual([
-      'cascade', 'video', 'video', 'video', 'video', 'stepper', 'stepper', 'bally-em', 'bally-em', 'pachislo'
+      'wheel', 'cascade', 'video', 'video', 'video', 'video', 'stepper', 'stepper', 'bally-em', 'bally-em', 'pachislo'
     ])
     // Flameout 21 (blackjack-reel) and Stop & Lock 777 (lock-reel) are both PARKED.
     expect(FLOOR.some(m => m.id === 'flameout-21')).toBe(false)
@@ -43,7 +43,7 @@ describe('stock-rush — machine integrity', () => {
     expect(PARKED.map(m => m.id)).toEqual(['flameout-21', 'stop-and-lock-777'])
     for (const def of PARKED) expect(() => validateMachineDef(def)).not.toThrow()
     // the store resolves everything (floor + parked) so the parked games still load
-    expect(ALL_MACHINES).toHaveLength(12)
+    expect(ALL_MACHINES).toHaveLength(13)
     expect(ALL_MACHINES.some(m => m.id === 'flameout-21')).toBe(true)
     expect(ALL_MACHINES.some(m => m.id === 'stop-and-lock-777')).toBe(true)
   })

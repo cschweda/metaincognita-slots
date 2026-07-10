@@ -11,11 +11,21 @@ import { STOCK_RUSH } from './stock-rush'
 import { FLAMEOUT_21 } from './flameout-21'
 import { STOP_AND_LOCK_777 } from './stop-and-lock-777'
 import { TEMPLE_OF_GOLD } from './temple-of-gold'
+import { WONDER_WHEEL } from './wonder-wheel'
+
+/**
+ * The FEATURED headliner — the big card above the selection grid. CURATED on
+ * purpose (not date-rotated): revolving the spotlight is a one-line change
+ * here plus a copy entry in components/floor/featuredCopy.ts. Past headliners
+ * keep their copy so they can return.
+ */
+export const FEATURED_ID = 'wonder-wheel'
 
 // The floor — the machines shown on the selection screen (and the ones the Sim Lab
 // lists and `verify` checks).
 export const FLOOR: MachineDef[] = [
-  TEMPLE_OF_GOLD, // the Featured "big daddy" — a free-play cascade trainer
+  WONDER_WHEEL, // ★ Featured — the 1996 wheel archetype, wedge weights on the glass
+  TEMPLE_OF_GOLD, // former Featured — the free-play cascade trainer
   CANAL_ROYALE,
   DRAGONS_HOARD,
   THUNDER_VAULT,

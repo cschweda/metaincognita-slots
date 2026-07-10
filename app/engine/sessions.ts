@@ -155,7 +155,7 @@ export function simulateSession(
     // rounds are cost-bearing (nextSpinCost > 0), so force-playing them could
     // overspend a bankroll that is already at rest.  The abandoned-tail EV is
     // statistically negligible and matches the spec's stance.
-    while (state.videoFeature !== null) applySpin()
+    while (state.videoFeature !== null || state.wheel?.pending === true) applySpin()
   }
 
   return {

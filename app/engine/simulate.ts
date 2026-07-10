@@ -170,7 +170,8 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
     if (out.gameKind === 'base' || out.gameKind === 'normal') {
       cycles++
       const eventHit = out.featureEvents.some(e =>
-        e.type === 'flag-realized' || e.type === 'free-spins-triggered' || e.type === 'orbs-locked')
+        e.type === 'flag-realized' || e.type === 'free-spins-triggered' || e.type === 'orbs-locked'
+        || e.type === 'wheel-armed')
       if (out.totalPayout > 0 || eventHit) hits++
     }
   }
@@ -182,6 +183,7 @@ export function simulateMachine(def: MachineDef, opts: SimOptions): SimResult {
   while (
     state.videoFeature !== null
     || (state.pachislo !== null && state.pachislo.bonus !== null)
+    || state.wheel?.pending === true
   ) {
     playOne()
   }

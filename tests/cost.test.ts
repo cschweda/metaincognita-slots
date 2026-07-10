@@ -6,7 +6,7 @@ import { FLOOR } from '../app/machines'
 // spin() throws for them. Every family must appear in exactly one set — a new
 // family fails loudly here instead of silently skipping the property test.
 const INTERACTIVE = new Set(['blackjack-reel', 'lock-reel'])
-const SPINNABLE = new Set(['stepper', 'bally-em', 'video', 'pachislo', 'cascade'])
+const SPINNABLE = new Set(['stepper', 'bally-em', 'video', 'pachislo', 'cascade', 'wheel'])
 
 describe('nextSpinCost predicts every spin cost exactly', () => {
   for (const def of FLOOR) {

@@ -146,6 +146,8 @@ export const useSlotsStore = defineStore('slots', {
     setBet(coins: number) {
       const def = this.currentDef
       if (def === null || this.spinning) return
+      // an armed wheel was earned AT a bet — no re-betting until it resolves
+      if (this.currentState?.wheel?.pending === true) return
       const clamped = def.family === 'video' && def.fixedBet
         ? def.maxCoins
         : def.family === 'pachislo'

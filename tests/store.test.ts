@@ -1378,3 +1378,40 @@ describe('storage version notice', () => {
     expect(store.storageNotice).toBe(false) // corrupt ≠ incompatible: stay silent
   })
 })
+
+describe('wonder-wheel store integration', () => {
+  it('round-trips a pending wheel topper through save/resume', () => {
+    const a = freshStore()
+    a.startSession(50_000)
+    a.selectMachine('wonder-wheel')
+    a.machineStates['wonder-wheel']!.wheel = { pending: true }
+    a.saveToLocalStorage()
+    const b = freshStore()
+    expect(b.resume()).toBe(true)
+    expect(b.machineStates['wonder-wheel']!.wheel).toEqual({ pending: true })
+  })
+
+  it('a corrupt wheel blob restores as not-pending (nothing owed was drawn)', () => {
+    const a = freshStore()
+    a.startSession(50_000)
+    a.selectMachine('wonder-wheel')
+    a.machineStates['wonder-wheel']!.wheel = { pending: 'yes' } as never
+    a.saveToLocalStorage()
+    const b = freshStore()
+    expect(b.resume()).toBe(true)
+    expect(b.machineStates['wonder-wheel']!.wheel).toEqual({ pending: false })
+  })
+
+  it('the bet is locked while the topper is armed — it was earned AT a bet', () => {
+    const store = freshStore()
+    store.startSession(50_000)
+    store.selectMachine('wonder-wheel')
+    store.setBet(3)
+    store.machineStates['wonder-wheel']!.wheel = { pending: true }
+    store.setBet(1)
+    expect(store.settings.betsByMachine['wonder-wheel']).toBe(3)
+    store.machineStates['wonder-wheel']!.wheel = { pending: false }
+    store.setBet(1)
+    expect(store.settings.betsByMachine['wonder-wheel']).toBe(1)
+  })
+})

@@ -39,6 +39,7 @@ function coinsFor(def: MachineDef): number {
     case 'blackjack-reel': return def.maxCoins
     case 'lock-reel': return def.maxCoins
     case 'cascade': return def.maxCoins
+    case 'wheel': return def.maxCoins
     default: {
       const exhaustive: never = def
       throw new Error(`unhandled family ${(exhaustive as MachineDef).family}`)

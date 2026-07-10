@@ -280,5 +280,12 @@ export function sanitizeMachineState(def: MachineDef, raw: unknown): MachineSess
     }
   }
 
+  // wheel: the only state is whether a free topper spin is owed. Anything
+  // malformed restores as pending=false — the wedge draw hadn't happened yet,
+  // so nothing owed is lost except a reload mid-arm animation.
+  if (def.family === 'wheel' && r.wheel !== null && typeof r.wheel === 'object') {
+    fresh.wheel = { pending: (r.wheel as Record<string, unknown>).pending === true }
+  }
+
   return fresh
 }

@@ -45,3 +45,16 @@ describe('wheelExactRtp — frozen calibration (2026-07-10)', () => {
     expect(r.breakdown.find(b => b.entryId === def.topAwardEntryId)).toBeDefined()
   })
 })
+
+describe('wonder-wheel — sim vs exact (seeded)', () => {
+  it('500k cycles land inside the 3.5σ band of the frozen exact figures', async () => {
+    const { simulateMachine } = await import('../app/engine/simulate')
+    const exact = wheelExactRtp(def, { coins: 3 })
+    const sim = simulateMachine(def, { spins: 500_000, coins: 3, seed: 11, progressiveMode: 'static' })
+    const seRtp = Math.sqrt(exact.variancePerCoin / 500_000)
+    expect(Math.abs(sim.rtp - exact.rtpPerCoin)).toBeLessThanOrEqual(3.5 * seRtp)
+    const hf = exact.hitFrequency
+    const seHf = Math.sqrt(hf * (1 - hf) / 500_000)
+    expect(Math.abs(sim.hitFrequency - hf)).toBeLessThanOrEqual(3.5 * seHf)
+  })
+})
