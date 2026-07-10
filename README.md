@@ -10,12 +10,18 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.12.1.** The floor is open: ten machines, full game surfaces,
+**Status: v0.13.0.** The floor is open: ten machines, full game surfaces,
 per-machine cabinet chrome, X-ray mode, PAR sheets (each machine's internal
 math card — pays, odds, reel maps), session history, a Monte-Carlo Sim Lab,
-and /learn explainers on the math the floor never shows. 0.12.1 added the
-CASCADE! celebration beat, a per-spin X-ray trace inside the Temple cabinet,
-and a cabinet PAR button.
+and /learn explainers on the math the floor never shows. 0.13.0 gave the
+floor a voice (four period-authentic synthesized cabinet voices, mute in the
+nav), moved all exact math off the main thread (a long-lived `rtp.worker` —
+zero UI jank, identical numbers), added two learn pages (slot **myths**
+refuted by a live 250,000-spin experiment; the **psychology** of the floor,
+demonstrated on this floor's own machinery), grew the glossary to 39 terms,
+gave the Sim Lab live closed-form expected math with a model-vs-measured
+histogram overlay, and made History speak plain English with an
+expected-vs-actual takeaway at the machines' exact edges.
 
 > **Featured: Temple of Gold** — a gaudy Aztec **cascade** (tumble) machine and
 > the floor's first **free-play trainer**. It runs the same exact maths a real
@@ -50,7 +56,11 @@ pnpm dev        # open http://localhost:3000
    machine's bespoke decorative cabinet chrome (nine themed `GameMachineChrome`
    frames: gothic stone, pachinko neon, baroque gold, emerald scales, riveted
    steel, ice facets, rising flames, warm brass, cool turquoise — while the
-   Featured Temple of Gold runs its own full bespoke gold cabinet instead). Hit **X-ray** to
+   Featured Temple of Gold runs its own full bespoke gold cabinet instead) —
+   and hear it: every cabinet has a period-authentic synthesized voice
+   (steppers thunk and rattle coins, the 1979 Ballys ring a struck bell, the
+   video slots chime digital arpeggios, Stock Rush beeps like a parlor), with
+   a global mute in the nav. Hit **X-ray** to
    open the side panel: labeled RNG trace, near-miss callouts, a live
    session-vs-exact RTP convergence sparkline, and machine internals.
 3. **PAR sheet** — click the spreadsheet icon for the full pay-table with
@@ -58,19 +68,32 @@ pnpm dev        # open http://localhost:3000
    often *any* win lands), and variance.
 4. **Pachislo keys** — on Stock Rush press **1/2/3** to stop reels manually;
    the slip (≤ 4 stops) is visible in X-ray.
-5. **Sim Lab** — run thousands of bankroll sessions against any machine in a
+5. **Sim Lab** — see the math *before* you spin: a live model panel (per-spin
+   EV, expected loss at the spin cap, ±1σ of luck, and N₀ — the spins it takes
+   the edge to outgrow luck) recomputes as you move the inputs. Then run
+   thousands of bankroll sessions against any machine in a
    Web Worker (live progress, cancel mid-run). Outputs risk of ruin, median/mean
    ending bankroll, survival curve, drawdown histogram, sample trajectories, and
-   empirical RTP.
-6. **Learn** — eight explainer pages: house edge (live floor-wide table),
+   empirical RTP — with the model's expected end overlaid on the measured
+   histogram, and the gap explained honestly (bust truncation, not luck).
+6. **History** — every game logged in plain English: machine names, awards
+   like "5× Winged Lion" instead of paytable ids, and a takeaway line
+   comparing what your wagering *should* have cost at the machines' exact
+   edges against what it actually did (the export log keeps raw ids).
+7. **Learn** — ten explainer pages: house edge (live floor-wide table),
    Telnaes virtual-reel mechanics, hold-and-spin as an absorbing Markov chain,
    the Gargoyle's Eye additive multiplier, cascade/tumble math (the Featured
    machine's branching process), the pachislo flag lottery + operator key
    (exact RTP at all six settings), losses-disguised-as-wins and engineered
-   near misses (a 10,000-spin experiment run live in your browser), and a
-   plain-English glossary. Each page layers intuition first, then a
-   collapsible rigorous derivation with live numbers.
-7. Everything persists in **localStorage** — reload mid-feature and your
+   near misses (a 10,000-spin experiment run live in your browser), slot
+   **myths** — due jackpots, hot and cold streaks — refuted by a 250,000-spin
+   seeded experiment with streak-conditioned hit rates, the **psychology of
+   the floor** (LDW parties, variable-ratio reinforcement, credits-not-dollars,
+   the illusion of control — each demonstrated on this app's own machinery),
+   and a 39-term plain-English glossary with deep-link anchors. Each page
+   layers intuition first, then a collapsible rigorous derivation with live
+   numbers, and every cabinet links to its own explainer.
+8. Everything persists in **localStorage** — reload mid-feature and your
    free spins are still waiting exactly where you left them.
 
 This is an educational simulator. No real money is involved.
@@ -184,6 +207,19 @@ reels, controls, and engine are unaffected, and the a11y audit remains
 100/100. All ambient animation (breathing glows, slow bobs, shimmer sweeps)
 is suppressed by a single global `prefers-reduced-motion` media query guard.
 
+## The floor has a voice
+
+Every machine is scored by a zero-file, CSP-clean Web Audio synth (no audio
+assets, everything generated). Four period-authentic voices: steppers thunk
+mechanically and rattle coins into the tray, the 1979 Bally EMs hum and ring
+a true struck bell, the video slots chime digital arpeggios, and Stock Rush
+beeps like a Japanese parlor. Reveals scale with the **payout** — which means
+a loss disguised as a win throws the same party a real machine would, while
+the result bar and History keep telling the net truth beside it; that
+deliberate contrast is a teaching device (see `/learn/psychology`). Clean
+losses stay silent, a stocked pachislo flag stays *deliberately* silent (real
+machines hide it — the X-ray shows it), and a global mute lives in the nav.
+
 ## Verification
 
 ```bash
@@ -220,8 +256,11 @@ stock-rush              3     91.5013%    91.5360%     0.0347%    21.2341%    21
 
 ## Tech
 
-Nuxt 4 SPA (ssr:false) - TypeScript strict - @nuxt/ui + Tailwind 4 -
-Pinia - Vitest - Web Worker (Sim Lab) - pnpm. The engine (`app/engine/`) is
+Nuxt 4 SPA (ssr:false) - Vue 3 - TypeScript strict - @nuxt/ui 4 + Tailwind 4 -
+Pinia 3 - Vitest 4 - two Web Workers (`sim.worker` for the Sim Lab's
+Monte-Carlo runs; a long-lived `rtp.worker` for exact math and the seeded
+learn-page experiments, so the UI thread never runs a 24⁵ enumeration) -
+pnpm. The engine (`app/engine/`) is
 pure TypeScript with no framework imports; machines (`app/machines/`) are
 pure data.
 

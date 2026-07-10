@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.13.0] - 2026-07-10
 
 ### Fixed
 - **The CASCADE! overlay no longer strobes.** The celebration's color wash was a
@@ -34,6 +34,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   page after navigation.
 
 ### Added
+- **`/learn/psychology` — the floor's persuasion toolkit, receipts on.** LDW
+  celebrations (headlined by the live 63.34% share of celebrated "wins" that
+  lost money — and the note that THIS floor's payout-scaled jingles do it too,
+  deliberately, beside an honest result bar), variable-ratio reinforcement
+  (live pay-rate vs beat-the-bet-rate pair), engineered near misses,
+  credits-as-distance, the illusion of control (pachislo as the demonstration),
+  and time on device — with the floor's built-in exits (History takeaway, Sim
+  Lab N₀, End session). Tenth learn card.
+- **Glossary completion — 39 terms.** Seven additions the app itself now
+  surfaces: RNG, pachislo, REG/BIG/JAC (History prints them), N₀ (the Sim Lab
+  panel computes it), variable-ratio reinforcement, illusion of control, and
+  time on device.
 - **`/learn/myths` — due, hot & cold, refuted live.** Gambler's fallacy, "due"
   jackpots, and hot/cold machines, each stated in its own voice and answered by
   a seeded 250,000-spin experiment through the real Sevens Ablaze engine (in the
