@@ -44,6 +44,9 @@ export function unlockAudio(): void {
     if (!Ctor) return
     ctx ??= new Ctor()
     if (ctx.state === 'suspended') void ctx.resume()
+    // The gesture that unlocks the context also pays for the sampled stings, so
+    // the boot doesn't. Idempotent, fire-and-forget; failures are swallowed.
+    warmSamples()
   } catch { /* Web Audio unavailable — play on in silence */ }
 }
 
@@ -176,4 +179,82 @@ export function sfxCascade(chain = 2): void {
   // sub boom + sparkle sweep
   tone(68, 0.55, 0.13, 'sine', 0.1)
   noiseBurst(0.32, 0.12, 'bandpass', 4200, 2, 0.14)
+}
+
+// ── Sampled one-shots — the ONLY audio FILES in the app ─────────────────────
+//
+// Everything above this line is synthesized. These three are recorded stings
+// (Floraphonic via Pixabay — see public/audio/CREDITS.md) that take over at the
+// two moments the spectacle peaks: a feature arming, and a jackpot landing. The
+// rest of every cabinet stays synth.
+//
+// They are fetch()ed and decoded through Web Audio, so the CSP directive that
+// actually authorizes them is `connect-src 'self'` — NOT media-src (that governs
+// <audio>/<video> elements, which this app doesn't use). Both are same-origin and
+// already allowed. Fetched and decoded LAZILY — never on boot — and warmed on the
+// first user gesture, so a sting is already in memory before it is ever asked for.
+//
+// A missing or undecodable file must never mean SILENCE: playSampleNow() reports
+// false and the caller sings its synth fanfare instead. The samples are a
+// sweetener on top of a cabinet that can always speak for itself.
+
+export type SampleName = 'bonus-1' | 'bonus-2' | 'jackpot'
+
+const SAMPLE_URL: Record<SampleName, string> = {
+  'bonus-1': '/audio/bonus-1.mp3',
+  'bonus-2': '/audio/bonus-2.mp3',
+  'jackpot': '/audio/jackpot.mp3'
+}
+
+const decoded = new Map<SampleName, AudioBuffer>()
+const loading = new Set<SampleName>()
+
+function loadSample(name: SampleName): void {
+  if (ctx === null || decoded.has(name) || loading.has(name)) return
+  loading.add(name)
+  const c = ctx
+  void (async () => {
+    try {
+      const res = await fetch(SAMPLE_URL[name])
+      if (!res.ok) return
+      decoded.set(name, await c.decodeAudioData(await res.arrayBuffer()))
+    } catch {
+      /* missing, offline, or undecodable — the synth fanfare covers for it */
+    } finally {
+      loading.delete(name)
+    }
+  })()
+}
+
+/**
+ * Pull the stings into memory. Called from unlockAudio(), so the first gesture
+ * pays for them rather than the boot — and by the time a feature arms, the sound
+ * is ready to fire on the same frame.
+ */
+export function warmSamples(): void {
+  if (ctx === null) return
+  for (const name of Object.keys(SAMPLE_URL) as SampleName[]) loadSample(name)
+}
+
+/**
+ * Play a recorded sting NOW. Returns false — having kicked off a background load
+ * for next time — when it cannot: muted, still locked, or not yet decoded.
+ * Callers MUST read false as "sing the synth instead", so a cold cache or a
+ * broken asset degrades to the old fanfare rather than to silence.
+ */
+export function playSampleNow(name: SampleName, vol = 0.5): boolean {
+  if (!live()) return false
+  const buf = decoded.get(name)
+  if (buf === undefined) {
+    loadSample(name)
+    return false
+  }
+  const c = ctx!
+  const src = c.createBufferSource()
+  const gain = c.createGain()
+  src.buffer = buf
+  gain.gain.value = vol
+  src.connect(gain).connect(c.destination)
+  src.start()
+  return true
 }

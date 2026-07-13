@@ -9,7 +9,24 @@
 // stepper lives LOW (thunks, a coin tray), bally-em MID with a true struck
 // bell, video HIGH and melodic, pachislo all square-wave arcade.
 import type { MachineDef, SpinOutcome } from '~/engine'
-import { bell, noiseBurst, reducedMotion, tone } from '~/utils/audio'
+import type { SampleName } from '~/utils/audio'
+import { bell, noiseBurst, playSampleNow, reducedMotion, tone } from '~/utils/audio'
+
+// ── The two sampled moments ─────────────────────────────────────────────────
+// Recorded stings (public/audio) take over from the synth at the peaks — a
+// feature arming, a jackpot landing — and NOWHERE else. Every one is guarded:
+// playSampleNow() returns false when the sample is muted, locked or not yet
+// decoded, and the synth fanfare sings in its place. A missing file costs the
+// sweetener, never the sound.
+const BONUS_VOL = 0.4
+const JACKPOT_VOL = 0.45
+
+/** The two bonus stings alternate, so back-to-back features never play twice. */
+let bonusFlip = 0
+function nextBonusSting(): SampleName {
+  bonusFlip ^= 1
+  return bonusFlip === 1 ? 'bonus-1' : 'bonus-2'
+}
 
 export interface CabinetVoice {
   /** the reels spin up (once per paid game) */
@@ -47,16 +64,18 @@ interface Fanfares {
 function playReveal(f: Fanfares, out: SpinOutcome): void {
   const grandFill = out.featureEvents.some(e => e.type === 'hold-and-spin-ended' && e.filled)
   if (out.progressiveEvents.length > 0 || grandFill) {
-    f.jackpot()
+    if (!playSampleNow('jackpot', JACKPOT_VOL)) f.jackpot()
     return
   }
   if (out.featureEvents.some(e => e.type === 'bonus-started')) {
-    f.bonusStart()
+    if (!playSampleNow(nextBonusSting(), BONUS_VOL)) f.bonusStart()
     return
   }
   const tier = winTier(out)
   if (tier !== 'none') f.win(tier)
-  if (out.featureEvents.some(e => e.type === 'free-spins-triggered' || e.type === 'free-spins-retriggered')) f.stinger('feature')
+  if (out.featureEvents.some(e => e.type === 'free-spins-triggered' || e.type === 'free-spins-retriggered')) {
+    if (!playSampleNow(nextBonusSting(), BONUS_VOL)) f.stinger('feature')
+  }
   if (out.featureEvents.some(e => e.type === 'orbs-locked' || e.type === 'mult-orbs-locked')) f.stinger('lock')
   if (out.featureEvents.some(e => e.type === 'bonus-ended')) f.stinger('bonusEnd')
   if (out.featureEvents.some(e => e.type === 'replay-granted')) f.stinger('replay')
@@ -367,13 +386,18 @@ const wheelVoice: CabinetVoice = {
   },
   reveal(_def, out) {
     if (out.featureEvents.some(e => e.type === 'wheel-armed')) {
-      wheelFanfares.stinger('feature')
+      // the topper arming IS this cabinet's feature trigger
+      if (!playSampleNow(nextBonusSting(), BONUS_VOL)) wheelFanfares.stinger('feature')
       return
     }
     const landed = out.featureEvents.find(e => e.type === 'wheel-landed')
     if (landed !== undefined && landed.type === 'wheel-landed') {
-      if (landed.credits >= 2500) wheelFanfares.jackpot()
-      else wheelFanfares.win(wheelWedgeTier(landed.credits))
+      // MEGA (2,500 credits) is the wheel's jackpot — the recorded one
+      if (landed.credits >= 2500) {
+        if (!playSampleNow('jackpot', JACKPOT_VOL)) wheelFanfares.jackpot()
+      } else {
+        wheelFanfares.win(wheelWedgeTier(landed.credits))
+      }
       return
     }
     // 'wheel-wasted' stays SOUNDLESS on purpose: a real cabinet says nothing

@@ -153,6 +153,12 @@ const csp = [
   `style-src 'self' 'unsafe-inline'`,
   `img-src 'self' data:`,
   `font-src 'self' data:`,
+  // The recorded stings under /audio (see public/audio/CREDITS.md) are pulled in
+  // with fetch() + decodeAudioData, so it is connect-src below that actually
+  // authorizes them, not this. media-src is stated anyway: it costs nothing, it
+  // documents that this origin serves audio, and it is already correct on the day
+  // someone plays a sound through an <audio> element instead of Web Audio.
+  `media-src 'self'`,
   `connect-src 'self'`,
   `object-src 'none'`,
   `frame-ancestors 'none'`,

@@ -6,6 +6,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **The first recorded sounds in the app — bonus and jackpot stings.** Three
+  Floraphonic samples (Pixabay; `public/audio/CREDITS.md`) take over from the
+  synth at the two moments the spectacle peaks, and nowhere else: a **feature
+  arming** (pachislo bonus, video free spins, the Wonder Wheel topper) fires an
+  alternating bonus sting, and a **jackpot** — a progressive hit, a filled
+  hold-and-spin Grand, or the wheel's MEGA wedge — fires the jackpot sting. Every
+  other sound in every cabinet is still synthesized.
+  They are fetched and decoded lazily, never on boot, and warmed on the first
+  user gesture, so a sting is in memory before it is asked for. Both respect the
+  existing mute toggle and the AudioContext unlock. **A missing or undecodable
+  file can never mean silence:** `playSampleNow()` returns false and the caller
+  sings its synth fanfare instead — the samples are a sweetener on a cabinet that
+  can always speak for itself.
+- `media-src 'self'` added to the CSP. The stings are actually authorized by
+  `connect-src` (they arrive via fetch + decodeAudioData, not an `<audio>`
+  element), but the directive is declared anyway: it costs nothing and documents
+  that this origin now serves audio.
 - **Win/loss dots on the bankroll sparkline — in three colours, not two.** Every
   point on the result card's sparkline is now a dot coloured by what that spin did
   to the BANKROLL, not by what the machine called it: **green** it rose, **rose**
