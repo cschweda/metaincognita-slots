@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { FEATURED_ID, FLOOR } from '~/machines'
 import { formatCents } from '~/utils/format'
+import { isFreePlay } from '~/utils/freePlay'
 
 const store = useSlotsStore()
 
@@ -24,6 +25,10 @@ const FAMILY_HEADING: Record<string, string> = {
 // The revolving Featured headliner (curated in machines/index.ts). The grid
 // lists everything EXCEPT the current headliner — a resting former headliner
 // (e.g. Temple) rejoins the grid under its family group.
+//
+// BOTH render whether or not a session is open: the whole floor is a showroom
+// you can walk cold. The bankroll is dialed on the way INTO a betting cabinet
+// (store.enterMachine), not at the door — so nothing hides behind the gate.
 const featured = computed(() => FLOOR.find(def => def.id === FEATURED_ID) ?? null)
 const groups = computed(() => FAMILY_ORDER.map(family => ({
   family,
@@ -31,9 +36,9 @@ const groups = computed(() => FAMILY_ORDER.map(family => ({
   machines: FLOOR.filter(def => def.family === family && def.id !== FEATURED_ID)
 })).filter(group => group.machines.length > 0))
 
-// The first-run screen keeps the FREE-PLAY trainer up front regardless of who
-// is featured: it is the one machine playable without a bankroll.
-const freePlayTrainer = computed(() => FLOOR.find(def => def.family === 'cascade') ?? null)
+// The walk-up machine — named in the free-play pointer so the copy can't drift
+// from whichever machine is actually free.
+const freePlayTrainer = computed(() => FLOOR.find(isFreePlay) ?? null)
 </script>
 
 <template>
@@ -48,8 +53,10 @@ const freePlayTrainer = computed(() => FLOOR.find(def => def.family === 'cascade
         </p>
       </div>
 
-      <!-- First run: the free-play Featured machine needs no bankroll — never
-           hide it behind the session gate. The nine betting machines stay gated. -->
+      <!-- Cold floor (no session): the storage notice + the walk-up bankroll card.
+           The MACHINES below are not gated — a betting cabinet opens the session
+           on entry at the bankroll dialed here (store.enterMachine), and the
+           free-play trainer needs no bankroll at all. -->
       <template v-if="store.phase === 'floor'">
         <div
           v-if="store.storageNotice"
@@ -71,12 +78,50 @@ const freePlayTrainer = computed(() => FLOOR.find(def => def.family === 'cascade
             @click="store.dismissStorageNotice()"
           />
         </div>
-        <FloorFeaturedMachine
-          v-if="freePlayTrainer"
-          :def="freePlayTrainer"
-        />
+      </template>
+
+      <!-- Seated player: the running session bar -->
+      <div
+        v-else
+        class="flex items-center justify-between rounded-xl bg-neutral-900/70 border border-neutral-800 px-4 py-2.5"
+      >
+        <div class="text-sm">
+          <span class="text-neutral-400">Bankroll </span>
+          <span class="text-emerald-400 font-mono">{{ formatCents(store.bankrollCents) }}</span>
+          <span class="text-neutral-400 font-mono text-xs ml-3">{{ store.stats.spins.toLocaleString() }} games this session</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <UButton
+            :color="store.settings.xray ? 'primary' : 'neutral'"
+            :variant="store.settings.xray ? 'solid' : 'outline'"
+            :aria-pressed="store.settings.xray"
+            size="xs"
+            icon="i-lucide-scan-line"
+            @click="store.setXray(!store.settings.xray)"
+          >
+            X-ray {{ store.settings.xray ? 'on' : 'off' }}
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            icon="i-lucide-rotate-ccw"
+            @click="store.resetSession()"
+          >
+            End session
+          </UButton>
+        </div>
+      </div>
+
+      <!-- The headliner fronts the floor in both states -->
+      <FloorFeaturedMachine
+        v-if="featured"
+        :def="featured"
+      />
+
+      <template v-if="store.phase === 'floor' && freePlayTrainer">
         <p class="text-center text-sm text-neutral-400">
-          Temple of Gold is <span class="text-amber-300">free play</span> — walk up, no bankroll needed.
+          {{ freePlayTrainer.name }} is <span class="text-amber-300">free play</span> — walk up, no bankroll needed.
           New to slots? Start with the
           <NuxtLink
             to="/learn"
@@ -86,62 +131,32 @@ const freePlayTrainer = computed(() => FLOOR.find(def => def.family === 'cascade
         <FloorBankrollSetup />
       </template>
 
-      <template v-else>
-        <div class="flex items-center justify-between rounded-xl bg-neutral-900/70 border border-neutral-800 px-4 py-2.5">
-          <div class="text-sm">
-            <span class="text-neutral-400">Bankroll </span>
-            <span class="text-emerald-400 font-mono">{{ formatCents(store.bankrollCents) }}</span>
-            <span class="text-neutral-400 font-mono text-xs ml-3">{{ store.stats.spins.toLocaleString() }} games this session</span>
-          </div>
-          <div class="flex items-center gap-3">
-            <UButton
-              :color="store.settings.xray ? 'primary' : 'neutral'"
-              :variant="store.settings.xray ? 'solid' : 'outline'"
-              :aria-pressed="store.settings.xray"
-              size="xs"
-              icon="i-lucide-scan-line"
-              @click="store.setXray(!store.settings.xray)"
-            >
-              X-ray {{ store.settings.xray ? 'on' : 'off' }}
-            </UButton>
-            <UButton
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              icon="i-lucide-rotate-ccw"
-              @click="store.resetSession()"
-            >
-              End session
-            </UButton>
-          </div>
+      <h2 class="floor-title text-2xl font-bold tracking-widest pt-2">
+        CHOOSE YOUR MACHINE
+      </h2>
+      <p
+        v-if="store.phase === 'floor'"
+        class="text-center text-sm text-neutral-400 -mt-4"
+      >
+        Every machine is open. Walking into a betting cabinet starts your session at the bankroll set above.
+      </p>
+
+      <section
+        v-for="group in groups"
+        :key="group.family"
+        class="space-y-3"
+      >
+        <h3 class="text-xs uppercase tracking-widest text-neutral-400">
+          {{ group.heading }}
+        </h3>
+        <div class="floor-grid">
+          <FloorMachineCard
+            v-for="def in group.machines"
+            :key="def.id"
+            :def="def"
+          />
         </div>
-
-        <FloorFeaturedMachine
-          v-if="featured"
-          :def="featured"
-        />
-
-        <h2 class="floor-title text-2xl font-bold tracking-widest pt-2">
-          CHOOSE YOUR MACHINE
-        </h2>
-
-        <section
-          v-for="group in groups"
-          :key="group.family"
-          class="space-y-3"
-        >
-          <h3 class="text-xs uppercase tracking-widest text-neutral-400">
-            {{ group.heading }}
-          </h3>
-          <div class="floor-grid">
-            <FloorMachineCard
-              v-for="def in group.machines"
-              :key="def.id"
-              :def="def"
-            />
-          </div>
-        </section>
-      </template>
+      </section>
     </div>
   </div>
 </template>

@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.15.1] - 2026-07-13
+
+### Changed
+- **The whole floor is visible on arrival.** The first-run screen used to show
+  the free-play Featured card and the bankroll form *only* — the other ten
+  machines lived behind the session gate and appeared after "Start session," so
+  a new visitor's floor looked like a one-machine floor. The Featured headliner
+  and the family-grouped grid now render whether or not a session is open, and
+  the curated `FEATURED_ID` (Wonder Wheel) fronts both — the headliner is no
+  longer invisible to a first-time visitor.
+- **The bankroll is dialed on the way into a cabinet, not at the door.** A new
+  `store.enterMachine` opens the session for a visitor who hasn't started one,
+  at the bankroll dialed on the setup card (now `store.pendingBankrollCents`, so
+  the slider and the grid share it) — so a cold click on a betting machine can't
+  dead-end at the game page's session guard. Free play still walks up with no
+  session at all: `isFreePlay` is now one shared predicate rather than
+  `family === 'cascade'` spelled out at each call site.
+
+### Fixed
+- **Machine cards no longer trip WCAG 2.5.3 (label-in-name).** Each card carried
+  an `aria-label="Play {name}"` while visibly showing the denomination, pay tag
+  and jackpot, so its accessible name didn't contain its visible label — a
+  *serious* axe finding on all ten cards, latent on the in-session floor and
+  newly on the landing page now that the grid greets a cold visitor. The label
+  is gone: the accessible name IS the visible content, the same stance
+  `FeaturedMachine` already took. Floor is back to a11y 100/100, 0 issues.
+
 ## [0.15.0] - 2026-07-10
 
 ### Added

@@ -22,7 +22,9 @@ const copy = computed(() => FEATURED_COPY[props.def.id] ?? {
 })
 
 function play() {
-  store.selectMachine(props.def.id)
+  // The headliner fronts a cold floor too, so entering it may have to open the
+  // session first (free play walks up without one).
+  store.enterMachine(props.def.id)
   navigateTo('/game')
 }
 </script>

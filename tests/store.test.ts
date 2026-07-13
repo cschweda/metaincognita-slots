@@ -9,6 +9,7 @@ import { mulberry32 } from '../app/engine'
 import { simulateMachine } from '../app/engine/simulate'
 import { setLiveRand } from '../app/utils/liveRand'
 import { SEVENS_ABLAZE } from '../app/machines/sevens-ablaze'
+import { TEMPLE_OF_GOLD } from '../app/machines/temple-of-gold'
 import { FLAMEOUT_21 } from '../app/machines/flameout-21'
 import { STOP_AND_LOCK_777 } from '../app/machines/stop-and-lock-777'
 
@@ -1413,5 +1414,50 @@ describe('wonder-wheel store integration', () => {
     store.machineStates['wonder-wheel']!.wheel = { pending: false }
     store.setBet(1)
     expect(store.settings.betsByMachine['wonder-wheel']).toBe(1)
+  })
+})
+
+// The floor lists every machine to a visitor who has no session yet, so walking
+// up to a cabinet has to be able to open the session itself — at the bankroll
+// dialed on the setup card. Free play walks up without one.
+describe('walking up to a machine from a cold floor', () => {
+  it('a betting machine opens the session at the dialed bankroll', () => {
+    const store = freshStore()
+    store.pendingBankrollCents = 250_000
+    expect(store.phase).toBe('floor')
+
+    store.enterMachine(CANAL_ROYALE.id)
+
+    expect(store.phase).toBe('playing')
+    expect(store.bankrollCents).toBe(250_000)
+    expect(store.currentMachineId).toBe(CANAL_ROYALE.id)
+  })
+
+  it('free play needs no session — it never touches the bankroll', () => {
+    const store = freshStore()
+
+    store.enterMachine(TEMPLE_OF_GOLD.id)
+
+    expect(store.phase).toBe('floor')
+    expect(store.bankrollCents).toBe(0)
+    expect(store.currentMachineId).toBe(TEMPLE_OF_GOLD.id)
+  })
+
+  it('never restarts a session underneath a player who is already on the floor', () => {
+    const store = freshStore()
+    store.startSession(100_000)
+    store.enterMachine(CANAL_ROYALE.id)
+    store.bankrollCents = 42_000 // played a while, down some money
+
+    store.enterMachine(SEVENS_ABLAZE.id) // wander to another cabinet
+
+    expect(store.phase).toBe('playing')
+    expect(store.bankrollCents).toBe(42_000)
+    expect(store.currentMachineId).toBe(SEVENS_ABLAZE.id)
+  })
+
+  it('rejects an unknown machine', () => {
+    const store = freshStore()
+    expect(() => store.enterMachine('no-such-machine')).toThrow()
   })
 })

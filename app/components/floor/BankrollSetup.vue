@@ -4,12 +4,14 @@ import { useSlotsStore } from '~/stores/slots'
 import { formatCents } from '~/utils/format'
 
 const store = useSlotsStore()
-const bankrollCents = ref(100_000)
 const hasSave = ref(false)
 hasSave.value = store.peekSavedSession()
 
+// The dialed-but-uncommitted bankroll lives in the store, not here: walking
+// straight into a betting machine from the grid below opens the session at this
+// same amount (store.enterMachine), so the slider can't be private to this card.
 function start() {
-  store.startSession(bankrollCents.value)
+  store.startSession(store.pendingBankrollCents)
 }
 function resume() {
   if (!store.resume()) hasSave.value = false
@@ -27,14 +29,14 @@ function resume() {
     >
       <div class="flex items-center gap-4">
         <USlider
-          v-model="bankrollCents"
+          v-model="store.pendingBankrollCents"
           :min="10_000"
           :max="1_000_000"
           :step="10_000"
           color="primary"
           class="flex-1"
         />
-        <span class="text-emerald-400 font-mono text-lg min-w-[6rem] text-right">{{ formatCents(bankrollCents) }}</span>
+        <span class="text-emerald-400 font-mono text-lg min-w-[6rem] text-right">{{ formatCents(store.pendingBankrollCents) }}</span>
       </div>
     </UFormField>
     <div class="flex items-center gap-3">

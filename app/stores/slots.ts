@@ -7,6 +7,7 @@ import { spinPachislo } from '~/engine/pachislo'
 // they must not ride the boot bundle. See ~/engine/parked.
 import { ALL_MACHINES } from '~/machines'
 import { liveRand } from '~/utils/liveRand'
+import { isFreePlay } from '~/utils/freePlay'
 import { asFiniteNumber, asNonNegativeInt, sanitizeMachineState } from '~/engine/restore'
 import { describeOutcome } from '~/utils/outcomeText'
 
@@ -72,6 +73,11 @@ export const useSlotsStore = defineStore('slots', {
   state: () => ({
     phase: 'floor' as 'floor' | 'playing',
     bankrollCents: 0,
+    // The bankroll dialed on the floor's setup card but not yet committed. The
+    // floor shows every machine to a visitor with no session, so walking into a
+    // betting cabinet opens the session at THIS amount (see enterMachine).
+    // Transient: never persisted — an open session has a real bankroll instead.
+    pendingBankrollCents: 100_000,
     currentMachineId: null as string | null,
     machineStates: {} as Record<string, MachineSessionState>,
     history: [] as SpinRecord[],
@@ -120,6 +126,23 @@ export const useSlotsStore = defineStore('slots', {
       try {
         localStorage.removeItem(STORAGE_KEY)
       } catch { /* storage unavailable */ }
+    },
+
+    /**
+     * Walk up to a machine from the floor. The floor lists every machine to a
+     * visitor who has no session yet, so a cold click must not dead-end at the
+     * game page's session guard: a betting cabinet opens the session here, at
+     * the bankroll dialed on the setup card. Free play needs no session — it
+     * never touches the bankroll — so it walks up with the floor left cold.
+     *
+     * An already-open session is never restarted: wandering between cabinets
+     * mid-session must not reset a player's bankroll (startSession $resets).
+     */
+    enterMachine(id: string) {
+      const def = MACHINES.get(id)
+      if (def === undefined) throw new Error(`unknown machine "${id}"`)
+      if (this.phase !== 'playing' && !isFreePlay(def)) this.startSession(this.pendingBankrollCents)
+      this.selectMachine(id)
     },
 
     selectMachine(id: string) {

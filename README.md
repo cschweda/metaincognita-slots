@@ -10,14 +10,16 @@ machine archetypes, then see exactly what the casino never shows you: the
 reel strips, the Telnaes virtual-reel weights, the engineered near-misses,
 and the precise mathematics of the house edge.
 
-**Status: v0.15.0.** The floor is open: eleven machines, full game surfaces,
+**Status: v0.15.1.** The floor is open: eleven machines, full game surfaces,
 per-machine cabinet chrome, X-ray mode, PAR sheets (each machine's internal
 math card — pays, odds, reel maps), session history, a Monte-Carlo Sim Lab,
-and eleven /learn explainers on the math the floor never shows. 0.15.0 seats
+and eleven /learn explainers on the math the floor never shows. 0.15.1 opens
+the **whole floor on arrival** — every machine on show before you dial a
+bankroll, with the session opening as you walk into a cabinet. 0.15.0 seats
 **Wonder Wheel** — the Wheel-of-Fortune 1996 archetype, with the wedge-weight
 truth table on the glass — as the floor's new **revolving Featured headliner**
-(a curated `FEATURED_ID`; Temple of Gold returns to the grid and keeps the
-first-run free-play post). Behind it, 0.14.0 closed the engineering backlog
+(a curated `FEATURED_ID`; Temple of Gold returns to the grid and keeps its
+free-play post there). Behind it, 0.14.0 closed the engineering backlog
 (CI boots the generated site under the production CSP, the volatility page,
 parked engines off the boot bundle, phone fit-scale), and 0.13.0 gave the
 floor its voice, moved all exact math off the main thread, and taught the Sim
@@ -34,10 +36,11 @@ Lab and History to show their expected-vs-actual math in plain English.
 > (`FEATURED_ID` + per-machine copy): rotating the spotlight is a one-line
 > change, and past headliners keep their copy for a return.
 >
-> **The free-play trainer: Temple of Gold** — the gaudy Aztec cascade still
-> anchors the first-run screen: it runs the real exact math but never debits a
-> balance, with an honest House Ledger and a per-spin trick-exposer. The
-> spectacle and the lesson, loss-free.
+> **The free-play trainer: Temple of Gold** — the gaudy Aztec cascade is the one
+> machine you cannot lose money on: it runs the real exact math but never debits
+> a balance, with an honest House Ledger and a per-spin trick-exposer. It rides
+> the grid like any other machine and you can walk up to it off a cold floor,
+> no bankroll required. The spectacle and the lesson, loss-free.
 
 > **Parked (two from-scratch experiments):** *Flameout 21* (a blackjack-meets-crash
 > game) and *Stop & Lock 777* (a stop-the-reels hold-and-spin cash-collect) were each
@@ -56,8 +59,11 @@ pnpm install
 pnpm dev        # open http://localhost:3000
 ```
 
-1. **Floor** — set a bankroll, then pick a machine from the family-grouped
-   card grid. Each card shows the exact RTP and a one-line description.
+1. **Floor** — the whole floor is on show the moment you arrive: the Featured
+   headliner above a family-grouped card grid of every other machine, each card
+   carrying the exact RTP and a one-line description. Dial a bankroll and
+   walking into a betting cabinet opens the session on entry; Temple of Gold,
+   the free-play trainer, needs no bankroll at all.
 2. **Machine** — spin, adjust your bet, watch the reels inside each
    machine's bespoke decorative cabinet chrome (ten themed `GameMachineChrome`
    frames: gothic stone, pachinko neon, baroque gold, emerald scales, riveted

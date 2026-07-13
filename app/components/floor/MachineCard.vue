@@ -67,16 +67,20 @@ const intel = computed(() =>
   rtpReport.value === null ? null : intelFromReport(props.def, rtpReport.value))
 
 function play() {
-  store.selectMachine(props.def.id)
+  // enterMachine opens the session for a visitor who hasn't started one (at the
+  // bankroll dialed on the floor's setup card) — the grid is live from a cold floor.
+  store.enterMachine(props.def.id)
   navigateTo('/game')
 }
 </script>
 
 <template>
+  <!-- No aria-label: a "Play {name}" name omitted the denomination, pay tag and
+       jackpot the card visibly shows, which trips WCAG 2.5.3 (label-in-name).
+       The accessible name IS the visible content — same stance as FeaturedMachine. -->
   <button
     class="mc-card rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 p-4 text-left space-y-2"
     :style="{ '--mc-accent': FAMILY_COLOR[def.family] }"
-    :aria-label="`Play ${def.name}`"
     @click="play"
   >
     <!-- Per-family top accent rail -->

@@ -4,6 +4,7 @@ import { useSlotsStore } from '~/stores/slots'
 import { useBlackjackReel } from '~/composables/useBlackjackReel'
 import { useLockReel } from '~/composables/useLockReel'
 import { unlockAudio } from '~/utils/audio'
+import { isFreePlay } from '~/utils/freePlay'
 
 const store = useSlotsStore()
 const route = useRoute()
@@ -49,10 +50,11 @@ onMounted(() => {
       return
     }
   }
-  // Temple of Gold is FREE PLAY — it never touches the bankroll, so it's a
-  // walk-up machine: playable without a started session. The betting machines
-  // still require one.
-  const freePlay = store.currentDef?.family === 'cascade'
+  // Free play is a walk-up machine: playable without a started session. Betting
+  // machines still require one — but the floor now opens it for you on entry, so
+  // this guard only catches a deep link straight to /game with no session.
+  const def = store.currentDef
+  const freePlay = def !== null && isFreePlay(def)
   if (!freePlay && (store.phase !== 'playing' || store.currentMachineId === null)) navigateTo('/')
   window.addEventListener('keydown', onKeydown)
 })
