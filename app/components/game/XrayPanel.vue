@@ -33,7 +33,9 @@ const sessionRtp = computed(() => {
   return t === undefined || t.inCents === 0 ? null : t.outCents / t.inCents
 })
 
-/** inline sparkline: samples vs the exact line */
+/** inline sparkline: samples vs the exact line. Each dot is one 10-cycle sample,
+ *  green while the session is running ABOVE the machine's true RTP and rose while
+ *  it is below — the drift back to the dashed line IS the house edge. */
 const sparkline = computed(() => {
   const exact = exactRtpValue.value
   if (exact === null || samples.value.length < 2) return null
@@ -43,11 +45,20 @@ const sparkline = computed(() => {
   const hi = Math.max(...samples.value, exact) + 0.02
   const y = (v: number) => h - ((v - lo) / (hi - lo)) * h
   const step = w / (samples.value.length - 1)
+  const dots = samples.value.map((v, i) => ({
+    x: i * step,
+    y: y(v),
+    above: v >= exact
+  }))
+  const ahead = dots.filter(d => d.above).length
   return {
     w,
     h,
     exactY: y(exact),
-    points: samples.value.map((v, i) => `${(i * step).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+    dots,
+    points: dots.map(d => `${d.x.toFixed(1)},${d.y.toFixed(1)}`).join(' '),
+    label: `Session RTP across ${dots.length} samples: ${ahead} above the machine's exact RTP, `
+      + `${dots.length - ahead} below it.`
   }
 })
 
@@ -152,6 +163,8 @@ const wheelTruth = computed(() => {
       <svg
         :viewBox="`0 0 ${sparkline.w} ${sparkline.h}`"
         class="w-full h-11"
+        role="img"
+        :aria-label="sparkline.label"
       >
         <line
           x1="0"
@@ -165,10 +178,30 @@ const wheelTruth = computed(() => {
         <polyline
           :points="sparkline.points"
           fill="none"
-          stroke="rgb(52 211 153)"
+          stroke="rgb(148 163 184)"
           stroke-width="1.5"
+          opacity="0.6"
         />
+        <circle
+          v-for="(d, i) in sparkline.dots"
+          :key="i"
+          data-test="rtp-dot"
+          :data-above="d.above"
+          :cx="d.x"
+          :cy="d.y"
+          r="2.4"
+          :fill="d.above ? '#34d399' : '#fb7185'"
+          stroke="#05070d"
+          stroke-width="0.7"
+        ><title>{{ d.above ? 'running above the true RTP' : 'running below the true RTP' }}</title></circle>
       </svg>
+      <!-- neutral-400, not 500: at 9px this is normal-size text and needs 4.5:1
+           against the panel — neutral-500 lands at 3.7:1 there. -->
+      <p class="text-[9px] leading-snug text-neutral-400">
+        <span class="font-bold text-emerald-400">Green</span> = you're running above this
+        machine's true RTP; <span class="font-bold text-rose-400">rose</span> = below it. The
+        pull back to the dashed line is the house edge doing its work.
+      </p>
     </div>
 
     <div

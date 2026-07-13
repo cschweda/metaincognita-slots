@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Win/loss dots on the bankroll sparkline — in three colours, not two.** Every
+  point on the result card's sparkline is now a dot coloured by what that spin did
+  to the BANKROLL, not by what the machine called it: **green** it rose, **rose**
+  no pay at all, and **amber** for the one in between — the machine flashed WIN and
+  the bankroll fell anyway (a pay under the bet, or the bet handed straight back).
+  That amber is the loss-disguised-as-a-win /learn/ldw-near-miss exists to expose,
+  and it now shows up on the glass, spin by spin, with a legend under the line.
+  `spinKind()` in bankrollSeries.ts is the single definition.
+- **Dots on the X-ray's RTP sparkline too** — green while the session runs above
+  the machine's exact RTP, rose while it runs below. The drift back to the dashed
+  line is the house edge, drawn.
+
+### Fixed
+- **The Spin button no longer moves out from under your finger.** The result card
+  was `v-if`'d out of the DOM whenever `spinning` was true and grew a chips row on
+  a win, so the button beneath it jumped twice per pull — brutal when you're
+  rattling Spin. The card now holds a FIXED slot in every state (idle, spinning,
+  resolved, win, no-win): reserved chips row, one row deep, never wraps.
+  It also now does what its own label always promised — it HOLDS the previous
+  result while the reels turn. That is load-bearing, not cosmetic: `spinOnce()`
+  resolves the engine and books the outcome the instant you press Spin (the reels
+  are only animation, `revealDone()` flips `spinning` later), so `lastOutcome`,
+  the bankroll and the history are ALREADY the new result mid-spin. Rendering them
+  live would spoil the landing, so the card snapshots on each settled beat.
+
 ## [0.15.1] - 2026-07-13
 
 ### Changed
