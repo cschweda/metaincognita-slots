@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-07-14
+
+### Fixed
+- **The PAR sheet's close button was one deleted line from vanishing.** Nuxt UI
+  renders a modal's × from `appConfig.ui.icons.close` (`i-lucide-x`) — a name that
+  appears nowhere in our templates, so the icon scanner cannot see it, and under
+  `connect-src 'self'` the runtime fetch from the Iconify API is blocked and the
+  glyph renders as *nothing*. It shipped only because `index.vue` happens to name
+  `i-lucide-x` for something unrelated. It is now pinned explicitly in
+  `icon.clientBundle.icons`. This exact bug **was live** in the Flameout simulator,
+  which had no such lucky line — its modals had no close button at all.
+
 ### Added
 - **A way out — every page now exits to the floor at metaincognita.com.** Nine
   games hang off the hub and not one of them linked home: once you were inside a

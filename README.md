@@ -109,6 +109,13 @@ pnpm dev        # open http://localhost:3000
    numbers, and every cabinet links to its own explainer.
 8. Everything persists in **localStorage** — reload mid-feature and your
    free spins are still waiting exactly where you left them.
+9. **A way out, always.** The gold **METAINCOGNITA** wordmark at the far left of
+   the top bar is on every page — floor, cabinet, Sim Lab, Learn — and leaves for
+   [metaincognita.com](https://metaincognita.com), the floor where all nine
+   Metaincognita games live. It never hides and never asks you to confirm: your
+   session is saved, so walking out costs you nothing. It is deliberately *not*
+   the **Floor** link beside it, which only goes back to this app's own machine
+   index.
 
 This is an educational simulator. No real money is involved.
 
