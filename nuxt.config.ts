@@ -76,6 +76,14 @@ export default defineNuxtConfig({
 
   icon: {
     clientBundle: {
+      // `scan` only reads OUR source. Nuxt UI's Modal renders its close button from
+      // appConfig.ui.icons.close (i-lucide-x), which is named nowhere in our templates —
+      // so the scan cannot see it, and under `connect-src 'self'` the runtime fetch from
+      // api.iconify.design is blocked and the × silently fails to render. It happens to
+      // ship today only because index.vue incidentally names i-lucide-x; delete that one
+      // line and the PAR sheet loses its close button in production. Pin it.
+      // (This exact bug WAS live in flameout — same stack, no such lucky line.)
+      icons: ['lucide:x'],
       scan: true
     }
   }
