@@ -18,8 +18,30 @@ import { bell, noiseBurst, playSampleNow, reducedMotion, tone } from '~/utils/au
 // playSampleNow() returns false when the sample is muted, locked or not yet
 // decoded, and the synth fanfare sings in its place. A missing file costs the
 // sweetener, never the sound.
-const BONUS_VOL = 0.4
-const JACKPOT_VOL = 0.45
+//
+// These two numbers are MEASURED, not chosen. Do not "round them off".
+//
+// The stings are commercial stock, mastered to about -14 LUFS and peaking at
+// roughly -0.5 dBFS. The synth voices they replace are far quieter and sparser
+// (tones peak at gain ~0.1). Rendering the exact fanfares each sample stands in
+// for and running EBU R128 over both gives:
+//
+//     synth  jackpot  -21.4 LUFS      jackpot.mp3  -16.3 LUFS
+//     synth  bonus    -25.2 LUFS      bonus-*.mp3  -14.1 LUFS (mean)
+//
+// So the synth mix — the one tuned by ear and approved — puts a JACKPOT about
+// +3.8 dB ABOVE a bonus arming. The jackpot is the bigger moment and it sounds
+// like it. The first guessed pair (0.4 / 0.45) INVERTED that: it landed the
+// jackpot 1.2 dB *below* the bonus, so hitting a progressive was quieter than
+// merely arming a feature.
+//
+// These values level-match each sample to the synth fanfare it replaces
+// (within 0.1 dB), which restores that hierarchy and keeps the recorded stings
+// sitting inside the mix instead of jumping out of it — they are a sweetener on
+// a cabinet that can already speak for itself. True peak after gain is -5.8 dBFS
+// (jackpot) and -11.5 dBFS (bonus): no clipping, even summed with reel noise.
+const BONUS_VOL = 0.28
+const JACKPOT_VOL = 0.55
 
 /** The two bonus stings alternate, so back-to-back features never play twice. */
 let bonusFlip = 0

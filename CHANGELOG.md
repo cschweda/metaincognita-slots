@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **The jackpot sting was quieter than the bonus sting.** The two recorded stings
+  shipped with hand-guessed volumes, and the guess inverted the mix: a progressive
+  hit — the loudest thing that can happen on the floor — landed **1.2 dB below** a
+  mere feature arming. The volumes are now *measured* rather than chosen. Rendering
+  the exact synth fanfares each sample replaces and running EBU R128 loudness over
+  both shows the ear-tuned synth mix puts a jackpot **+3.8 dB above** a bonus; the
+  stock stings are mastered ~10 dB hotter than the synth and needed very different
+  trims to sit in that same relationship. `BONUS_VOL` 0.4 → **0.28**, `JACKPOT_VOL`
+  0.45 → **0.55**, which level-matches each sample to its own fanfare within 0.1 dB.
+  The reasoning and the numbers are recorded in `soundBank.ts` so nobody re-guesses.
+
 ## [0.16.0] - 2026-07-14
 
 ### Fixed
