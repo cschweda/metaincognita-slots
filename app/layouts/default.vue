@@ -32,6 +32,13 @@ const navItems = [
       class="h-9 flex items-center justify-between px-3 bg-neutral-900 border-b border-neutral-800 shrink-0 z-50"
     >
       <div class="flex items-center gap-2">
+        <!-- Out of the simulator entirely. Distinct from the "Floor" link beside
+             it, which only goes back to this app's own machine index. -->
+        <AppHubLink />
+        <span
+          class="h-4 w-px bg-neutral-800"
+          aria-hidden="true"
+        />
         <NuxtLink
           v-if="!onFloor"
           to="/"
@@ -57,7 +64,9 @@ const navItems = [
           class="flex items-center gap-1"
         >
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
-          <span class="text-[10px] text-neutral-400">Session active</span>
+          <!-- Below 640px the bar has to give something up to fit the hub exit.
+               sr-only, not hidden — the status stays in the a11y tree. -->
+          <span class="text-[10px] text-neutral-400 max-sm:sr-only">Session active</span>
         </div>
       </div>
     </nav>

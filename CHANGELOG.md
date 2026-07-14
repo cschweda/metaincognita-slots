@@ -6,6 +6,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **A way out — every page now exits to the floor at metaincognita.com.** Nine
+  games hang off the hub and not one of them linked home: once you were inside a
+  cabinet, the only way back to the floor with all the games was the browser's
+  back button. `AppHubLink` is the suite's exit door — a gold **METAINCOGNITA**
+  wordmark pinned to the far left of the status bar, on **every** route, never
+  hidden and never confirmed. It destroys nothing (the session is persisted to
+  `localStorage`), and the point of the feature is that you can *always* get out.
+  It stays deliberately distinct from the **Floor** link beside it, which still
+  means *this app's own machine index* — two different floors in one 36px bar is
+  the collision the design turns on. The accessible name contains the visible
+  wordmark verbatim (WCAG 2.5.3 Label in Name — "Meta Incognita" would have
+  failed on the space), there is no `target="_blank"` (an exit, not a side trip),
+  and "Session active" goes `sr-only` below 640px so the bar still fits at 390.
 - **The first recorded sounds in the app — bonus and jackpot stings.** Three
   Floraphonic samples (Pixabay; `public/audio/CREDITS.md`) take over from the
   synth at the two moments the spectacle peaks, and nowhere else: a **feature
