@@ -2,13 +2,22 @@
 <!-- The X-ray toggle + PAR-sheet button + modal every cabinet page shows.
      One component so the four family shells can't drift apart. -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useTheater } from '~/composables/useTheater'
 
 const store = useSlotsStore()
 const parOpen = ref(false)
 const theater = useTheater()
+
+// The lock-reel and blackjack-reel pages (both PARKED families) render their
+// own dedicated shell, NOT <GameTheaterStage> — so theater mode there hides
+// the nav with no in-stage ghost bar to exit and no scaling. Keep the button
+// off those two branches; see app/pages/game.vue for the family branches.
+const canTheater = computed(() => {
+  const family = store.currentDef?.family
+  return family !== 'lock-reel' && family !== 'blackjack-reel'
+})
 </script>
 
 <template>
@@ -33,6 +42,7 @@ const theater = useTheater()
       PAR sheet
     </UButton>
     <UButton
+      v-if="canTheater"
       color="neutral"
       variant="outline"
       size="xs"

@@ -48,4 +48,18 @@ describe('CabinetToolbar', () => {
     expect(t.active.value).toBe(true)
     t.exit()
   })
+
+  it('hides the theater button on a parked lock-reel machine', () => {
+    const store = useSlotsStore()
+    store.selectMachine('stop-and-lock-777')
+    const w = mount(CabinetToolbar, { global: { stubs } })
+    expect(w.find('[data-test="enter-theater"]').exists()).toBe(false)
+  })
+
+  it('shows the theater button on a floor machine', () => {
+    const store = useSlotsStore()
+    store.selectMachine('canal-royale')
+    const w = mount(CabinetToolbar, { global: { stubs } })
+    expect(w.find('[data-test="enter-theater"]').exists()).toBe(true)
+  })
 })
