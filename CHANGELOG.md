@@ -5,6 +5,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-07-14
+
+### Added
+- **Theater mode — the cabinet, full-screen and gaudy.** A ⛶ Theater button on any
+  betting or free-play cabinet throws the machine full-screen: the reels and their
+  big icons fill the glass, the app chrome falls away, and it's pure spectacle — a
+  video slot on the Venetian floor. The teaching isn't gone, it's one finger away:
+  **hold the `` ` `` key** (or press-and-hold the glass on touch) and a translucent
+  *truth layer* washes over the machine — the winning paylines, the pays, and the
+  full X-ray (RNG trace, near-miss callouts, live-vs-exact RTP); **tap** `` ` `` to
+  pin it open. Temple of Gold shows its own cascade X-ray there instead. The whole
+  cabinet scales as one block (5-reel machines fill edge-to-edge; the narrow 3-reel
+  steppers, Bally and Stock Rush are framed with lit gold side-towers so they read
+  as lavish cabinets, not three lonely symbols). You're never trapped: a slim ghost
+  bar wakes on any movement carrying the METAINCOGNITA hub exit and an ✕, and Esc
+  leaves instantly. All of it respects `prefers-reduced-motion` and returns keyboard
+  focus to the button you left from. Display only — the maths, the RNG, and the
+  anti-spoiler result-hold are untouched. Built test-first across 8 reviewed steps;
+  the browser smoke caught and fixed an invisible-drawer bug a green unit test missed.
+
 ### Fixed
 - **The jackpot sting was quieter than the bonus sting.** The two recorded stings
   shipped with hand-guessed volumes, and the guess inverted the mix: a progressive

@@ -116,6 +116,12 @@ pnpm dev        # open http://localhost:3000
    session is saved, so walking out costs you nothing. It is deliberately *not*
    the **Floor** link beside it, which only goes back to this app's own machine
    index.
+10. **Theater mode.** Hit **⛶ Theater** on any cabinet to throw the machine
+    full-screen — the big icons and colour fill the glass, the chrome falls away.
+    It stays honest: **hold `` ` ``** (or press-and-hold the glass) for a
+    translucent truth layer — winning lines, pays, and the full X-ray — and **tap**
+    `` ` `` to pin it. A slim ghost bar wakes on movement with the way out; Esc
+    leaves. Respects reduced motion.
 
 This is an educational simulator. No real money is involved.
 
