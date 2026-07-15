@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import CabinetToolbar from '../../app/components/game/CabinetToolbar.vue'
 import { useSlotsStore } from '../../app/stores/slots'
+import { useTheater } from '../../app/composables/useTheater'
 
 const stubs = {
   // NOTE: v-bind="$attrs" already forwards the parent's onClick to the native
@@ -35,5 +36,16 @@ describe('CabinetToolbar', () => {
     const par = w.findAll('button').find(b => b.text().includes('PAR sheet'))!
     await par.trigger('click')
     expect(w.find('[data-test="par-modal"]').attributes('data-open')).toBe('true')
+  })
+
+  it('has a theater button that enters theater mode', async () => {
+    const t = useTheater()
+    t.setTarget(document.createElement('div'))
+    const w = mount(CabinetToolbar, { global: { stubs } })
+    const btn = w.find('[data-test="enter-theater"]')
+    expect(btn.exists()).toBe(true)
+    await btn.trigger('click')
+    expect(t.active.value).toBe(true)
+    t.exit()
   })
 })

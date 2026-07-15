@@ -42,4 +42,33 @@ describe('TheaterStage', () => {
     await w.vm.$nextTick()
     expect(w.find('[data-test="towers"]').exists()).toBe(true)
   })
+
+  it('ignores a pointerdown that bubbles from a slotted control — tapping Spin/bet/exit must not arm the peek drawer', async () => {
+    const theater = useTheater()
+    const w = mount(TheaterStage, {
+      props: { narrow: false },
+      slots: { default: '<button data-test="spin">Spin</button>' },
+      global: { stubs }
+    })
+    theater.enter()
+    await w.vm.$nextTick()
+    expect(theater.peek.value).toBe('off')
+    await w.find('[data-test="spin"]').trigger('pointerdown')
+    expect(theater.peek.value).toBe('off')
+    theater.exit()
+  })
+
+  it('still arms the peek drawer for a pointerdown on the bare glass (not a control)', async () => {
+    const theater = useTheater()
+    const w = mount(TheaterStage, {
+      props: { narrow: false },
+      slots: { default: '<div data-test="cab">CAB</div>' },
+      global: { stubs }
+    })
+    theater.enter()
+    await w.vm.$nextTick()
+    await w.find('.theater-block').trigger('pointerdown')
+    expect(theater.peek.value).toBe('held')
+    theater.exit()
+  })
 })

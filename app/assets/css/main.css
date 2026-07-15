@@ -48,3 +48,9 @@
     transition: none !important;
   }
 }
+
+/* Theater mode: the stage is a fixed full-viewport layer; hide the app chrome
+   beneath it. Real fullscreen already hides everything outside the stage — this
+   covers the CSS-only fallback when the Fullscreen API is unavailable/denied. */
+body.theater-active nav { display: none; }
+body.theater-active { overflow: hidden; }

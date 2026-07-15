@@ -4,9 +4,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
+import { useTheater } from '~/composables/useTheater'
 
 const store = useSlotsStore()
 const parOpen = ref(false)
+const theater = useTheater()
 </script>
 
 <template>
@@ -29,6 +31,17 @@ const parOpen = ref(false)
       @click="parOpen = true"
     >
       PAR sheet
+    </UButton>
+    <UButton
+      color="neutral"
+      variant="outline"
+      size="xs"
+      icon="i-lucide-expand"
+      :aria-pressed="theater.active.value"
+      data-test="enter-theater"
+      @click="theater.toggle()"
+    >
+      Theater
     </UButton>
     <GameParSheetModal v-model:open="parOpen" />
   </div>

@@ -18,6 +18,19 @@ const blockStyle = computed(() => active.value ? { transform: `scale(${scale.val
 
 onMounted(() => setTarget(stageEl.value))
 onBeforeUnmount(() => setTarget(null))
+
+// Pointer-hold on the bare glass = peek. But a tap on an in-cabinet control
+// (Spin, bet +/-, the ghost bar's exit link…) also bubbles a pointerdown up to
+// the stage — without this guard, every button press armed (and, if under the
+// 250ms tap threshold, pinned) the peek drawer. pointerup is intentionally left
+// unfiltered: peekRelease() already no-ops via its own pressArmed guard when the
+// press was ignored here, and a genuine held-press that drifts onto a control
+// before release must still be able to end cleanly.
+function onStagePointerDown(e: PointerEvent): void {
+  if (!active.value) return
+  if ((e.target as HTMLElement).closest('button, a, input, select')) return
+  peekPress()
+}
 </script>
 
 <template>
@@ -25,7 +38,7 @@ onBeforeUnmount(() => setTarget(null))
     ref="stageEl"
     class="theater-stage"
     :class="{ 'is-theater': active }"
-    @pointerdown="active && peekPress()"
+    @pointerdown="onStagePointerDown"
     @pointerup="active && peekRelease()"
   >
     <GameTheaterGhostBar v-if="active" />

@@ -3,6 +3,7 @@ import { onMounted, onUnmounted } from 'vue'
 import { useSlotsStore } from '~/stores/slots'
 import { useBlackjackReel } from '~/composables/useBlackjackReel'
 import { useLockReel } from '~/composables/useLockReel'
+import { useTheater } from '~/composables/useTheater'
 import { unlockAudio } from '~/utils/audio'
 import { isFreePlay } from '~/utils/freePlay'
 
@@ -10,8 +11,18 @@ const store = useSlotsStore()
 const route = useRoute()
 const { phase, canStop, canCash, stop, cashOut, playAgain } = useBlackjackReel()
 const lock = useLockReel()
+const theater = useTheater()
 
 function onKeydown(e: KeyboardEvent) {
+  if (e.code === 'Escape' && theater.active.value) {
+    theater.exit()
+    return
+  }
+  if (e.code === 'Backquote' && theater.active.value) {
+    e.preventDefault()
+    if (!e.repeat) theater.peekPress()
+    return
+  }
   if (e.repeat) return
   const isSpace = e.code === 'Space'
   const isEnter = e.code === 'Enter'
@@ -39,6 +50,10 @@ function onKeydown(e: KeyboardEvent) {
   store.spinOnce()
 }
 
+function onKeyup(e: KeyboardEvent) {
+  if (e.code === 'Backquote') theater.peekRelease()
+}
+
 onMounted(() => {
   if (store.phase === 'floor' && store.peekSavedSession()) store.resume()
   const wanted = typeof route.query.m === 'string' ? route.query.m : null
@@ -57,11 +72,14 @@ onMounted(() => {
   const freePlay = def !== null && isFreePlay(def)
   if (!freePlay && (store.phase !== 'playing' || store.currentMachineId === null)) navigateTo('/')
   window.addEventListener('keydown', onKeydown)
+  window.addEventListener('keyup', onKeyup)
 })
 
 onUnmounted(() => {
   store.revealDone() // never leave the session locked
   window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('keyup', onKeyup)
+  theater.exit() // leaving /game must never strand the browser in fullscreen
 })
 </script>
 
@@ -73,7 +91,9 @@ onUnmounted(() => {
   >
     <div class="cab-page-grid">
       <div class="cab-page-main">
-        <GameReelCascade :key="store.currentMachineId ?? ''" />
+        <GameTheaterStage :narrow="false">
+          <GameReelCascade :key="store.currentMachineId ?? ''" />
+        </GameTheaterStage>
       </div>
       <aside class="cab-page-side">
         <GameCabinetToolbar />
@@ -129,39 +149,41 @@ onUnmounted(() => {
     <GameCreditPanel />
 
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3">
-      <div class="space-y-3">
-        <GameMachineChrome>
-          <GameReelVideo
-            v-if="store.currentDef?.family === 'video'"
-            :key="store.currentMachineId ?? ''"
-          />
-          <GameReelStepper
-            v-else-if="store.currentDef?.family === 'stepper'"
-            :key="store.currentMachineId ?? ''"
-          />
-          <GameReelBally
-            v-else-if="store.currentDef?.family === 'bally-em'"
-            :key="store.currentMachineId ?? ''"
-          />
-          <GameReelPachislo
-            v-else-if="store.currentDef?.family === 'pachislo'"
-            :key="store.currentMachineId ?? ''"
-          />
-          <GameReelWheelGame
-            v-else-if="store.currentDef?.family === 'wheel'"
-            :key="store.currentMachineId ?? ''"
-          />
-        </GameMachineChrome>
-        <GameResultBar />
-        <GameBetControls>
-          <template
-            v-if="store.currentDef?.family === 'pachislo'"
-            #pachislo-controls
-          >
-            <GamePachisloControls />
-          </template>
-        </GameBetControls>
-      </div>
+      <GameTheaterStage :narrow="store.currentDef?.family === 'stepper' || store.currentDef?.family === 'bally-em'">
+        <div class="space-y-3">
+          <GameMachineChrome>
+            <GameReelVideo
+              v-if="store.currentDef?.family === 'video'"
+              :key="store.currentMachineId ?? ''"
+            />
+            <GameReelStepper
+              v-else-if="store.currentDef?.family === 'stepper'"
+              :key="store.currentMachineId ?? ''"
+            />
+            <GameReelBally
+              v-else-if="store.currentDef?.family === 'bally-em'"
+              :key="store.currentMachineId ?? ''"
+            />
+            <GameReelPachislo
+              v-else-if="store.currentDef?.family === 'pachislo'"
+              :key="store.currentMachineId ?? ''"
+            />
+            <GameReelWheelGame
+              v-else-if="store.currentDef?.family === 'wheel'"
+              :key="store.currentMachineId ?? ''"
+            />
+          </GameMachineChrome>
+          <GameResultBar />
+          <GameBetControls>
+            <template
+              v-if="store.currentDef?.family === 'pachislo'"
+              #pachislo-controls
+            >
+              <GamePachisloControls />
+            </template>
+          </GameBetControls>
+        </div>
+      </GameTheaterStage>
       <aside class="space-y-3">
         <GameSessionSidebar />
         <GameXrayPanel />
