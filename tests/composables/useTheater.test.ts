@@ -61,4 +61,17 @@ describe('useTheater', () => {
     t.peekRelease() // no-op, must not reopen
     expect(t.peek.value).toBe('off')
   })
+
+  it('restores focus to the triggering element on exit (spec: focus returns to the theater button)', () => {
+    const t = useTheater()
+    const button = document.createElement('button')
+    document.body.appendChild(button)
+    button.focus()
+    expect(document.activeElement).toBe(button)
+    t.setTarget(document.createElement('div'))
+    t.enter()
+    t.exit()
+    expect(document.activeElement).toBe(button)
+    button.remove()
+  })
 })

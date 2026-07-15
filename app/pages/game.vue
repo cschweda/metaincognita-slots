@@ -51,7 +51,7 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 function onKeyup(e: KeyboardEvent) {
-  if (e.code === 'Backquote') theater.peekRelease()
+  if (e.code === 'Backquote' && theater.active.value) theater.peekRelease()
 }
 
 onMounted(() => {
@@ -149,7 +149,7 @@ onUnmounted(() => {
     <GameCreditPanel />
 
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3">
-      <GameTheaterStage :narrow="store.currentDef?.family === 'stepper' || store.currentDef?.family === 'bally-em'">
+      <GameTheaterStage :narrow="store.currentDef?.family === 'stepper' || store.currentDef?.family === 'bally-em' || store.currentDef?.family === 'pachislo'">
         <div class="space-y-3">
           <GameMachineChrome>
             <GameReelVideo

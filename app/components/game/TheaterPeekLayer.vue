@@ -12,6 +12,11 @@ import { formatCredits } from '~/utils/format'
 const store = useSlotsStore()
 const { peeking } = useTheater()
 
+// Temple of Gold (cascade) is free play — spinOnce short-circuits for it, so
+// store.lastOutcome never populates and the shared X-ray reads blank. Cascade
+// keeps its own truth panel (CascadeXray, reading the local tumble trace).
+const isCascade = computed(() => store.currentDef?.family === 'cascade')
+
 // summariseWins returns WinLine[]: { count, symbolName, pluralName, payout,
 // color, cells, kind, ... } — see app/utils/winLines.ts. NOT { label, credits }.
 const pays = computed(() => {
@@ -41,7 +46,8 @@ const pays = computed(() => {
           {{ p.count }}× {{ p.pluralName }} · {{ formatCredits(p.payout) }}
         </span>
       </div>
-      <GameXrayContent />
+      <GameCascadeXray v-if="isCascade" />
+      <GameXrayContent v-else />
     </div>
   </div>
 </template>

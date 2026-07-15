@@ -4,7 +4,7 @@
      fullscreen (ghost bar, peek drawer, side towers) INSIDE itself — the browser
      renders only the fullscreen subtree. -->
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useTheater } from '~/composables/useTheater'
 import { useTheaterScale } from '~/composables/useTheaterScale'
 
@@ -18,6 +18,15 @@ const blockStyle = computed(() => active.value ? { transform: `scale(${scale.val
 
 onMounted(() => setTarget(stageEl.value))
 onBeforeUnmount(() => setTarget(null))
+
+// Real fullscreen moves focus in for free, but the CSS-fallback path (API
+// denied/unavailable) does not — focus the stage itself so keyboard focus
+// always lands inside the theater on enter, regardless of how it was entered.
+watch(active, async (isActive) => {
+  if (!isActive) return
+  await nextTick()
+  stageEl.value?.focus()
+})
 
 // Pointer-hold on the bare glass = peek. But a tap on an in-cabinet control
 // (Spin, bet +/-, the ghost bar's exit link…) also bubbles a pointerdown up to
@@ -38,6 +47,7 @@ function onStagePointerDown(e: PointerEvent): void {
     ref="stageEl"
     class="theater-stage"
     :class="{ 'is-theater': active }"
+    tabindex="-1"
     @pointerdown="onStagePointerDown"
     @pointerup="active && peekRelease()"
   >

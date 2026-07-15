@@ -10,6 +10,10 @@ const peek = ref<PeekMode>('off')
 let target: HTMLElement | null = null
 let pressStart = 0
 let pressArmed = false
+// Spec: "focus moves into the theater container on enter and returns to the
+// theater button on exit." Centralized here (not in a component) so it holds
+// no matter how theater is exited — toolbar button, Escape, the ghost bar.
+let returnFocusEl: HTMLElement | null = null
 
 function onFullscreenChange(): void {
   // Browser's own Esc / fullscreen-exit affordance fired — mirror it.
@@ -17,6 +21,7 @@ function onFullscreenChange(): void {
 }
 
 function enter(): void {
+  returnFocusEl = (document.activeElement as HTMLElement) ?? null
   if (active.value) return
   active.value = true
   document.body.classList.add('theater-active')
@@ -32,6 +37,8 @@ function exit(): void {
   document.body.classList.remove('theater-active')
   document.removeEventListener('fullscreenchange', onFullscreenChange)
   if (document.fullscreenElement !== null) document.exitFullscreen?.().catch(() => {})
+  returnFocusEl?.focus?.()
+  returnFocusEl = null
 }
 
 function peekPress(): void {
