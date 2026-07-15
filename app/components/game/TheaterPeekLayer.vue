@@ -22,30 +22,28 @@ const pays = computed(() => {
 </script>
 
 <template>
-  <transition name="peek">
-    <div
-      v-if="peeking"
-      class="theater-peek"
-      data-test="peek-layer"
-    >
-      <div class="theater-peek-inner">
-        <div
-          v-if="pays.length"
-          class="theater-peek-pays"
+  <div
+    v-if="peeking"
+    class="theater-peek"
+    data-test="peek-layer"
+  >
+    <div class="theater-peek-inner">
+      <div
+        v-if="pays.length"
+        class="theater-peek-pays"
+      >
+        <span
+          v-for="(p, i) in pays"
+          :key="i"
+          class="theater-peek-pay"
+          :style="{ color: p.color }"
         >
-          <span
-            v-for="(p, i) in pays"
-            :key="i"
-            class="theater-peek-pay"
-            :style="{ color: p.color }"
-          >
-            {{ p.count }}× {{ p.pluralName }} · {{ formatCredits(p.payout) }}
-          </span>
-        </div>
-        <GameXrayContent />
+          {{ p.count }}× {{ p.pluralName }} · {{ formatCredits(p.payout) }}
+        </span>
       </div>
+      <GameXrayContent />
     </div>
-  </transition>
+  </div>
 </template>
 
 <style scoped>
@@ -61,9 +59,4 @@ const pays = computed(() => {
 }
 .theater-peek-pays { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 12px;
   font: 700 13px ui-monospace, monospace; }
-.peek-enter-active, .peek-leave-active { transition: opacity 0.14s ease; }
-.peek-enter-from, .peek-leave-to { opacity: 0; }
-@media (prefers-reduced-motion: reduce) {
-  .peek-enter-active, .peek-leave-active { transition: none; }
-}
 </style>
