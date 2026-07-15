@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import XrayPanel from '../../app/components/game/XrayPanel.vue'
+import XrayContent from '../../app/components/game/XrayContent.vue'
 import XrayParkedPanel from '../../app/components/game/XrayParkedPanel.vue'
 import { useSlotsStore } from '../../app/stores/slots'
 import { bonusEv, lockReelExactRtp, reelCashEvs } from '../../app/engine/lockReelRtp'
@@ -18,7 +19,7 @@ function withLockReel() {
   store.setXray(true)
   const wrapper = mount(XrayPanel, {
     global: {
-      stubs: { UIcon: true, LazyGameXrayParkedPanel: XrayParkedPanel }
+      stubs: { GameXrayContent: XrayContent, UIcon: true, LazyGameXrayParkedPanel: XrayParkedPanel }
     }
   })
   return { wrapper, store }
